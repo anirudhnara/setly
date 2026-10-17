@@ -171,7 +171,7 @@ export default function SetlyApp({ initialView }: { initialView: View }) {
         <Link href="/" className="app-brand" onClick={() => setView("plan")}>
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>setly<span className="brand-dot">.</span>
         </Link>
-        <div className="topbar-group"><span className="live-dot" /> <span>{livingRoomFixture.group.name}</span><button className="text-action" onClick={() => setModal("join")}>Join a group</button></div>
+        <div className="topbar-group"><span className="live-dot" /> <span>{livingRoomFixture.group.name}</span><Link href="/home" className="text-action">Open console</Link><button className="text-action" onClick={() => setModal("join")}>Join a group</button></div>
         <div className="topbar-actions"><button className="funding-chip" onClick={() => router.push("/checkout")}><span className="wallet-icon">▣</span><span><small>GROUP CARD</small><strong>{money(remainingCard)} left</strong></span><span className="active-tag">ACTIVE</span></button><button className="profile-button" onClick={() => setModal("signin")}><span className="profile-avatar">{signedIn ? "A" : "?"}</span><span>{signedIn ? (accountType === "roommate" ? "Ani" : "Northstar") : "Sign in"}</span><span className="chevron">⌄</span></button></div>
       </header>
 
