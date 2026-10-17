@@ -1,12 +1,6 @@
-/** Shared domain contract for the map, group, money, and API layers. */
+/** Shared domain contract. All money is integer cents. All ids are strings. */
 
 export type GroupStatus = "editing" | "funding" | "active" | "purchased" | "settled";
-export type QuantityRule = "per_group" | "per_person" | "fixed";
-export type PayType = "shared" | "per_person" | "already_owned";
-export type RuleType = "budget" | "quantity" | "compatibility" | "size" | "timing" | "required_or_banned";
-export type RuleStatus = "ok" | "warning" | "broken" | "not_checked";
-export type ContributionStatus = "pending" | "paid" | "failed" | "refunded";
-export type CardStatus = "pending" | "active" | "suspended" | "closed";
 
 export interface Group {
   id: string;
@@ -15,7 +9,6 @@ export interface Group {
   budgetCents: number;
   status: GroupStatus;
   createdAt: string;
-  organizerMemberId: string;
 }
 
 export interface Member {
@@ -31,8 +24,10 @@ export interface Zone {
   groupId: string;
   name: string;
   sortOrder: number;
-  slots: Slot[];
 }
+
+export type QuantityRule = "per_group" | "per_person" | "fixed";
+export type PayType = "shared" | "per_person" | "already_owned";
 
 export interface Slot {
   id: string;
@@ -40,13 +35,12 @@ export interface Slot {
   need: string;
   quantityRule: QuantityRule;
   quantity: number;
-  budgetCents: number | null;
+  budgetCents: number;
   payType: PayType;
   ownerMemberId: string | null;
   chosenProductId: string | null;
   updatedBy: string | null;
   updatedAt: string;
-  products: Product[];
 }
 
 export interface Product {
@@ -56,16 +50,19 @@ export interface Product {
   store: string;
   priceCents: number;
   url: string;
-  imageUrl: string | null;
-  attributes: Record<string, string | number | boolean | null>;
+  imageUrl: string;
+  attributes: Record<string, string | number>;
 }
 
-export interface SlotLink {
+export interface Link {
   id: string;
   fromSlotId: string;
   toSlotId: string;
   label: string;
 }
+
+export type RuleType = "budget" | "quantity" | "compatibility" | "size" | "timing" | "required_or_banned";
+export type RuleStatus = "ok" | "warning" | "broken" | "not_checked";
 
 export interface Rule {
   id: string;
@@ -77,29 +74,34 @@ export interface Rule {
   message: string;
 }
 
+export interface MemberShare {
+  memberId: string;
+  totalCents: number;
+  lines: { slotId: string; cents: number }[];
+}
+
 export interface Contribution {
   id: string;
   groupId: string;
   memberId: string;
   amountCents: number;
-  paymentIntentId: string | null;
-  status: ContributionStatus;
+  stripePaymentIntentId: string | null;
+  status: "pending" | "paid" | "refunded_partial";
+}
+
+export interface Card {
+  id: string;
+  groupId: string;
+  last4: string;
+  limitCents: number;
+  status: "inactive" | "active" | "closed";
 }
 
 export interface StoreLimit {
+  cardId: string;
   store: string;
   limitCents: number;
   spentCents: number;
-}
-
-export interface PlanCard {
-  id: string;
-  groupId: string;
-  stripeCardId: string | null;
-  last4: string | null;
-  limitCents: number;
-  status: CardStatus;
-  storeLimits: StoreLimit[];
 }
 
 export interface Authorization {
@@ -118,37 +120,27 @@ export interface Refund {
   productId: string;
   memberId: string;
   amountCents: number;
-  stripeRefundId: string | null;
-  status: "pending" | "succeeded" | "failed";
   createdAt: string;
+}
+
+export interface MapData {
+  zones: Zone[];
+  slots: Slot[];
+  products: Product[];
+  links: Link[];
+  rules: Rule[];
 }
 
 export interface GroupState {
   group: Group;
   members: Member[];
-  zones: Zone[];
-  links: SlotLink[];
-  rules: Rule[];
+  map: MapData;
+  shares: MemberShare[];
   contributions: Contribution[];
-  card: PlanCard | null;
+  card: Card | null;
+  storeLimits: StoreLimit[];
   authorizations: Authorization[];
   refunds: Refund[];
-}
-
-/** Input/output contract shared by map generation providers and API routes. */
-export interface GeneratedMap {
-  zones: Array<{ id: string; name: string; sortOrder: number; slots: GeneratedSlot[] }>;
-  links: SlotLink[];
-  rules: Rule[];
-}
-
-export interface GeneratedSlot {
-  id: string;
-  need: string;
-  quantityRule: QuantityRule;
-  quantity: number;
-  budgetCents: number | null;
-  payType: PayType;
-  products: Product[];
-  chosenProductId: string | null;
+  fundedCents: number;
+  totalCents: number;
 }

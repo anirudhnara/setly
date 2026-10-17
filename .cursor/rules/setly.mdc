@@ -1,0 +1,6 @@
+---
+description: Setly working rules for every task
+alwaysApply: true
+---
+
+Follow AGENTS.md. Only edit files in your owner's folders. Money is integer cents. Screens call the API only through lib/client.ts. If lib/types.ts or lib/contracts.ts need to change, stop and say so instead of editing them.

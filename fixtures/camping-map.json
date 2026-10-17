@@ -1,0 +1,352 @@
+{
+  "_note": "Sample data for local development. Not a live catalog or a real charge.",
+  "zones": [
+    {
+      "id": "zone_sleep",
+      "name": "Sleep",
+      "sortOrder": 0,
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "zone_cook",
+      "name": "Cook",
+      "sortOrder": 1,
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "zone_camp",
+      "name": "Camp",
+      "sortOrder": 2,
+      "groupId": "grp_camping"
+    }
+  ],
+  "slots": [
+    {
+      "quantityRule": "per_group",
+      "quantity": 1,
+      "payType": "shared",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_tent",
+      "zoneId": "zone_sleep",
+      "need": "Tent",
+      "budgetCents": 25000,
+      "chosenProductId": "prod_tent"
+    },
+    {
+      "quantityRule": "per_person",
+      "quantity": 1,
+      "payType": "per_person",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_bags",
+      "zoneId": "zone_sleep",
+      "need": "Sleeping bag",
+      "budgetCents": 8000,
+      "chosenProductId": "prod_bags"
+    },
+    {
+      "quantityRule": "per_person",
+      "quantity": 1,
+      "payType": "per_person",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_pads",
+      "zoneId": "zone_sleep",
+      "need": "Sleeping pad",
+      "budgetCents": 4000,
+      "chosenProductId": "prod_pads"
+    },
+    {
+      "quantityRule": "per_group",
+      "quantity": 1,
+      "payType": "shared",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_stove",
+      "zoneId": "zone_cook",
+      "need": "Camp stove",
+      "budgetCents": 10000,
+      "chosenProductId": "prod_stove"
+    },
+    {
+      "quantityRule": "per_group",
+      "quantity": 1,
+      "payType": "shared",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_fuel",
+      "zoneId": "zone_cook",
+      "need": "Fuel canister",
+      "budgetCents": 2000,
+      "chosenProductId": "prod_fuel"
+    },
+    {
+      "quantityRule": "per_group",
+      "quantity": 1,
+      "payType": "shared",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_cooler",
+      "zoneId": "zone_cook",
+      "need": "Cooler",
+      "budgetCents": 7000,
+      "chosenProductId": "prod_cooler"
+    },
+    {
+      "quantityRule": "per_person",
+      "quantity": 1,
+      "payType": "per_person",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_headlamp",
+      "zoneId": "zone_camp",
+      "need": "Headlamp",
+      "budgetCents": 2000,
+      "chosenProductId": "prod_headlamp"
+    },
+    {
+      "quantityRule": "per_group",
+      "quantity": 1,
+      "payType": "shared",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_aid",
+      "zoneId": "zone_camp",
+      "need": "First aid kit",
+      "budgetCents": 3000,
+      "chosenProductId": "prod_aid"
+    },
+    {
+      "quantityRule": "per_group",
+      "quantity": 1,
+      "payType": "shared",
+      "ownerMemberId": null,
+      "updatedBy": null,
+      "updatedAt": "2026-10-17T18:10:00.000Z",
+      "id": "slot_lantern",
+      "zoneId": "zone_camp",
+      "need": "Lantern",
+      "budgetCents": 4000,
+      "chosenProductId": "prod_lantern"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod_tent",
+      "slotId": "slot_tent",
+      "imageUrl": "https://placehold.co/480x360?text=4-person%20dome%20tent",
+      "attributes": {
+        "capacity": 4,
+        "season": 3
+      },
+      "title": "4-person dome tent",
+      "store": "REI",
+      "priceCents": 18000,
+      "url": "https://www.rei.com/search?q=4+person+dome+tent"
+    },
+    {
+      "id": "prod_bags",
+      "slotId": "slot_bags",
+      "imageUrl": "https://placehold.co/480x360?text=30F%20mummy%20sleeping%20bag",
+      "attributes": {
+        "tempF": 30
+      },
+      "title": "30F mummy sleeping bag",
+      "store": "REI",
+      "priceCents": 4500,
+      "url": "https://www.rei.com/search?q=mummy+sleeping+bag"
+    },
+    {
+      "id": "prod_pads",
+      "slotId": "slot_pads",
+      "imageUrl": "https://placehold.co/480x360?text=Insulated%20sleeping%20pad",
+      "attributes": {
+        "rValue": 3
+      },
+      "title": "Insulated sleeping pad",
+      "store": "REI",
+      "priceCents": 2500,
+      "url": "https://www.rei.com/search?q=insulated+sleeping+pad"
+    },
+    {
+      "id": "prod_stove",
+      "slotId": "slot_stove",
+      "imageUrl": "https://placehold.co/480x360?text=Canister%20camp%20stove",
+      "attributes": {
+        "fuelType": "isobutane"
+      },
+      "title": "Canister camp stove",
+      "store": "REI",
+      "priceCents": 7999,
+      "url": "https://www.rei.com/search?q=canister+camp+stove"
+    },
+    {
+      "id": "prod_fuel",
+      "slotId": "slot_fuel",
+      "imageUrl": "https://placehold.co/480x360?text=8%20oz%20fuel%20canister",
+      "attributes": {
+        "fuelType": "propane"
+      },
+      "title": "8 oz fuel canister",
+      "store": "REI",
+      "priceCents": 1299,
+      "url": "https://www.rei.com/search?q=isobutane+fuel+canister"
+    },
+    {
+      "id": "prod_cooler",
+      "slotId": "slot_cooler",
+      "imageUrl": "https://placehold.co/480x360?text=48-quart%20cooler",
+      "attributes": {
+        "quarts": 48
+      },
+      "title": "48-quart cooler",
+      "store": "Target",
+      "priceCents": 4999,
+      "url": "https://www.target.com/s?searchTerm=48+quart+cooler"
+    },
+    {
+      "id": "prod_headlamp",
+      "slotId": "slot_headlamp",
+      "imageUrl": "https://placehold.co/480x360?text=Rechargeable%20headlamp",
+      "attributes": {
+        "lumens": 300
+      },
+      "title": "Rechargeable headlamp",
+      "store": "REI",
+      "priceCents": 1299,
+      "url": "https://www.rei.com/search?q=rechargeable+headlamp"
+    },
+    {
+      "id": "prod_aid",
+      "slotId": "slot_aid",
+      "imageUrl": "https://placehold.co/480x360?text=Trail%20first%20aid%20kit",
+      "attributes": {
+        "people": 6
+      },
+      "title": "Trail first aid kit",
+      "store": "REI",
+      "priceCents": 1999,
+      "url": "https://www.rei.com/search?q=first+aid+kit"
+    },
+    {
+      "id": "prod_lantern",
+      "slotId": "slot_lantern",
+      "imageUrl": "https://placehold.co/480x360?text=Rechargeable%20camp%20lantern",
+      "attributes": {
+        "lumens": 400
+      },
+      "title": "Rechargeable camp lantern",
+      "store": "Target",
+      "priceCents": 2499,
+      "url": "https://www.target.com/s?searchTerm=camp+lantern"
+    }
+  ],
+  "links": [
+    {
+      "id": "link_stove_fuel",
+      "fromSlotId": "slot_stove",
+      "toSlotId": "slot_fuel",
+      "label": "fuel type must match the stove"
+    },
+    {
+      "id": "link_pad_bag",
+      "fromSlotId": "slot_pads",
+      "toSlotId": "slot_bags",
+      "label": "pad should pack with the sleeping bag"
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule_budget",
+      "type": "budget",
+      "slotIds": [],
+      "params": {
+        "maxCents": 90000
+      },
+      "status": "ok",
+      "message": "The trip is under the $900 group budget.",
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "rule_quantity",
+      "type": "quantity",
+      "slotIds": [
+        "slot_bags",
+        "slot_pads",
+        "slot_headlamp"
+      ],
+      "params": {
+        "per": "member"
+      },
+      "status": "warning",
+      "message": "Sleeping bags, pads, and headlamps are per person. Confirm all 6 friends are on the trip.",
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "rule_compatibility",
+      "type": "compatibility",
+      "slotIds": [
+        "slot_stove",
+        "slot_fuel"
+      ],
+      "params": {
+        "attribute": "fuelType"
+      },
+      "status": "broken",
+      "message": "The stove takes isobutane, but the chosen fuel canister is propane.",
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "rule_size",
+      "type": "size",
+      "slotIds": [
+        "slot_tent",
+        "slot_bags"
+      ],
+      "params": {
+        "relation": "bags_fit_tent"
+      },
+      "status": "not_checked",
+      "message": "Packed sizes are missing, so tent fit is not checked.",
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "rule_timing",
+      "type": "timing",
+      "slotIds": [
+        "slot_tent"
+      ],
+      "params": {
+        "neededBy": "2026-11-08"
+      },
+      "status": "not_checked",
+      "message": "Ship dates are missing, so timing is not checked.",
+      "groupId": "grp_camping"
+    },
+    {
+      "id": "rule_required",
+      "type": "required_or_banned",
+      "slotIds": [
+        "slot_aid"
+      ],
+      "params": {
+        "requiredNeeds": [
+          "First aid kit"
+        ],
+        "bannedStores": []
+      },
+      "status": "ok",
+      "message": "A first aid kit is on the plan.",
+      "groupId": "grp_camping"
+    }
+  ]
+}

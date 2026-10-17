@@ -1,7 +1,5 @@
-import type { GroupState } from "@/lib/types";
-
-/** Deterministic demo state so map and money screens can be built without API keys. */
-export const livingRoomFixture: GroupState = {
+/** Local prototype state for the existing interactive demo. The API contract lives in lib/types.ts. */
+export const livingRoomFixture = {
   group: {
     id: "demo-living-room",
     name: "The living room plan",

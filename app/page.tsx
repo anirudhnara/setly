@@ -1,5 +1,7 @@
-import SetlyApp from "@/components/setly-app";
-
-export default function Home() {
-  return <SetlyApp key="plan" initialView="plan" />;
+export default function HomePage() {
+  return (
+    <main>
+      <h1>Home: prompt + starter maps</h1>
+    </main>
+  );
 }

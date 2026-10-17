@@ -4,7 +4,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { livingRoomFixture } from "@/lib/fixtures/living-room";
-import type { Slot } from "@/lib/types";
+
+type Slot = {
+  id: string;
+  zoneId: string;
+  need: string;
+  quantityRule: string;
+  quantity: number;
+  budgetCents: number | null;
+  payType: string;
+  ownerMemberId: string | null;
+  chosenProductId: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+  products: Array<{
+    id: string;
+    slotId: string;
+    title: string;
+    store: string;
+    priceCents: number;
+    url: string;
+    imageUrl: string | null;
+    attributes: Record<string, string | number | boolean | null>;
+  }>;
+};
 
 type View = "plan" | "personal" | "checkout";
 type Modal = "add" | "join" | "signin" | "want" | null;
@@ -12,7 +35,7 @@ type InventoryItem = { id: string; name: string; note: string; emoji: string };
 type Recommendation = { id: string; name: string; store: string; priceCents: number; match: number; description: string; emoji: string };
 
 const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-const allSlots = livingRoomFixture.zones.flatMap((zone) => zone.slots);
+const allSlots = (livingRoomFixture.zones as unknown as Array<{ slots: Slot[] }>).flatMap((zone) => zone.slots);
 const currentMember = livingRoomFixture.members[0];
 
 const starterInventory: InventoryItem[] = [

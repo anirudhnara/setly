@@ -1,0 +1,672 @@
+{
+  "_note": "Sample data for local development. Not a live catalog or a real charge.",
+  "group": {
+    "id": "grp_apartment",
+    "name": "The living room plan",
+    "prompt": "living room for 4 roommates, cozy, under $1,200",
+    "budgetCents": 120000,
+    "status": "funding",
+    "createdAt": "2026-10-17T18:00:00.000Z"
+  },
+  "members": [
+    {
+      "id": "mem_ani",
+      "groupId": "grp_apartment",
+      "name": "Ani",
+      "isOrganizer": true,
+      "joinedAt": "2026-10-17T18:00:00.000Z"
+    },
+    {
+      "id": "mem_jules",
+      "groupId": "grp_apartment",
+      "name": "Jules",
+      "isOrganizer": false,
+      "joinedAt": "2026-10-17T18:02:00.000Z"
+    },
+    {
+      "id": "mem_sam",
+      "groupId": "grp_apartment",
+      "name": "Sam",
+      "isOrganizer": false,
+      "joinedAt": "2026-10-17T18:05:00.000Z"
+    },
+    {
+      "id": "mem_riley",
+      "groupId": "grp_apartment",
+      "name": "Riley",
+      "isOrganizer": false,
+      "joinedAt": "2026-10-17T18:08:00.000Z"
+    }
+  ],
+  "map": {
+    "zones": [
+      {
+        "id": "zone_living",
+        "name": "Living room",
+        "sortOrder": 0,
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "zone_kitchen",
+        "name": "Kitchen",
+        "sortOrder": 1,
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "zone_entry",
+        "name": "Entry",
+        "sortOrder": 2,
+        "groupId": "grp_apartment"
+      }
+    ],
+    "slots": [
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_ani",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_sofa",
+        "zoneId": "zone_living",
+        "need": "Sofa",
+        "budgetCents": 65000,
+        "chosenProductId": "prod_sofa"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_jules",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_rug",
+        "zoneId": "zone_living",
+        "need": "Rug",
+        "budgetCents": 15000,
+        "chosenProductId": "prod_rug"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_sam",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_lamp",
+        "zoneId": "zone_living",
+        "need": "Floor lamp",
+        "budgetCents": 8000,
+        "chosenProductId": "prod_lamp"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_jules",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_table",
+        "zoneId": "zone_living",
+        "need": "Coffee table",
+        "budgetCents": 18000,
+        "chosenProductId": "prod_table"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 4,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_riley",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_pillows",
+        "zoneId": "zone_living",
+        "need": "Throw pillows",
+        "budgetCents": 5000,
+        "chosenProductId": "prod_pillows"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_ani",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_microwave",
+        "zoneId": "zone_kitchen",
+        "need": "Microwave",
+        "budgetCents": 12000,
+        "chosenProductId": "prod_microwave"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_sam",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_coffee",
+        "zoneId": "zone_kitchen",
+        "need": "Coffee maker",
+        "budgetCents": 6000,
+        "chosenProductId": "prod_coffee"
+      },
+      {
+        "quantityRule": "per_person",
+        "quantity": 1,
+        "payType": "per_person",
+        "ownerMemberId": null,
+        "updatedBy": "mem_ani",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_mugs",
+        "zoneId": "zone_kitchen",
+        "need": "Mugs",
+        "budgetCents": 2000,
+        "chosenProductId": "prod_mugs"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_jules",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_shoes",
+        "zoneId": "zone_entry",
+        "need": "Shoe rack",
+        "budgetCents": 4000,
+        "chosenProductId": "prod_shoes"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "already_owned",
+        "ownerMemberId": "mem_riley",
+        "updatedBy": "mem_riley",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_mat",
+        "zoneId": "zone_entry",
+        "need": "Doormat",
+        "budgetCents": 0,
+        "chosenProductId": "prod_mat"
+      },
+      {
+        "quantityRule": "per_group",
+        "quantity": 1,
+        "payType": "shared",
+        "ownerMemberId": null,
+        "updatedBy": "mem_ani",
+        "updatedAt": "2026-10-17T18:10:00.000Z",
+        "id": "slot_hooks",
+        "zoneId": "zone_entry",
+        "need": "Coat hooks",
+        "budgetCents": 2500,
+        "chosenProductId": "prod_hooks"
+      }
+    ],
+    "products": [
+      {
+        "id": "prod_sofa",
+        "slotId": "slot_sofa",
+        "imageUrl": "https://placehold.co/480x360?text=Harlow%203-seat%20sofa",
+        "attributes": {
+          "seats": 3,
+          "color": "warm beige",
+          "widthIn": 84
+        },
+        "title": "Harlow 3-seat sofa",
+        "store": "Wayfair",
+        "priceCents": 54900,
+        "url": "https://www.wayfair.com/keyword.php?keyword=3+seat+sofa"
+      },
+      {
+        "id": "prod_rug",
+        "slotId": "slot_rug",
+        "imageUrl": "https://placehold.co/480x360?text=Washable%20woven%20area%20rug",
+        "attributes": {
+          "material": "wool blend"
+        },
+        "title": "Washable woven area rug",
+        "store": "Target",
+        "priceCents": 8990,
+        "url": "https://www.target.com/s?searchTerm=washable+area+rug"
+      },
+      {
+        "id": "prod_lamp",
+        "slotId": "slot_lamp",
+        "imageUrl": "https://placehold.co/480x360?text=Tripod%20floor%20lamp",
+        "attributes": {
+          "bulbBase": "E26",
+          "style": "tripod"
+        },
+        "title": "Tripod floor lamp",
+        "store": "IKEA",
+        "priceCents": 4990,
+        "url": "https://www.ikea.com/us/en/search/?q=floor%20lamp"
+      },
+      {
+        "id": "prod_table",
+        "slotId": "slot_table",
+        "imageUrl": "https://placehold.co/480x360?text=Round%20oak%20coffee%20table",
+        "attributes": {
+          "material": "oak",
+          "shape": "round"
+        },
+        "title": "Round oak coffee table",
+        "store": "Article",
+        "priceCents": 12900,
+        "url": "https://www.article.com/search?query=oak+coffee+table"
+      },
+      {
+        "id": "prod_pillows",
+        "slotId": "slot_pillows",
+        "imageUrl": "https://placehold.co/480x360?text=Textured%20throw%20pillow",
+        "attributes": {
+          "color": "cream"
+        },
+        "title": "Textured throw pillow",
+        "store": "Target",
+        "priceCents": 999,
+        "url": "https://www.target.com/s?searchTerm=throw+pillow"
+      },
+      {
+        "id": "prod_microwave",
+        "slotId": "slot_microwave",
+        "imageUrl": "https://placehold.co/480x360?text=Compact%20countertop%20microwave",
+        "attributes": {
+          "watts": 700
+        },
+        "title": "Compact countertop microwave",
+        "store": "Best Buy",
+        "priceCents": 7990,
+        "url": "https://www.bestbuy.com/site/searchpage.jsp?st=compact+microwave"
+      },
+      {
+        "id": "prod_coffee",
+        "slotId": "slot_coffee",
+        "imageUrl": "https://placehold.co/480x360?text=12-cup%20drip%20coffee%20maker",
+        "attributes": {
+          "cups": 12
+        },
+        "title": "12-cup drip coffee maker",
+        "store": "Target",
+        "priceCents": 3499,
+        "url": "https://www.target.com/s?searchTerm=drip+coffee+maker"
+      },
+      {
+        "id": "prod_mugs",
+        "slotId": "slot_mugs",
+        "imageUrl": "https://placehold.co/480x360?text=Stoneware%20mug",
+        "attributes": {
+          "material": "stoneware"
+        },
+        "title": "Stoneware mug",
+        "store": "IKEA",
+        "priceCents": 999,
+        "url": "https://www.ikea.com/us/en/search/?q=stoneware%20mug"
+      },
+      {
+        "id": "prod_shoes",
+        "slotId": "slot_shoes",
+        "imageUrl": "https://placehold.co/480x360?text=Two-tier%20shoe%20rack",
+        "attributes": {
+          "pairs": 8
+        },
+        "title": "Two-tier shoe rack",
+        "store": "IKEA",
+        "priceCents": 1999,
+        "url": "https://www.ikea.com/us/en/search/?q=shoe%20rack"
+      },
+      {
+        "id": "prod_mat",
+        "slotId": "slot_mat",
+        "imageUrl": "https://placehold.co/480x360?text=Coir%20doormat",
+        "attributes": {
+          "material": "coir"
+        },
+        "title": "Coir doormat",
+        "store": "Target",
+        "priceCents": 1499,
+        "url": "https://www.target.com/s?searchTerm=coir+doormat"
+      },
+      {
+        "id": "prod_hooks",
+        "slotId": "slot_hooks",
+        "imageUrl": "https://placehold.co/480x360?text=Four-hook%20wall%20rail",
+        "attributes": {
+          "hooks": 4
+        },
+        "title": "Four-hook wall rail",
+        "store": "Target",
+        "priceCents": 1499,
+        "url": "https://www.target.com/s?searchTerm=coat+hooks"
+      }
+    ],
+    "links": [
+      {
+        "id": "link_rug_sofa",
+        "fromSlotId": "slot_rug",
+        "toSlotId": "slot_sofa",
+        "label": "sized to sit under the sofa"
+      },
+      {
+        "id": "link_lamp_sofa",
+        "fromSlotId": "slot_lamp",
+        "toSlotId": "slot_sofa",
+        "label": "placed beside the sofa"
+      }
+    ],
+    "rules": [
+      {
+        "id": "rule_budget",
+        "type": "budget",
+        "slotIds": [],
+        "params": {
+          "maxCents": 120000
+        },
+        "status": "ok",
+        "message": "The plan is under the $1,200 group budget.",
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "rule_quantity",
+        "type": "quantity",
+        "slotIds": [
+          "slot_pillows"
+        ],
+        "params": {
+          "expected": 4
+        },
+        "status": "warning",
+        "message": "Four pillows are listed, but the colors are not confirmed for every roommate.",
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "rule_compatibility",
+        "type": "compatibility",
+        "slotIds": [
+          "slot_lamp"
+        ],
+        "params": {
+          "attribute": "bulbBase",
+          "value": "E26"
+        },
+        "status": "ok",
+        "message": "The floor lamp takes a standard E26 bulb.",
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "rule_size",
+        "type": "size",
+        "slotIds": [
+          "slot_rug",
+          "slot_sofa"
+        ],
+        "params": {
+          "relation": "rug_fits_sofa"
+        },
+        "status": "not_checked",
+        "message": "Rug dimensions are missing, so fit against the sofa is not checked.",
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "rule_timing",
+        "type": "timing",
+        "slotIds": [
+          "slot_sofa",
+          "slot_table"
+        ],
+        "params": {
+          "neededBy": "2026-11-01"
+        },
+        "status": "not_checked",
+        "message": "Delivery dates are missing, so timing is not checked.",
+        "groupId": "grp_apartment"
+      },
+      {
+        "id": "rule_required",
+        "type": "required_or_banned",
+        "slotIds": [
+          "slot_sofa"
+        ],
+        "params": {
+          "requiredNeeds": [
+            "Sofa"
+          ],
+          "bannedStores": [
+            "Amazon"
+          ]
+        },
+        "status": "broken",
+        "message": "A shared trash bin is still required, and it is not on the plan.",
+        "groupId": "grp_apartment"
+      }
+    ]
+  },
+  "shares": [
+    {
+      "memberId": "mem_ani",
+      "totalCents": 26192,
+      "lines": [
+        {
+          "slotId": "slot_sofa",
+          "cents": 13725
+        },
+        {
+          "slotId": "slot_rug",
+          "cents": 2248
+        },
+        {
+          "slotId": "slot_lamp",
+          "cents": 1248
+        },
+        {
+          "slotId": "slot_table",
+          "cents": 3225
+        },
+        {
+          "slotId": "slot_pillows",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_microwave",
+          "cents": 1998
+        },
+        {
+          "slotId": "slot_coffee",
+          "cents": 875
+        },
+        {
+          "slotId": "slot_mugs",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_shoes",
+          "cents": 500
+        },
+        {
+          "slotId": "slot_hooks",
+          "cents": 375
+        }
+      ]
+    },
+    {
+      "memberId": "mem_jules",
+      "totalCents": 26192,
+      "lines": [
+        {
+          "slotId": "slot_sofa",
+          "cents": 13725
+        },
+        {
+          "slotId": "slot_rug",
+          "cents": 2248
+        },
+        {
+          "slotId": "slot_lamp",
+          "cents": 1248
+        },
+        {
+          "slotId": "slot_table",
+          "cents": 3225
+        },
+        {
+          "slotId": "slot_pillows",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_microwave",
+          "cents": 1998
+        },
+        {
+          "slotId": "slot_coffee",
+          "cents": 875
+        },
+        {
+          "slotId": "slot_mugs",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_shoes",
+          "cents": 500
+        },
+        {
+          "slotId": "slot_hooks",
+          "cents": 375
+        }
+      ]
+    },
+    {
+      "memberId": "mem_sam",
+      "totalCents": 26189,
+      "lines": [
+        {
+          "slotId": "slot_sofa",
+          "cents": 13725
+        },
+        {
+          "slotId": "slot_rug",
+          "cents": 2247
+        },
+        {
+          "slotId": "slot_lamp",
+          "cents": 1247
+        },
+        {
+          "slotId": "slot_table",
+          "cents": 3225
+        },
+        {
+          "slotId": "slot_pillows",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_microwave",
+          "cents": 1997
+        },
+        {
+          "slotId": "slot_coffee",
+          "cents": 875
+        },
+        {
+          "slotId": "slot_mugs",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_shoes",
+          "cents": 500
+        },
+        {
+          "slotId": "slot_hooks",
+          "cents": 375
+        }
+      ]
+    },
+    {
+      "memberId": "mem_riley",
+      "totalCents": 26186,
+      "lines": [
+        {
+          "slotId": "slot_sofa",
+          "cents": 13725
+        },
+        {
+          "slotId": "slot_rug",
+          "cents": 2247
+        },
+        {
+          "slotId": "slot_lamp",
+          "cents": 1247
+        },
+        {
+          "slotId": "slot_table",
+          "cents": 3225
+        },
+        {
+          "slotId": "slot_pillows",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_microwave",
+          "cents": 1997
+        },
+        {
+          "slotId": "slot_coffee",
+          "cents": 874
+        },
+        {
+          "slotId": "slot_mugs",
+          "cents": 999
+        },
+        {
+          "slotId": "slot_shoes",
+          "cents": 499
+        },
+        {
+          "slotId": "slot_hooks",
+          "cents": 374
+        }
+      ]
+    }
+  ],
+  "contributions": [
+    {
+      "id": "con_ani",
+      "groupId": "grp_apartment",
+      "memberId": "mem_ani",
+      "amountCents": 26192,
+      "stripePaymentIntentId": "pi_test_mem_ani",
+      "status": "paid"
+    },
+    {
+      "id": "con_jules",
+      "groupId": "grp_apartment",
+      "memberId": "mem_jules",
+      "amountCents": 26192,
+      "stripePaymentIntentId": "pi_test_mem_jules",
+      "status": "paid"
+    },
+    {
+      "id": "con_sam",
+      "groupId": "grp_apartment",
+      "memberId": "mem_sam",
+      "amountCents": 26189,
+      "stripePaymentIntentId": null,
+      "status": "pending"
+    },
+    {
+      "id": "con_riley",
+      "groupId": "grp_apartment",
+      "memberId": "mem_riley",
+      "amountCents": 26186,
+      "stripePaymentIntentId": null,
+      "status": "pending"
+    }
+  ],
+  "card": null,
+  "storeLimits": [],
+  "authorizations": [],
+  "refunds": [],
+  "fundedCents": 52384,
+  "totalCents": 104759
+}
