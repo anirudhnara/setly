@@ -272,8 +272,8 @@
       "params": {
         "maxCents": 90000
       },
-      "status": "ok",
-      "message": "The trip is under the $900 group budget.",
+      "status": "warning",
+      "message": "$865.89 of the $900 budget, only $34.11 left.",
       "groupId": "grp_camping"
     },
     {
@@ -287,8 +287,8 @@
       "params": {
         "per": "member"
       },
-      "status": "warning",
-      "message": "Sleeping bags, pads, and headlamps are per person. Confirm all 6 friends are on the trip.",
+      "status": "ok",
+      "message": "Sleeping bag, Sleeping pad and Headlamp: one for each of the 6 people.",
       "groupId": "grp_camping"
     },
     {
@@ -302,7 +302,7 @@
         "attribute": "fuelType"
       },
       "status": "broken",
-      "message": "The stove takes isobutane, but the chosen fuel canister is propane.",
+      "message": "Fuel type doesn't match: Camp stove is isobutane, Fuel canister is propane.",
       "groupId": "grp_camping"
     },
     {
@@ -316,7 +316,7 @@
         "relation": "bags_fit_tent"
       },
       "status": "not_checked",
-      "message": "Packed sizes are missing, so tent fit is not checked.",
+      "message": "Width is missing for Tent and Sleeping bag, so fit isn't checked.",
       "groupId": "grp_camping"
     },
     {
@@ -329,7 +329,7 @@
         "neededBy": "2026-11-08"
       },
       "status": "not_checked",
-      "message": "Ship dates are missing, so timing is not checked.",
+      "message": "Delivery dates are missing for Tent, so timing isn't checked.",
       "groupId": "grp_camping"
     },
     {
@@ -345,7 +345,7 @@
         "bannedStores": []
       },
       "status": "ok",
-      "message": "A first aid kit is on the plan.",
+      "message": "First aid kit is on the plan.",
       "groupId": "grp_camping"
     }
   ]

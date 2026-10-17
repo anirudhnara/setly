@@ -7,7 +7,11 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
   }
-  // TODO(Backend 2 (Maps)): replace the fixture switch with Gemini plus search prices.
-  const body: GenerateMapResponse = await generateMapFromPrompt(parsed.data.prompt, parsed.data.budgetCents);
-  return NextResponse.json(body);
+  try {
+    const body: GenerateMapResponse = await generateMapFromPrompt(parsed.data.prompt, parsed.data.budgetCents);
+    return NextResponse.json(body);
+  } catch (error) {
+    console.error("Map generation failed", error);
+    return NextResponse.json({ error: "Couldn't build a map for that request. Try again." } satisfies ApiErrorBody, { status: 500 });
+  }
 }

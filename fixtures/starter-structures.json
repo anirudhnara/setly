@@ -1,0 +1,43 @@
+{
+  "_note": "Sample map structures for MOCK_AI=1 prompts that aren't a living room or a camping trip. Products come from fixtures/catalog.json.",
+  "bedroom": {
+    "zones": [
+      {
+        "name": "Bedroom",
+        "sortOrder": 0,
+        "slots": [
+          { "need": "Bed frame", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "queen platform bed frame", "budgetWeight": 30 },
+          { "need": "Mattress", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "queen memory foam mattress", "budgetWeight": 35 },
+          { "need": "Side table", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "oak side table", "budgetWeight": 6 },
+          { "need": "Curtains", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "blackout curtains", "budgetWeight": 5 },
+          { "need": "Rug", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "low pile rug", "budgetWeight": 8 },
+          { "need": "Floor lamp", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "floor lamp", "budgetWeight": 5 },
+          { "need": "Throw blanket", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "knit throw blanket", "budgetWeight": 3 }
+        ]
+      }
+    ],
+    "links": [{ "fromNeed": "Mattress", "toNeed": "Bed frame", "label": "mattress size must match the frame" }],
+    "rules": [
+      { "type": "compatibility", "needs": ["Bed frame", "Mattress"], "params": { "attribute": "size" } },
+      { "type": "required_or_banned", "needs": [], "params": { "requiredNeeds": ["Mattress"] } }
+    ]
+  },
+  "office": {
+    "zones": [
+      {
+        "name": "Home office",
+        "sortOrder": 0,
+        "slots": [
+          { "need": "Desk", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "writing desk", "budgetWeight": 35 },
+          { "need": "Desk chair", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "ergonomic office chair", "budgetWeight": 30 },
+          { "need": "Bookshelf", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "5 shelf bookcase", "budgetWeight": 15 },
+          { "need": "Floor lamp", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "floor lamp", "budgetWeight": 8 },
+          { "need": "Planter", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "floor planter", "budgetWeight": 4 },
+          { "need": "Rug", "quantityRule": "per_group", "quantity": 1, "payType": "shared", "searchQuery": "low pile rug", "budgetWeight": 8 }
+        ]
+      }
+    ],
+    "links": [{ "fromNeed": "Desk chair", "toNeed": "Desk", "label": "chair tucks under the desk" }],
+    "rules": [{ "type": "required_or_banned", "needs": [], "params": { "requiredNeeds": ["Desk", "Desk chair"] } }]
+  }
+}

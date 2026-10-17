@@ -7,8 +7,14 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
   }
-  // TODO(Backend 2 (Maps)): parse the pasted list into slots, then price them from search.
-  void parsed.data.groupId;
-  const body: PasteMapResponse = await generateMapFromPaste(parsed.data.text);
-  return NextResponse.json(body);
+  try {
+    const body: PasteMapResponse = await generateMapFromPaste(parsed.data.text, parsed.data.groupId);
+    if (body.slots.length === 0) {
+      return NextResponse.json({ error: "No items found in that list." } satisfies ApiErrorBody, { status: 422 });
+    }
+    return NextResponse.json(body);
+  } catch (error) {
+    console.error("Paste parsing failed", error);
+    return NextResponse.json({ error: "Couldn't read that list. Try one item per line." } satisfies ApiErrorBody, { status: 500 });
+  }
 }
