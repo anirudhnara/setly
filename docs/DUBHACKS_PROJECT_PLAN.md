@@ -179,7 +179,7 @@ The map is the centerpiece and feels easy to edit
 
 Frontend: group and money
 
-Join by QR, member list, ownership toggle (shared, per person, already own), "edited by" badges, split and pay screen, pool progress bar, checkout authorization log, settle-up screen, Side Kick, side track forms
+Join by QR, member list, ownership toggle (shared, per person, already own), "edited by" badges, split and pay screen, pool progress bar, checkout authorization log, settle-up screen, side track forms
 
 app/g/[groupId]/join, split, checkout, settle, components/group, components/checkout
 
@@ -554,7 +554,7 @@ Sponsored side tracks (max 3)
 SideShift: Best Startup Idea. Strongest startup concept, with a distribution angle. Pitch groups as the way users find Setly.
 
 
-Cloudforce Side Kick (UW's Purple). A small agent built in Purple. Post the result early Saturday and tag @Cloudforce and @University of Washington on LinkedIn for the bonus.
+VEYZL. Sponsored side track. Another teammate owns this work, outside this repo.
 
 
 Third slot: open. Photon (a messaging agent in group chats) only if someone has spare hours after midnight; otherwise leave it empty.
