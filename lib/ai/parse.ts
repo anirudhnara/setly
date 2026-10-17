@@ -20,7 +20,8 @@ function toNumber(word: string): number | null {
 export function parseBudgetCents(text: string): number | null {
   const money = text.match(/\$\s*(\d[\d,]*(?:\.\d{1,2})?)\s*(k\b)?/i);
   const budgetWord = text.match(/budget(?:\s+(?:of|is|around|about|under))?\s*:?\s*(\d[\d,]*(?:\.\d{1,2})?)\s*(k\b)?/i);
-  const match = money ?? budgetWord;
+  const dollarsWord = text.match(/(\d[\d,]*(?:\.\d{1,2})?)\s*(k)?\s*(?:dollars|usd)\b/i);
+  const match = money ?? budgetWord ?? dollarsWord;
   if (!match) return null;
   const dollars = Number(match[1].replace(/,/g, "")) * (match[2] ? 1000 : 1);
   if (!Number.isFinite(dollars) || dollars <= 0) return null;
@@ -35,7 +36,8 @@ export function parseMemberCount(text: string): number | null {
   const number = "(\\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)";
   const patterns = [
     new RegExp(`\\b${number}\\s+(?:of us|roommates?|people|persons?|friends|members|students|guys|kids|adults|campers|housemates|flatmates)\\b`, "i"),
-    new RegExp(`\\bgroup of\\s+${number}\\b`, "i"),
+    new RegExp(`\\b(?:group|party|family|team) of\\s+${number}\\b`, "i"),
+    new RegExp(`\\b(?:people|members|roommates|group size|headcount)\\s*:\\s*${number}\\b`, "i"),
     new RegExp(`\\b(?:for|with)\\s+${number}\\b(?!\\s*(?:in\\b|inch|"|ft|feet|%|\\$|days?|nights?|weeks?|weekends?|months?|hours?|years?))`, "i"),
   ];
   for (const pattern of patterns) {
@@ -48,7 +50,7 @@ export function parseMemberCount(text: string): number | null {
 
 /** "door is 32 inches", "32\" door", "door width: 30 in" → inches. Null when not stated. */
 export function parseDoorWidthIn(text: string): number | null {
-  const after = text.match(/door(?:way)?(?:\s+width)?(?:\s+is)?\s*:?\s*(\d{2}(?:\.\d)?)\s*(?:"|in\b|inch|inches)/i);
+  const after = text.match(/door(?:way)?(?:\s+(?:width|is))*(?:\s+of)?\s*:?\s*(\d{2}(?:\.\d)?)\s*(?:"|in\b|inch|inches|(?=\s*(?:[,.;)]|$)))/i);
   const before = text.match(/(\d{2}(?:\.\d)?)\s*(?:"|-?\s*in\b|-?\s*inch(?:es)?)\s*(?:wide\s+)?door/i);
   const value = Number((after ?? before)?.[1]);
   return Number.isFinite(value) && value >= 20 && value <= 60 ? value : null;
@@ -158,8 +160,8 @@ export function parseQuestionnaireItems(text: string): QuestionnaireItems {
       .filter((part) => part.length >= 2 && part.length <= 40);
   };
   return {
-    owned: grab(/(?:already (?:have|own|owned)|owned items?|skip)\s*:?\s*([^.;\n]+)/i),
-    mustHaves: grab(/must[- ]?haves?\s*:?\s*([^.;\n]+)/i),
+    owned: grab(/(?:already (?:have|own|owned)|owned items?|have already|skip)\s*:?\s*([^.;\n]+)/i),
+    mustHaves: grab(/(?:must[- ]?haves?|need(?:s)? to have|required items?)\s*:?\s*([^.;\n]+)/i),
   };
 }
 

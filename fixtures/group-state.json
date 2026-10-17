@@ -252,7 +252,10 @@
         "imageUrl": "https://placehold.co/480x360?text=Round%20oak%20coffee%20table",
         "attributes": {
           "material": "oak",
-          "shape": "round"
+          "shape": "round",
+          "widthIn": 36,
+          "depthIn": 36,
+          "heightIn": 18
         },
         "title": "Round oak coffee table",
         "store": "Article",

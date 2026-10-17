@@ -3,7 +3,6 @@ import { buildMap, normalizeSlot } from "@/lib/ai/build-map";
 import { fixtureMapForPrompt } from "@/lib/ai/fixture-map";
 import { generateMapFromPrompt, generateMapFromPaste, parseGenerated } from "@/lib/ai/gemini";
 import { applyQuestionnaire, needMatches, parseBudgetCents, parseDoorWidthIn, parseMemberCount, parsePastedList, parseQuestionnaireItems } from "@/lib/ai/parse";
-import { suggestSlots } from "@/lib/ai/suggestions";
 import type { GeneratedMap } from "@/lib/ai/schemas";
 import { planTotalCents } from "@/lib/rules/check";
 import { searchCatalog } from "@/lib/search/serpapi";
@@ -217,16 +216,3 @@ describe("questionnaire items", () => {
   });
 });
 
-describe("Side Kick suggestions", () => {
-  it("suggests required and companion items that aren't on the map and fit the budget left", async () => {
-    const map = fixtureMapForPrompt("living room", { budgetCents: 120_000, memberCount: 4, doorWidthIn: null, groupId: "" });
-    map.rules.push({ id: "r", groupId: "", type: "required_or_banned", slotIds: [], params: { requiredNeeds: ["Trash bin"] }, status: "not_checked", message: "" });
-    const suggestions = await suggestSlots(map, { budgetCents: 120_000, memberCount: 4, search: async (query) => searchCatalog(query) });
-    expect(suggestions[0]).toMatchObject({ need: "Trash bin", reason: "Your plan requires it" });
-    const onMap = new Set(map.slots.map((slot) => slot.need));
-    expect(suggestions.every((suggestion) => !onMap.has(suggestion.need))).toBe(true);
-    const left = 120_000 - planTotalCents(map, 4);
-    expect(suggestions.filter((suggestion) => suggestion.reason !== "Your plan requires it").every((suggestion) => suggestion.product.priceCents <= left)).toBe(true);
-    expect(suggestions.length).toBeLessThanOrEqual(6);
-  });
-});

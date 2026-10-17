@@ -3,7 +3,7 @@ import { loadApartmentMap, loadCampingMap } from "@/lib/fixtures/sample";
 import { needMatches, type QuestionnaireItems } from "@/lib/ai/parse";
 import { checkRules } from "@/lib/rules/check";
 import { searchCatalog } from "@/lib/search/serpapi";
-import { registerMapSlots } from "@/lib/search/options";
+import { generatedSlotId, registerMapSlots } from "@/lib/search/options";
 import type { MapData, Rule } from "@/lib/types";
 
 /**
@@ -101,7 +101,7 @@ function applyItems(map: MapData, items: QuestionnaireItems, groupId: string, su
   if (!zoneId) return;
   for (const need of items.mustHaves) {
     if (map.slots.some((slot) => needMatches(slot.need, need))) continue;
-    const id = `slot_${need.toLowerCase().replace(/[^a-z0-9]+/g, "_")}__${suffix}`;
+    const id = generatedSlotId(need, suffix);
     const product = searchCatalog(need)[0];
     map.slots.push({
       id, zoneId, need, quantityRule: "per_group", quantity: 1, budgetCents: product?.priceCents ?? 0, payType: "shared",

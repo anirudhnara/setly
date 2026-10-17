@@ -210,8 +210,13 @@ function checkSize(rule: Rule, context: Context): Verdict {
     if (blocked.length > 0) {
       return { status: "broken", message: `Won't fit through the ${doorWidth} in door: ${blocked.join(", ")}.` };
     }
-    if (unknown.length > 0) {
+    const fits = picked.filter((slot) => !unknown.includes(slot));
+    if (unknown.length > 0 && fits.length === 0) {
       return { status: "not_checked", message: `Dimensions are missing for ${needList(unknown)}, so door fit isn't checked.` };
+    }
+    if (unknown.length > 0) {
+      // Each item is judged on its own: a missing size on one item doesn't hide that the others fit.
+      return { status: "warning", message: `${needList(fits)} fit${fits.length === 1 ? "s" : ""} through the ${doorWidth} in door. Dimensions are missing for ${needList(unknown)}.` };
     }
     return { status: "ok", message: `${needList(picked)} fit${picked.length === 1 ? "s" : ""} through the ${doorWidth} in door.` };
   }
@@ -228,7 +233,11 @@ function checkSize(rule: Rule, context: Context): Verdict {
       else if (width > maxWidth) tooWide.push(`${slot.need} (${width} in)`);
     }
     if (tooWide.length > 0) return { status: "broken", message: `Wider than the ${maxWidth} in space: ${tooWide.join(", ")}.` };
-    if (unknown.length > 0) return { status: "not_checked", message: `Width is missing for ${needList(unknown)}, so fit isn't checked.` };
+    const fits = picked.filter((slot) => !unknown.includes(slot));
+    if (unknown.length > 0 && fits.length === 0) return { status: "not_checked", message: `Width is missing for ${needList(unknown)}, so fit isn't checked.` };
+    if (unknown.length > 0) {
+      return { status: "warning", message: `${needList(fits)} fit${fits.length === 1 ? "s" : ""} the ${maxWidth} in space. Width is missing for ${needList(unknown)}.` };
+    }
     return { status: "ok", message: `${needList(picked)} fit${picked.length === 1 ? "s" : ""} the ${maxWidth} in space.` };
   }
 

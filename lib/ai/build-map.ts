@@ -1,7 +1,7 @@
 import { customAlphabet } from "nanoid";
 import type { GeneratedMap, GeneratedSlot } from "@/lib/ai/schemas";
 import { chargedCentsForSlot, checkRules } from "@/lib/rules/check";
-import { attachToSlot, registerMapSlots } from "@/lib/search/options";
+import { attachToSlot, generatedSlotId, registerMapSlots } from "@/lib/search/options";
 import type { Link, MapData, Product, Rule, Slot, Zone } from "@/lib/types";
 
 /**
@@ -45,7 +45,7 @@ export async function buildMap(input: BuildMapInput): Promise<MapData> {
       const key = needKey(generatedSlot.need);
       if (slotIdByNeed.has(key)) continue;
       const normalized = normalizeSlot(generatedSlot, memberCount);
-      const id = `slot_${slug(normalized.need)}_${suffix}${drafts.length}`;
+      const id = generatedSlotId(normalized.searchQuery, `${suffix}${drafts.length}`);
       slotIdByNeed.set(key, id);
       kept += 1;
       drafts.push({
@@ -144,8 +144,9 @@ function allocateBudgets(drafts: Draft[], budgetCents: number | null) {
 function pickProduct(draft: Draft): Product | null {
   if (draft.options.length === 0 || draft.slot.payType === "already_owned") return null;
   if (draft.slot.budgetCents <= 0) return draft.options[0];
-  const unitBudget = draft.slot.budgetCents / Math.max(1, draft.units);
-  return draft.options.find((product) => product.priceCents <= unitBudget) ?? cheapest(draft.options);
+  // Integer cents only: compare the full charge for the slot, never a divided per-unit budget.
+  const units = Math.max(1, draft.units);
+  return draft.options.find((product) => product.priceCents * units <= draft.slot.budgetCents) ?? cheapest(draft.options);
 }
 
 /** While the plan is over budget, step the most expensive slot down to its next cheaper option. */
