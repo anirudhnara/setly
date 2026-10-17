@@ -4,18 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
-import { SAMPLE_GROUP_ID, readLastGroup } from "@/components/shared/session";
+import { SAMPLE_GROUP_ID, readLastGroup, readYou } from "@/components/shared/session";
 
 const LINKS = [
-  { href: "/", label: "Signal" },
-  { href: "/home", label: "Console" },
-  { href: "/checkout", label: "Studio" },
+  { href: "/", label: "Welcome" },
+  { href: "/home", label: "New plan" },
+  { href: "/checkout", label: "Checkout" },
 ];
 
 export function SiteNav() {
   const pathname = usePathname();
   const groupId = pathname.match(/^\/g\/([^/]+)/)?.[1];
   const [planId, setPlanId] = useState(groupId ?? SAMPLE_GROUP_ID);
+  const [you, setYou] = useState("");
 
   useEffect(() => {
     if (groupId) {
@@ -24,6 +25,10 @@ export function SiteNav() {
     }
     setPlanId(readLastGroup() ?? SAMPLE_GROUP_ID);
   }, [groupId]);
+
+  useEffect(() => {
+    setYou(readYou() ?? "");
+  }, []);
 
   return (
     <header className="orbit-nav">
@@ -39,18 +44,18 @@ export function SiteNav() {
             </Link>
           ))}
           <Link href={`/g/${planId}`} aria-current={pathname.startsWith("/g/") ? "page" : undefined}>
-            Plan
+            My plan
           </Link>
         </nav>
-        <span className="orbit-kicker">Visa · DubHacks ’26</span>
+        <span className="orbit-kicker">{you ? `Welcome, ${you}` : "Visa · DubHacks ’26"}</span>
       </div>
       {groupId ? (
         <nav className="orbit-subnav" aria-label="Group">
           <Link href={`/g/${groupId}`} aria-current={pathname === `/g/${groupId}` ? "page" : undefined}>Map</Link>
-          <Link href={`/g/${groupId}/join`} aria-current={pathname.endsWith("/join") ? "page" : undefined}>Join</Link>
-          <Link href={`/g/${groupId}/split`} aria-current={pathname.endsWith("/split") ? "page" : undefined}>Split</Link>
-          <Link href={`/g/${groupId}/checkout`} aria-current={pathname.endsWith("/checkout") ? "page" : undefined}>Pay</Link>
-          <Link href={`/g/${groupId}/settle`} aria-current={pathname.endsWith("/settle") ? "page" : undefined}>Settle</Link>
+          <Link href={`/g/${groupId}/join`} aria-current={pathname.endsWith("/join") ? "page" : undefined}>Invite</Link>
+          <Link href={`/g/${groupId}/split`} aria-current={pathname.endsWith("/split") ? "page" : undefined}>Contributions</Link>
+          <Link href={`/g/${groupId}/checkout`} aria-current={pathname.endsWith("/checkout") ? "page" : undefined}>Checkout</Link>
+          <Link href={`/g/${groupId}/settle`} aria-current={pathname.endsWith("/settle") ? "page" : undefined}>Summary</Link>
         </nav>
       ) : null}
     </header>
