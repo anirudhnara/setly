@@ -1,0 +1,127 @@
+import type { GroupState } from "@/lib/types";
+
+/** Deterministic demo state so map and money screens can be built without API keys. */
+export const livingRoomFixture: GroupState = {
+  group: {
+    id: "demo-living-room",
+    name: "The living room plan",
+    prompt: "Living room for 4 roommates, cozy, under $1,200",
+    budgetCents: 120_000,
+    status: "editing",
+    createdAt: "2026-10-17T18:00:00.000Z",
+    organizerMemberId: "member-ani",
+  },
+  members: [
+    { id: "member-ani", groupId: "demo-living-room", name: "Ani", isOrganizer: true, joinedAt: "2026-10-17T18:00:00.000Z" },
+    { id: "member-jules", groupId: "demo-living-room", name: "Jules", isOrganizer: false, joinedAt: "2026-10-17T18:02:00.000Z" },
+    { id: "member-sam", groupId: "demo-living-room", name: "Sam", isOrganizer: false, joinedAt: "2026-10-17T18:03:00.000Z" },
+    { id: "member-riley", groupId: "demo-living-room", name: "Riley", isOrganizer: false, joinedAt: "2026-10-17T18:04:00.000Z" },
+  ],
+  zones: [
+    {
+      id: "zone-living-room",
+      groupId: "demo-living-room",
+      name: "Living room",
+      sortOrder: 0,
+      slots: [
+        {
+          id: "slot-sofa",
+          zoneId: "zone-living-room",
+          need: "Sofa",
+          quantityRule: "per_group",
+          quantity: 1,
+          budgetCents: 72_000,
+          payType: "shared",
+          ownerMemberId: null,
+          chosenProductId: "product-sofa",
+          updatedBy: "member-ani",
+          updatedAt: "2026-10-17T18:04:00.000Z",
+          products: [
+            {
+              id: "product-sofa", slotId: "slot-sofa", title: "Harlow 3-seat sofa", store: "Wayfair", priceCents: 64_900,
+              url: "https://www.wayfair.com/keyword.php?keyword=three+seat+sofa", imageUrl: null,
+              attributes: { seats: 3, color: "warm beige" },
+            },
+          ],
+        },
+        {
+          id: "slot-rug",
+          zoneId: "zone-living-room",
+          need: "Rug",
+          quantityRule: "per_group",
+          quantity: 1,
+          budgetCents: 18_000,
+          payType: "shared",
+          ownerMemberId: null,
+          chosenProductId: "product-rug",
+          updatedBy: "member-jules",
+          updatedAt: "2026-10-17T18:05:00.000Z",
+          products: [
+            {
+              id: "product-rug", slotId: "slot-rug", title: "Washable woven area rug", store: "Target", priceCents: 12_990,
+              url: "https://www.target.com/s?searchTerm=washable+woven+area+rug", imageUrl: null,
+              attributes: { style: "woven", washable: true },
+            },
+          ],
+        },
+        {
+          id: "slot-lamp",
+          zoneId: "zone-living-room",
+          need: "Floor lamp",
+          quantityRule: "per_group",
+          quantity: 1,
+          budgetCents: 12_000,
+          payType: "shared",
+          ownerMemberId: null,
+          chosenProductId: "product-lamp",
+          updatedBy: "member-sam",
+          updatedAt: "2026-10-17T18:06:00.000Z",
+          products: [
+            {
+              id: "product-lamp", slotId: "slot-lamp", title: "Tripod floor lamp", store: "IKEA", priceCents: 7_990,
+              url: "https://www.ikea.com/us/en/search/?q=floor%20lamp", imageUrl: null,
+              attributes: { bulbBase: "E26", style: "tripod" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "zone-kitchen",
+      groupId: "demo-living-room",
+      name: "Kitchen",
+      sortOrder: 1,
+      slots: [
+        {
+          id: "slot-microwave",
+          zoneId: "zone-kitchen",
+          need: "Microwave",
+          quantityRule: "per_group",
+          quantity: 1,
+          budgetCents: 24_000,
+          payType: "shared",
+          ownerMemberId: null,
+          chosenProductId: "product-microwave",
+          updatedBy: "member-ani",
+          updatedAt: "2026-10-17T18:06:00.000Z",
+          products: [
+            {
+              id: "product-microwave", slotId: "slot-microwave", title: "Compact countertop microwave", store: "Best Buy", priceCents: 18_990,
+              url: "https://www.bestbuy.com/site/searchpage.jsp?st=compact+microwave", imageUrl: null,
+              attributes: { capacityCuFt: 0.9 },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  links: [{ id: "link-rug-sofa", fromSlotId: "slot-rug", toSlotId: "slot-sofa", label: "anchors the seating area" }],
+  rules: [
+    { id: "rule-total-budget", groupId: "demo-living-room", type: "budget", slotIds: [], params: { maxCents: 120_000 }, status: "ok", message: "Under the $1,200 group budget" },
+    { id: "rule-rug-size", groupId: "demo-living-room", type: "size", slotIds: ["slot-rug", "slot-sofa"], params: {}, status: "not_checked", message: "Rug fit is not checked until dimensions are available" },
+  ],
+  contributions: [],
+  card: null,
+  authorizations: [],
+  refunds: [],
+};
