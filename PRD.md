@@ -1,6 +1,6 @@
 # Setly: product requirements
 
-**Event:** DubHacks 2026, Visa track ("Reimagine Shopping")
+**Event:** DubHacks 2026, Visa track ("Reimagine Shopping"). Sponsored side tracks: SideShift and VEYZL. VEYZL is owned by another teammate and is not built in this repo.
 **Submission:** Sunday, Oct 18, 10:30 AM
 **Team:** Backend 1 (Money), Backend 2 (Maps), Frontend 1 (Map), Frontend 2 (Group and money)
 **Read with:** `AGENTS.md` (rules every coding agent follows), `lib/types.ts` and `lib/contracts.ts` (the shared contract)
@@ -80,7 +80,6 @@ The map is the centerpiece. It should feel physical and fast.
 - **Layout:** the group in the center, slots around it (Sofa, Rug, Lamp, Bookshelf...), each slot holding one product card with image, price, store, and owner avatar.
 - **Grab and move:** drag a product card off its slot to remove it, drop it on another slot of the same type to swap, drag it to a member's avatar to make it theirs, drag it to the center to make it shared.
 - **Shuffle options:** each slot has a stack of options behind the current product. Flick or arrow through them like a deck. The price chip and running total update as you shuffle. Tap to snap one into place.
-- **Add from the Side Kick:** a side panel of suggestions (missing slots, things that go with the map, things under the remaining budget). Drag a suggestion onto the map to create a new slot.
 - **Lock:** pin a slot so regeneration doesn't touch it.
 - **Rules light up:** a rule bar shows every rule's status (under budget, fits the room, fits through the door, no duplicates, every slot has an owner). Rules change color live as products move.
 - **Edited by:** each slot shows who last changed it.
@@ -136,13 +135,12 @@ The map is the centerpiece. It should feel physical and fast.
 - Every number on screen read from the ledger.
 
 ### P1: makes it convincing
-- Side Kick suggestions with drag onto the map.
 - Card wallet with shuffle and flip.
 - Parent questionnaire and cover link.
 - Join by QR and live updates during the demo.
 - "Edited by" badges.
 - Paste-a-list.
-- Tiger Data features: vector search for options and suggestions, ledger as a TimescaleDB hypertable with a live spending chart.
+- Tiger Data features: vector search for slot options, ledger as a TimescaleDB hypertable with a live spending chart.
 
 ### P2: only if ahead
 - Insurer questionnaire, claim-line rules, and insurer view.
@@ -160,7 +158,6 @@ Voice input, room photo uploads, AI room renders, creator sets, resale, item-lev
 |---|---|---|---|---|
 | Home and setup questionnaire | `app/page.tsx` | `app/api/groups`, `app/api/maps` | Frontend 1 | Backend 1, Backend 2 |
 | Map | `app/g/[groupId]/page.tsx` | `app/api/maps`, `app/api/slots`, `app/api/slots/[id]/options` | Frontend 1 | Backend 2 (map, options, rules), Backend 1 (slots) |
-| Side Kick | `components/map` | `app/api/maps` (suggestions) | Frontend 1 | Backend 2 |
 | Join and QR | `app/g/[groupId]/join` | `app/api/groups` | Frontend 2 | Backend 1 |
 | Split and payment information | `app/g/[groupId]/split` | `app/api/groups`, `app/api/pay` | Frontend 2 | Backend 1 |
 | Parent questionnaire and cover | `app/g/[groupId]/split` (cover link) | `app/api/pay` | Frontend 2 | Backend 1 |
@@ -200,7 +197,7 @@ Use these names in code, UI, and conversation.
 |---|---|
 | 0:00 | "Who here has paid for something for a group, then chased people for weeks?" |
 | 0:15 | Tap through the questionnaire: living room, group of 3, $1,500, cozy and navy, door is 32 inches. |
-| 0:30 | The map assembles. Shuffle the rug options, snap a cheaper one in. Drag the lamp onto Sam's avatar. Drag a bookshelf in from the Side Kick. A sofa that won't fit the door turns its rule red; swap it, rule turns green. |
+| 0:30 | The map assembles. Shuffle the rug options, snap a cheaper one in. Drag the lamp onto Sam's avatar. A sofa that won't fit the door turns its rule red; swap it, rule turns green. |
 | 1:05 | Split view: each person's share. Jordan sends a cover link; Mom answers two questions and covers it. |
 | 1:20 | QR on screen. Judges pay as roommates. The pool bar fills. The card appears in the wallet. |
 | 1:50 | Checkout runs across three stores: approved, approved, approved. A surprise fee: declined, with the reason. |
@@ -233,7 +230,7 @@ A recorded backup of this exact flow must exist by Sunday 8 AM.
 ## 10. Technical overview
 
 - **App:** Next.js (app router), API routes under `app/api`, deployed on Vercel.
-- **Database:** PostgreSQL on Tiger Cloud (Tiger Data). pgvector for options and suggestions. Ledger as a TimescaleDB hypertable.
+- **Database:** PostgreSQL on Tiger Cloud (Tiger Data). pgvector for slot options. Ledger as a TimescaleDB hypertable.
 - **AI:** Gemini turns questionnaire answers into a map, returning only real product IDs. Every result is checked by the rule checker. `MOCK_AI=1` returns fixtures.
 - **Products:** SerpApi search with caching, plus fixture products for demo maps.
 - **Payments:** Stripe test mode. Checkout with held payments for shares, Stripe Issuing for the card, a real-time authorization webhook for approve and decline. `ISSUER=mock` swaps in a fake card with identical rules.

@@ -215,4 +215,3 @@ describe("questionnaire items", () => {
     expect(applied.rules[0].params.requiredNeeds).toEqual(["Desk"]);
   });
 });
-
