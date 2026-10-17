@@ -1,0 +1,1 @@
+ALTER TABLE "groups" ADD COLUMN "shares_json" jsonb DEFAULT '[]'::jsonb NOT NULL;
