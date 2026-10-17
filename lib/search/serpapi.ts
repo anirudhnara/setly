@@ -1,7 +1,7 @@
 import catalogJson from "@/fixtures/catalog.json";
 import { getEnv, mockAiEnabled } from "@/lib/env";
 import type { Product } from "@/lib/types";
-import { getCachedSearch, setCachedSearch } from "@/lib/search/cache";
+import { getCachedSearch, setCachedSearch, type CacheFailure } from "@/lib/search/cache";
 import { dollarsToCents, normalizePriceToCents, normalizeQuery, normalizeStore, shortHash } from "@/lib/search/normalize";
 
 /**
@@ -50,21 +50,44 @@ export function searchCatalog(query: string): Product[] {
   }));
 }
 
-/** Real products for a query. Prices, stores, and URLs come from this data, never from the model. Cached. */
+/**
+ * Real products for a query. Prices, stores, and URLs come from this data, never from the model.
+ * Every outcome is cached, failures included, so a bad query doesn't spend quota on every map.
+ * A failure serves the sample catalog, which is never written to the cache as if it were real.
+ */
 export async function searchProducts(query: string): Promise<Product[]> {
   if (mockAiEnabled()) return searchCatalog(query);
   const cached = await getCachedSearch(query);
-  if (cached) return cached;
+  if (cached) return cached.failure ? searchCatalog(query) : cached.results;
   try {
     const results = await searchSerpApi(query);
     if (results.length > 0) {
       await setCachedSearch(query, results);
       return results;
     }
+    await setCachedSearch(query, [], "empty");
   } catch (error) {
-    console.warn(`SerpApi search failed for "${query}": ${error instanceof Error ? error.message : "unknown error"}`);
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.warn(`SerpApi search failed for "${query}": ${message}`);
+    await setCachedSearch(query, [], failureKind(error));
   }
   return searchCatalog(query);
+}
+
+/** Out of searches or a bad key won't fix itself in minutes; a timeout might. */
+export function failureKind(error: unknown): CacheFailure {
+  const message = error instanceof Error ? error.message : "";
+  if (error instanceof SerpApiError && (error.status === 401 || error.status === 403 || error.status === 429)) return "quota";
+  return /run out of searches|searches per|invalid api key|limit/i.test(message) ? "quota" : "error";
+}
+
+class SerpApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
 }
 
 interface SerpShoppingResult {
@@ -91,7 +114,10 @@ async function searchSerpApi(query: string): Promise<Product[]> {
     signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     cache: "no-store",
   });
-  if (!response.ok) throw new Error(`SerpApi responded ${response.status}`);
+  if (!response.ok) {
+    const detail = await response.json().then((body: unknown) => (isRecord(body) && typeof body.error === "string" ? `: ${body.error}` : ""), () => "");
+    throw new SerpApiError(`SerpApi responded ${response.status}${detail}`, response.status);
+  }
   const body: unknown = await response.json();
   if (!isRecord(body)) throw new Error("SerpApi returned an unexpected body");
   if (typeof body.error === "string") throw new Error(body.error);

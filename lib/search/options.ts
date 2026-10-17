@@ -1,16 +1,17 @@
-import { eq } from "drizzle-orm";
 import { loadApartmentMap, loadCampingMap, loadGroupState } from "@/lib/fixtures/sample";
 import type { MapData, Product, Slot } from "@/lib/types";
-import { databaseConfigured } from "@/lib/search/cache";
 import { searchProducts } from "@/lib/search/serpapi";
 
 /**
  * Options for a slot's shuffle stack. The chosen product comes first, then search results for the slot.
  *
- * A slot is found, in order, in: the registry of maps this server generated, the database (when
- * DATABASE_URL is set), then the starter fixtures. Option ids are `${slotId}_${sourceId}` so they're unique
- * per slot and the same on every call, which lets the slot PATCH route look an option up again with
- * `findSlotOption` before saving it.
+ * Nothing here depends on one server's memory, so any instance (or a restart) gives the same stack:
+ * 1. Backend 1's ledger store (Postgres when DATABASE_URL is set) for saved slots.
+ * 2. This instance's registry of maps it just generated (fast path, exact search query).
+ * 3. The search query encoded in a generated slot id: `slot_<query>--<suffix>`.
+ * 4. The starter fixtures (a generated copy keeps the fixture id before "__").
+ * Search results are cached (Postgres when configured), so option ids `${slotId}_${sourceId}` stay the same
+ * across calls, which lets the slot PATCH route look an option up again with `findSlotOption` before saving it.
  */
 const MAX_OPTIONS = 8;
 
@@ -72,24 +73,37 @@ export async function findSlotOption(slotId: string, productId: string): Promise
 }
 
 async function resolveSlot(slotId: string): Promise<SlotInfo | null> {
-  return registry.get(slotId) ?? (await slotFromDatabase(slotId)) ?? slotFromFixtures(slotId);
+  return (await slotFromLedger(slotId)) ?? registry.get(slotId) ?? slotFromId(slotId) ?? slotFromFixtures(slotId);
 }
 
-async function slotFromDatabase(slotId: string): Promise<SlotInfo | null> {
-  if (!databaseConfigured()) return null;
+/** Generated slot ids carry their search query, so options survive restarts and other instances. */
+export function generatedSlotId(searchQuery: string, unique: string) {
+  const slug = searchQuery.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 48) || "item";
+  return `slot_${slug}--${unique}`;
+}
+
+export function searchQueryFromSlotId(slotId: string): string | null {
+  const match = slotId.match(/^slot_([a-z0-9_]+)--[a-z0-9]+$/);
+  return match ? match[1].replace(/_/g, " ") : null;
+}
+
+function slotFromId(slotId: string): SlotInfo | null {
+  const searchQuery = searchQueryFromSlotId(slotId);
+  if (!searchQuery) return null;
+  return { slotId, need: searchQuery, searchQuery, chosen: null };
+}
+
+/** Saved slots, through Backend 1's ledger store. The chosen product carries the search query that found it. */
+async function slotFromLedger(slotId: string): Promise<SlotInfo | null> {
   try {
-    const { getDb } = await import("@/lib/db/client");
-    const schema = await import("@/lib/db/schema");
-    const db = getDb();
-    const [slot] = await db.select().from(schema.slots).where(eq(schema.slots.id, slotId)).limit(1);
-    if (!slot) return null;
-    let chosen: Product | null = null;
-    if (slot.chosenProductId) {
-      const [row] = await db.select().from(schema.products).where(eq(schema.products.id, slot.chosenProductId)).limit(1);
-      chosen = row ?? null;
-    }
+    const { getLedgerStore } = await import("@/lib/db/memory-store");
+    const state = await (await getLedgerStore()).findBySlotId(slotId);
+    const slot = state?.map.slots.find((item) => item.id === slotId);
+    if (!state || !slot) return null;
+    const chosen = state.map.products.find((product) => product.id === slot.chosenProductId) ?? null;
     const savedQuery = chosen?.attributes.searchQuery;
-    return { slotId, need: slot.need, searchQuery: typeof savedQuery === "string" && savedQuery ? savedQuery : slot.need, chosen };
+    const searchQuery = typeof savedQuery === "string" && savedQuery ? savedQuery : (searchQueryFromSlotId(slotId) ?? slot.need);
+    return { slotId, need: slot.need, searchQuery, chosen };
   } catch {
     return null;
   }
