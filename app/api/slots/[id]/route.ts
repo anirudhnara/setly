@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readRequest, updateSlotRequestSchema, type ApiErrorBody, type DeleteSlotResponse, type UpdateSlotResponse } from "@/lib/contracts";
-import { loadGroupState } from "@/lib/fixtures/sample";
+import { jsonError } from "@/lib/db/http";
+import { deleteSlot, updateSlot } from "@/lib/db/queries";
 import type { Slot } from "@/lib/types";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -9,24 +10,31 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
   }
-  // TODO(Backend 1 (Money)): update the slot and record who changed it.
-  const current = loadGroupState().map.slots.find((slot) => slot.id === id) ?? loadGroupState().map.slots[0];
-  const slot: Slot = {
-    ...current,
-    ...parsed.data,
-    id: current.id,
-    ownerMemberId: parsed.data.ownerMemberId === undefined ? current.ownerMemberId : parsed.data.ownerMemberId,
-    chosenProductId: parsed.data.chosenProductId === undefined ? current.chosenProductId : parsed.data.chosenProductId,
-    updatedBy: parsed.data.updatedBy === undefined ? current.updatedBy : parsed.data.updatedBy,
-    updatedAt: new Date().toISOString(),
-  };
-  const body: UpdateSlotResponse = { slot };
-  return NextResponse.json(body);
+  const patch: Partial<Omit<Slot, "id" | "zoneId">> = {};
+  if (parsed.data.need !== undefined) patch.need = parsed.data.need;
+  if (parsed.data.quantityRule !== undefined) patch.quantityRule = parsed.data.quantityRule;
+  if (parsed.data.quantity !== undefined) patch.quantity = parsed.data.quantity;
+  if (parsed.data.budgetCents !== undefined) patch.budgetCents = parsed.data.budgetCents;
+  if (parsed.data.payType !== undefined) patch.payType = parsed.data.payType;
+  if (parsed.data.ownerMemberId !== undefined) patch.ownerMemberId = parsed.data.ownerMemberId;
+  if (parsed.data.chosenProductId !== undefined) patch.chosenProductId = parsed.data.chosenProductId;
+  if (parsed.data.updatedBy !== undefined) patch.updatedBy = parsed.data.updatedBy;
+  try {
+    const slot = await updateSlot(id, patch);
+    const body: UpdateSlotResponse = { slot };
+    return NextResponse.json(body);
+  } catch (error) {
+    return jsonError(error);
+  }
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  // TODO(Backend 1 (Money)): delete the slot and its product links.
-  const body: DeleteSlotResponse = { id, deleted: true };
-  return NextResponse.json(body);
+  try {
+    await deleteSlot(id);
+    const body: DeleteSlotResponse = { id, deleted: true };
+    return NextResponse.json(body);
+  } catch (error) {
+    return jsonError(error);
+  }
 }

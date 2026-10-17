@@ -1,5 +1,6 @@
+import { sql } from "drizzle-orm";
 import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
-import type { GroupStatus, PayType, QuantityRule, RuleStatus, RuleType } from "@/lib/types";
+import type { GroupStatus, MemberShare, PayType, QuantityRule, RuleStatus, RuleType } from "@/lib/types";
 
 export const groups = pgTable("groups", {
   id: text("id").primaryKey(),
@@ -8,6 +9,7 @@ export const groups = pgTable("groups", {
   budgetCents: integer("budget_cents").notNull(),
   status: text("status").$type<GroupStatus>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  sharesJson: jsonb("shares_json").$type<MemberShare[]>().notNull().default(sql`'[]'::jsonb`),
 });
 
 export const members = pgTable("members", {
