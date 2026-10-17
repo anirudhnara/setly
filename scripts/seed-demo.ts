@@ -1,11 +1,10 @@
 /**
- * Demo prep for Backend 2 (Maps). Run with `npm run seed`.
+ * Demo prep. Run with `npm run seed`.
  *
  * 1. Checks that fixture rule statuses match the rule checker and that starter structures are valid.
  * 2. Warms the search cache for the demo queries (only spends SerpApi quota when MOCK_AI=0).
  * 3. Times the demo prompt end to end against the 15 second target and prints every rule.
- *
- * Creating the demo group in the database belongs to Backend 1's group routes.
+ * 4. Seeds grp_apartment when DATABASE_URL is set.
  */
 import { existsSync } from "node:fs";
 
@@ -62,6 +61,15 @@ async function main() {
   console.log(`   ${seconds <= 15 ? "ok  " : "FAIL"} ${map.slots.length} slots, ${map.products.length} products in ${seconds.toFixed(1)}s`);
   for (const rule of map.rules) console.log(`        ${rule.status.padEnd(11)} ${rule.type}: ${rule.message}`);
 
+  console.log("4. Demo group");
+  if (!process.env.DATABASE_URL) {
+    console.log("   skip  No DATABASE_URL. grp_apartment loads in memory when the server starts.");
+  } else {
+    const { seedDemoGroup } = await import("@/lib/db/queries");
+    const where = await seedDemoGroup();
+    console.log(`   ok    Seeded grp_apartment (${where}).`);
+  }
+
   if (failures > 0) {
     console.error(`\n${failures} check(s) failed.`);
     process.exit(1);
@@ -71,6 +79,6 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  console.error(error instanceof Error ? error.message : "Seed failed");
   process.exit(1);
 });

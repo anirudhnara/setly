@@ -8,6 +8,13 @@
       "when": 1792269244396,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792271555006,
+      "tag": "0001_elite_tempest",
+      "breakpoints": true
     }
   ]
 }

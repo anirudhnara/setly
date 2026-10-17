@@ -1,4 +1,5 @@
-import type { MapData, Member, MemberShare } from "@/lib/types";
+import type { MapData, Member, MemberShare, Slot } from "@/lib/types";
+import { splitCents } from "@/lib/money/cents";
 
 /**
  * Splits a map across members. Money is integer cents and the returned shares sum to the exact charged total.
@@ -13,8 +14,44 @@ import type { MapData, Member, MemberShare } from "@/lib/types";
  * `MemberShare.totalCents` is the sum of that member's lines.
  */
 export function computeShares(map: MapData, members: Member[]): MemberShare[] {
-  // TODO(Backend 1 (Money)): implement the split described above.
-  void map;
-  void members;
-  return [];
+  const ordered = [...members].sort(byJoin);
+  const lines = new Map<string, { slotId: string; cents: number }[]>();
+  for (const member of ordered) lines.set(member.id, []);
+
+  for (const slot of map.slots) {
+    const charged = chargedCents(map, slot);
+    if (charged === null || charged <= 0 || slot.payType === "already_owned") continue;
+    if (slot.payType === "per_person") {
+      for (const member of ordered) {
+        lines.get(member.id)?.push({ slotId: slot.id, cents: charged });
+      }
+      continue;
+    }
+    const parts = splitCents(charged, ordered.map(() => 1));
+    ordered.forEach((member, index) => {
+      const cents = parts[index] ?? 0;
+      if (cents > 0) lines.get(member.id)?.push({ slotId: slot.id, cents });
+    });
+  }
+
+  return ordered.map((member) => {
+    const memberLines = lines.get(member.id) ?? [];
+    return {
+      memberId: member.id,
+      totalCents: memberLines.reduce((sum, line) => sum + line.cents, 0),
+      lines: memberLines,
+    };
+  });
+}
+
+function chargedCents(map: MapData, slot: Slot) {
+  if (!slot.chosenProductId) return null;
+  const product = map.products.find((item) => item.id === slot.chosenProductId);
+  if (!product) return null;
+  return product.priceCents * slot.quantity;
+}
+
+function byJoin(left: Member, right: Member) {
+  const time = left.joinedAt.localeCompare(right.joinedAt);
+  return time === 0 ? left.id.localeCompare(right.id) : time;
 }
