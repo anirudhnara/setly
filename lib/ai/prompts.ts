@@ -1,14 +1,42 @@
-/** Instructions for map generation. The model must not invent prices. */
+/** Instructions for map generation. The model must not invent prices, stores, or links. */
 
-export const MAP_SYSTEM_PROMPT = `You plan a shared purchase as zones, slots, links, and rules.
-Return structure only. Do not include prices, stores, or product URLs.
-Each slot needs a searchQuery that a shopping search can run later. Prices come from that search, never from you.`;
+export const MAP_SYSTEM_PROMPT = `You plan a shared purchase for a group as zones (rooms or areas), slots (one thing to buy each), links, and rules.
+Return JSON only, matching the schema. Never include prices, stores, product names, or URLs: a shopping search fills those later.
 
-export function buildMapPrompt(prompt: string, budgetCents?: number) {
-  const budget = budgetCents === undefined ? "No budget was given." : `Budget ceiling: ${budgetCents} cents.`;
-  return `${MAP_SYSTEM_PROMPT}\n\nGroup prompt: ${prompt}\n${budget}`;
+Slots:
+- "need" is a short, plain noun phrase people would recognize ("Sofa", "Floor lamp", "Sleeping bag"). Each need appears once in the whole map.
+- "searchQuery" is what to type into Google Shopping for a good-value, real product that fits the style ("navy 3 seat sofa", "4 person dome tent").
+- Things everyone shares: payType "shared", quantityRule "per_group" (or "fixed" with a quantity above 1).
+- One for each person (sleeping bags, mugs, headlamps): payType "per_person", quantityRule "per_person", quantity 1.
+- Things someone already owns: payType "already_owned".
+- "budgetWeight" (1 to 100) is how big a share of the budget the slot deserves relative to the others. Big furniture gets more.
+- Plan 6 to 14 slots unless the request clearly needs fewer. Skip anything the group says it already has unless it is useful as already owned.
+
+Links connect two needs that depend on each other ("rug sized to sit under the sofa").
+
+Rules use only these types and params. Reference slots by their exact need text in "needs":
+- quantity: {"per": "member"} for per-person items, or {"expected": n}.
+- compatibility: {"attribute": "fuelType"} when two items must match, or {"attribute": "bulbBase", "value": "E26"}.
+- size: {"doorWidthIn": n} for bulky items when a door width is given, or {"maxWidthIn": n}.
+- timing: {"neededBy": "YYYY-MM-DD"} when a date is given.
+- required_or_banned: {"requiredNeeds": [...]}, {"bannedNeeds": [...]}, {"bannedStores": [...]}.
+Do not add budget rules; code adds them. Do not decide whether a rule passes.
+Set "groupSize" to the number of people when the request says it.`;
+
+export function buildMapPrompt(
+  prompt: string,
+  budgetCents?: number | null,
+  hints: { memberCount?: number | null; doorWidthIn?: number | null; owned?: string[]; mustHaves?: string[] } = {},
+) {
+  const lines = [`Group request: ${prompt}`];
+  lines.push(budgetCents ? `Total budget: $${(budgetCents / 100).toFixed(0)} for the whole group. Spread budgetWeight to fit it.` : "No budget was given.");
+  if (hints.memberCount) lines.push(`People in the group: ${hints.memberCount}.`);
+  if (hints.doorWidthIn) lines.push(`The door is ${hints.doorWidthIn} inches wide. Add a size rule with doorWidthIn for bulky furniture.`);
+  if (hints.owned?.length) lines.push(`Already owned (payType "already_owned", no search needed): ${hints.owned.join(", ")}.`);
+  if (hints.mustHaves?.length) lines.push(`Must-haves (each needs its own slot and a required_or_banned rule): ${hints.mustHaves.join(", ")}.`);
+  return lines.join("\n");
 }
 
 export function buildPastePrompt(text: string) {
-  return `${MAP_SYSTEM_PROMPT}\n\nTurn this pasted list into the same structure:\n${text}`;
+  return `Turn this pasted shopping list into the same structure. Keep every item as its own slot with the list's wording as the need, group them into sensible zones, and ignore any prices in the text.\n\nPasted list:\n${text}`;
 }

@@ -173,7 +173,9 @@
       "attributes": {
         "seats": 3,
         "color": "warm beige",
-        "widthIn": 84
+        "widthIn": 84,
+        "depthIn": 36,
+        "heightIn": 34
       },
       "title": "Harlow 3-seat sofa",
       "store": "Wayfair",
@@ -326,7 +328,7 @@
         "maxCents": 120000
       },
       "status": "ok",
-      "message": "The plan is under the $1,200 group budget.",
+      "message": "$1,047.59 of the $1,200 budget, $152.41 left.",
       "groupId": "grp_apartment"
     },
     {
@@ -338,8 +340,8 @@
       "params": {
         "expected": 4
       },
-      "status": "warning",
-      "message": "Four pillows are listed, but the colors are not confirmed for every roommate.",
+      "status": "ok",
+      "message": "Throw pillows: 4, as planned.",
       "groupId": "grp_apartment"
     },
     {
@@ -353,7 +355,7 @@
         "value": "E26"
       },
       "status": "ok",
-      "message": "The floor lamp takes a standard E26 bulb.",
+      "message": "Floor lamp: bulb base E26, as needed.",
       "groupId": "grp_apartment"
     },
     {
@@ -367,7 +369,7 @@
         "relation": "rug_fits_sofa"
       },
       "status": "not_checked",
-      "message": "Rug dimensions are missing, so fit against the sofa is not checked.",
+      "message": "Width is missing for Rug, so fit isn't checked.",
       "groupId": "grp_apartment"
     },
     {
@@ -381,7 +383,7 @@
         "neededBy": "2026-11-01"
       },
       "status": "not_checked",
-      "message": "Delivery dates are missing, so timing is not checked.",
+      "message": "Delivery dates are missing for Sofa and Coffee table, so timing isn't checked.",
       "groupId": "grp_apartment"
     },
     {
@@ -398,8 +400,8 @@
           "Amazon"
         ]
       },
-      "status": "broken",
-      "message": "A shared trash bin is still required, and it is not on the plan.",
+      "status": "ok",
+      "message": "Sofa is on the plan, nothing from Amazon.",
       "groupId": "grp_apartment"
     }
   ]

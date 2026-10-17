@@ -1,0 +1,1299 @@
+{
+  "_note": "Sample catalog for MOCK_AI=1 and search fallback. Not a live catalog; prices are illustrative.",
+  "entries": [
+    {
+      "need": "Sofa",
+      "keywords": [
+        "couch",
+        "sofa",
+        "loveseat",
+        "sectional"
+      ],
+      "products": [
+        {
+          "key": "harlow-3-seat-sofa",
+          "title": "Harlow 3-seat sofa",
+          "store": "Wayfair",
+          "priceCents": 54900,
+          "url": "https://www.wayfair.com/keyword.php?keyword=3+seat+sofa",
+          "imageUrl": "https://placehold.co/480x360?text=Harlow%203-seat%20sofa",
+          "attributes": {
+            "seats": 3,
+            "color": "warm beige",
+            "widthIn": 84,
+            "depthIn": 36,
+            "heightIn": 34
+          }
+        },
+        {
+          "key": "ellis-apartment-sofa",
+          "title": "Ellis apartment sofa",
+          "store": "IKEA",
+          "priceCents": 44900,
+          "url": "https://www.ikea.com/us/en/search/?q=apartment+sofa",
+          "imageUrl": "https://placehold.co/480x360?text=Ellis%20apartment%20sofa",
+          "attributes": {
+            "seats": 3,
+            "color": "navy",
+            "widthIn": 72,
+            "depthIn": 31,
+            "heightIn": 32
+          }
+        },
+        {
+          "key": "navy-velvet-loveseat",
+          "title": "Navy velvet loveseat",
+          "store": "Target",
+          "priceCents": 39900,
+          "url": "https://www.target.com/s?searchTerm=velvet+loveseat",
+          "imageUrl": "https://placehold.co/480x360?text=Navy%20velvet%20loveseat",
+          "attributes": {
+            "seats": 2,
+            "color": "navy",
+            "widthIn": 62,
+            "depthIn": 30,
+            "heightIn": 33
+          }
+        },
+        {
+          "key": "modular-sleeper-sofa",
+          "title": "Modular sleeper sofa",
+          "store": "Walmart",
+          "priceCents": 49900,
+          "url": "https://www.walmart.com/search?q=sleeper+sofa",
+          "imageUrl": "https://placehold.co/480x360?text=Modular%20sleeper%20sofa",
+          "attributes": {
+            "seats": 3,
+            "color": "gray",
+            "widthIn": 80,
+            "depthIn": 34,
+            "heightIn": 33
+          }
+        }
+      ]
+    },
+    {
+      "need": "Rug",
+      "keywords": [
+        "rug",
+        "carpet",
+        "area rug"
+      ],
+      "products": [
+        {
+          "key": "washable-woven-area-rug",
+          "title": "Washable woven area rug",
+          "store": "Target",
+          "priceCents": 8990,
+          "url": "https://www.target.com/s?searchTerm=washable+area+rug",
+          "imageUrl": "https://placehold.co/480x360?text=Washable%20woven%20area%20rug",
+          "attributes": {
+            "material": "wool blend"
+          }
+        },
+        {
+          "key": "low-pile-navy-rug-5-x-7",
+          "title": "Low-pile navy rug, 5 x 7",
+          "store": "IKEA",
+          "priceCents": 5999,
+          "url": "https://www.ikea.com/us/en/search/?q=low+pile+rug",
+          "imageUrl": "https://placehold.co/480x360?text=Low-pile%20navy%20rug%2C%205%20x%207",
+          "attributes": {
+            "material": "polypropylene",
+            "color": "navy",
+            "widthIn": 60,
+            "lengthIn": 84
+          }
+        },
+        {
+          "key": "jute-braided-rug-8-x-10",
+          "title": "Jute braided rug, 8 x 10",
+          "store": "Article",
+          "priceCents": 11900,
+          "url": "https://www.article.com/search?query=jute+rug",
+          "imageUrl": "https://placehold.co/480x360?text=Jute%20braided%20rug%2C%208%20x%2010",
+          "attributes": {
+            "material": "jute",
+            "widthIn": 96,
+            "lengthIn": 120
+          }
+        },
+        {
+          "key": "cozy-shag-rug-6-x-9",
+          "title": "Cozy shag rug, 6 x 9",
+          "store": "Wayfair",
+          "priceCents": 9999,
+          "url": "https://www.wayfair.com/keyword.php?keyword=shag+rug",
+          "imageUrl": "https://placehold.co/480x360?text=Cozy%20shag%20rug%2C%206%20x%209",
+          "attributes": {
+            "material": "polyester",
+            "color": "cream",
+            "widthIn": 72,
+            "lengthIn": 108
+          }
+        }
+      ]
+    },
+    {
+      "need": "Floor lamp",
+      "keywords": [
+        "lamp",
+        "floor lamp",
+        "light"
+      ],
+      "products": [
+        {
+          "key": "tripod-floor-lamp",
+          "title": "Tripod floor lamp",
+          "store": "IKEA",
+          "priceCents": 4990,
+          "url": "https://www.ikea.com/us/en/search/?q=floor+lamp",
+          "imageUrl": "https://placehold.co/480x360?text=Tripod%20floor%20lamp",
+          "attributes": {
+            "bulbBase": "E26",
+            "style": "tripod"
+          }
+        },
+        {
+          "key": "brass-arc-floor-lamp",
+          "title": "Brass arc floor lamp",
+          "store": "Target",
+          "priceCents": 8999,
+          "url": "https://www.target.com/s?searchTerm=arc+floor+lamp",
+          "imageUrl": "https://placehold.co/480x360?text=Brass%20arc%20floor%20lamp",
+          "attributes": {
+            "bulbBase": "E26",
+            "style": "arc"
+          }
+        },
+        {
+          "key": "led-torchiere-floor-lamp",
+          "title": "LED torchiere floor lamp",
+          "store": "Walmart",
+          "priceCents": 3999,
+          "url": "https://www.walmart.com/search?q=led+floor+lamp",
+          "imageUrl": "https://placehold.co/480x360?text=LED%20torchiere%20floor%20lamp",
+          "attributes": {
+            "bulbBase": "integrated LED",
+            "style": "torchiere"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Coffee table",
+      "keywords": [
+        "coffee table",
+        "table"
+      ],
+      "products": [
+        {
+          "key": "round-oak-coffee-table",
+          "title": "Round oak coffee table",
+          "store": "Article",
+          "priceCents": 12900,
+          "url": "https://www.article.com/search?query=oak+coffee+table",
+          "imageUrl": "https://placehold.co/480x360?text=Round%20oak%20coffee%20table",
+          "attributes": {
+            "material": "oak",
+            "shape": "round"
+          }
+        },
+        {
+          "key": "lift-top-coffee-table",
+          "title": "Lift-top coffee table",
+          "store": "Walmart",
+          "priceCents": 9900,
+          "url": "https://www.walmart.com/search?q=lift+top+coffee+table",
+          "imageUrl": "https://placehold.co/480x360?text=Lift-top%20coffee%20table",
+          "attributes": {
+            "material": "engineered wood",
+            "shape": "rectangle",
+            "widthIn": 42,
+            "depthIn": 20,
+            "heightIn": 19
+          }
+        },
+        {
+          "key": "tempered-glass-coffee-table",
+          "title": "Tempered glass coffee table",
+          "store": "IKEA",
+          "priceCents": 7900,
+          "url": "https://www.ikea.com/us/en/search/?q=glass+coffee+table",
+          "imageUrl": "https://placehold.co/480x360?text=Tempered%20glass%20coffee%20table",
+          "attributes": {
+            "material": "glass",
+            "shape": "rectangle",
+            "widthIn": 39,
+            "depthIn": 22,
+            "heightIn": 18
+          }
+        }
+      ]
+    },
+    {
+      "need": "Throw pillows",
+      "keywords": [
+        "pillow",
+        "pillows",
+        "cushion"
+      ],
+      "products": [
+        {
+          "key": "textured-throw-pillow",
+          "title": "Textured throw pillow",
+          "store": "Target",
+          "priceCents": 999,
+          "url": "https://www.target.com/s?searchTerm=throw+pillow",
+          "imageUrl": "https://placehold.co/480x360?text=Textured%20throw%20pillow",
+          "attributes": {
+            "color": "cream"
+          }
+        },
+        {
+          "key": "navy-velvet-throw-pillow",
+          "title": "Navy velvet throw pillow",
+          "store": "Target",
+          "priceCents": 1299,
+          "url": "https://www.target.com/s?searchTerm=velvet+throw+pillow",
+          "imageUrl": "https://placehold.co/480x360?text=Navy%20velvet%20throw%20pillow",
+          "attributes": {
+            "color": "navy"
+          }
+        },
+        {
+          "key": "linen-throw-pillow",
+          "title": "Linen throw pillow",
+          "store": "IKEA",
+          "priceCents": 799,
+          "url": "https://www.ikea.com/us/en/search/?q=linen+pillow",
+          "imageUrl": "https://placehold.co/480x360?text=Linen%20throw%20pillow",
+          "attributes": {
+            "color": "oatmeal"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Microwave",
+      "keywords": [
+        "microwave"
+      ],
+      "products": [
+        {
+          "key": "compact-countertop-microwave",
+          "title": "Compact countertop microwave",
+          "store": "Best Buy",
+          "priceCents": 7990,
+          "url": "https://www.bestbuy.com/site/searchpage.jsp?st=compact+microwave",
+          "imageUrl": "https://placehold.co/480x360?text=Compact%20countertop%20microwave",
+          "attributes": {
+            "watts": 700
+          }
+        },
+        {
+          "key": "1.1-cu-ft-microwave",
+          "title": "1.1 cu ft microwave",
+          "store": "Target",
+          "priceCents": 9999,
+          "url": "https://www.target.com/s?searchTerm=microwave+1.1+cu+ft",
+          "imageUrl": "https://placehold.co/480x360?text=1.1%20cu%20ft%20microwave",
+          "attributes": {
+            "watts": 1000
+          }
+        },
+        {
+          "key": "0.7-cu-ft-microwave",
+          "title": "0.7 cu ft microwave",
+          "store": "Walmart",
+          "priceCents": 6900,
+          "url": "https://www.walmart.com/search?q=small+microwave",
+          "imageUrl": "https://placehold.co/480x360?text=0.7%20cu%20ft%20microwave",
+          "attributes": {
+            "watts": 700
+          }
+        }
+      ]
+    },
+    {
+      "need": "Coffee maker",
+      "keywords": [
+        "coffee",
+        "coffee maker",
+        "espresso"
+      ],
+      "products": [
+        {
+          "key": "12-cup-drip-coffee-maker",
+          "title": "12-cup drip coffee maker",
+          "store": "Target",
+          "priceCents": 3499,
+          "url": "https://www.target.com/s?searchTerm=drip+coffee+maker",
+          "imageUrl": "https://placehold.co/480x360?text=12-cup%20drip%20coffee%20maker",
+          "attributes": {
+            "cups": 12
+          }
+        },
+        {
+          "key": "glass-french-press",
+          "title": "Glass French press",
+          "store": "IKEA",
+          "priceCents": 2499,
+          "url": "https://www.ikea.com/us/en/search/?q=french+press",
+          "imageUrl": "https://placehold.co/480x360?text=Glass%20French%20press",
+          "attributes": {
+            "cups": 8
+          }
+        },
+        {
+          "key": "single-serve-coffee-maker",
+          "title": "Single-serve coffee maker",
+          "store": "Best Buy",
+          "priceCents": 7999,
+          "url": "https://www.bestbuy.com/site/searchpage.jsp?st=single+serve+coffee+maker",
+          "imageUrl": "https://placehold.co/480x360?text=Single-serve%20coffee%20maker",
+          "attributes": {
+            "cups": 1
+          }
+        }
+      ]
+    },
+    {
+      "need": "Mugs",
+      "keywords": [
+        "mug",
+        "mugs",
+        "cup"
+      ],
+      "products": [
+        {
+          "key": "stoneware-mug",
+          "title": "Stoneware mug",
+          "store": "IKEA",
+          "priceCents": 999,
+          "url": "https://www.ikea.com/us/en/search/?q=stoneware+mug",
+          "imageUrl": "https://placehold.co/480x360?text=Stoneware%20mug",
+          "attributes": {
+            "material": "stoneware"
+          }
+        },
+        {
+          "key": "speckled-ceramic-mug",
+          "title": "Speckled ceramic mug",
+          "store": "Target",
+          "priceCents": 599,
+          "url": "https://www.target.com/s?searchTerm=ceramic+mug",
+          "imageUrl": "https://placehold.co/480x360?text=Speckled%20ceramic%20mug",
+          "attributes": {
+            "material": "ceramic"
+          }
+        },
+        {
+          "key": "double-wall-glass-mug",
+          "title": "Double-wall glass mug",
+          "store": "Walmart",
+          "priceCents": 799,
+          "url": "https://www.walmart.com/search?q=glass+mug",
+          "imageUrl": "https://placehold.co/480x360?text=Double-wall%20glass%20mug",
+          "attributes": {
+            "material": "glass"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Shoe rack",
+      "keywords": [
+        "shoe",
+        "shoe rack"
+      ],
+      "products": [
+        {
+          "key": "two-tier-shoe-rack",
+          "title": "Two-tier shoe rack",
+          "store": "IKEA",
+          "priceCents": 1999,
+          "url": "https://www.ikea.com/us/en/search/?q=shoe+rack",
+          "imageUrl": "https://placehold.co/480x360?text=Two-tier%20shoe%20rack",
+          "attributes": {
+            "pairs": 8
+          }
+        },
+        {
+          "key": "bamboo-three-tier-shoe-rack",
+          "title": "Bamboo three-tier shoe rack",
+          "store": "Target",
+          "priceCents": 2999,
+          "url": "https://www.target.com/s?searchTerm=bamboo+shoe+rack",
+          "imageUrl": "https://placehold.co/480x360?text=Bamboo%20three-tier%20shoe%20rack",
+          "attributes": {
+            "pairs": 12
+          }
+        }
+      ]
+    },
+    {
+      "need": "Doormat",
+      "keywords": [
+        "doormat",
+        "door mat",
+        "mat"
+      ],
+      "products": [
+        {
+          "key": "coir-doormat",
+          "title": "Coir doormat",
+          "store": "Target",
+          "priceCents": 1499,
+          "url": "https://www.target.com/s?searchTerm=coir+doormat",
+          "imageUrl": "https://placehold.co/480x360?text=Coir%20doormat",
+          "attributes": {
+            "material": "coir"
+          }
+        },
+        {
+          "key": "rubber-boot-scrape-doormat",
+          "title": "Rubber boot-scrape doormat",
+          "store": "Walmart",
+          "priceCents": 1999,
+          "url": "https://www.walmart.com/search?q=rubber+doormat",
+          "imageUrl": "https://placehold.co/480x360?text=Rubber%20boot-scrape%20doormat",
+          "attributes": {
+            "material": "rubber"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Coat hooks",
+      "keywords": [
+        "coat",
+        "hooks",
+        "hook",
+        "coat rack"
+      ],
+      "products": [
+        {
+          "key": "four-hook-wall-rail",
+          "title": "Four-hook wall rail",
+          "store": "Target",
+          "priceCents": 1499,
+          "url": "https://www.target.com/s?searchTerm=coat+hooks",
+          "imageUrl": "https://placehold.co/480x360?text=Four-hook%20wall%20rail",
+          "attributes": {
+            "hooks": 4
+          }
+        },
+        {
+          "key": "wall-mounted-coat-rack",
+          "title": "Wall-mounted coat rack",
+          "store": "IKEA",
+          "priceCents": 2499,
+          "url": "https://www.ikea.com/us/en/search/?q=wall+coat+rack",
+          "imageUrl": "https://placehold.co/480x360?text=Wall-mounted%20coat%20rack",
+          "attributes": {
+            "hooks": 6
+          }
+        }
+      ]
+    },
+    {
+      "need": "Bookshelf",
+      "keywords": [
+        "bookshelf",
+        "bookcase",
+        "shelf",
+        "shelves"
+      ],
+      "products": [
+        {
+          "key": "five-shelf-bookcase",
+          "title": "Five-shelf bookcase",
+          "store": "Target",
+          "priceCents": 6999,
+          "url": "https://www.target.com/s?searchTerm=5+shelf+bookcase",
+          "imageUrl": "https://placehold.co/480x360?text=Five-shelf%20bookcase",
+          "attributes": {
+            "shelves": 5,
+            "widthIn": 31,
+            "depthIn": 11,
+            "heightIn": 70
+          }
+        },
+        {
+          "key": "white-open-bookcase",
+          "title": "White open bookcase",
+          "store": "IKEA",
+          "priceCents": 5999,
+          "url": "https://www.ikea.com/us/en/search/?q=bookcase",
+          "imageUrl": "https://placehold.co/480x360?text=White%20open%20bookcase",
+          "attributes": {
+            "shelves": 6,
+            "widthIn": 31,
+            "depthIn": 11,
+            "heightIn": 79
+          }
+        },
+        {
+          "key": "walnut-ladder-shelf",
+          "title": "Walnut ladder shelf",
+          "store": "Wayfair",
+          "priceCents": 8900,
+          "url": "https://www.wayfair.com/keyword.php?keyword=ladder+shelf",
+          "imageUrl": "https://placehold.co/480x360?text=Walnut%20ladder%20shelf",
+          "attributes": {
+            "shelves": 4,
+            "widthIn": 24,
+            "depthIn": 15,
+            "heightIn": 72
+          }
+        }
+      ]
+    },
+    {
+      "need": "Trash bin",
+      "keywords": [
+        "trash",
+        "bin",
+        "garbage",
+        "trash can"
+      ],
+      "products": [
+        {
+          "key": "13-gallon-step-trash-can",
+          "title": "13-gallon step trash can",
+          "store": "Target",
+          "priceCents": 3999,
+          "url": "https://www.target.com/s?searchTerm=step+trash+can",
+          "imageUrl": "https://placehold.co/480x360?text=13-gallon%20step%20trash%20can",
+          "attributes": {
+            "gallons": 13
+          }
+        },
+        {
+          "key": "kitchen-trash-can-with-lid",
+          "title": "Kitchen trash can with lid",
+          "store": "Walmart",
+          "priceCents": 2499,
+          "url": "https://www.walmart.com/search?q=kitchen+trash+can",
+          "imageUrl": "https://placehold.co/480x360?text=Kitchen%20trash%20can%20with%20lid",
+          "attributes": {
+            "gallons": 13
+          }
+        }
+      ]
+    },
+    {
+      "need": "Side table",
+      "keywords": [
+        "side table",
+        "end table",
+        "nightstand"
+      ],
+      "products": [
+        {
+          "key": "round-oak-side-table",
+          "title": "Round oak side table",
+          "store": "Target",
+          "priceCents": 6499,
+          "url": "https://www.target.com/s?searchTerm=oak+side+table",
+          "imageUrl": "https://placehold.co/480x360?text=Round%20oak%20side%20table",
+          "attributes": {
+            "material": "oak"
+          }
+        },
+        {
+          "key": "metal-side-table",
+          "title": "Metal side table",
+          "store": "IKEA",
+          "priceCents": 2999,
+          "url": "https://www.ikea.com/us/en/search/?q=metal+side+table",
+          "imageUrl": "https://placehold.co/480x360?text=Metal%20side%20table",
+          "attributes": {
+            "material": "steel"
+          }
+        }
+      ]
+    },
+    {
+      "need": "TV stand",
+      "keywords": [
+        "tv",
+        "tv stand",
+        "media console",
+        "entertainment"
+      ],
+      "products": [
+        {
+          "key": "55-in-media-console",
+          "title": "55 in media console",
+          "store": "Target",
+          "priceCents": 14999,
+          "url": "https://www.target.com/s?searchTerm=tv+stand",
+          "imageUrl": "https://placehold.co/480x360?text=55%20in%20media%20console",
+          "attributes": {
+            "widthIn": 55,
+            "depthIn": 16,
+            "heightIn": 24
+          }
+        },
+        {
+          "key": "low-tv-bench",
+          "title": "Low TV bench",
+          "store": "IKEA",
+          "priceCents": 8999,
+          "url": "https://www.ikea.com/us/en/search/?q=tv+bench",
+          "imageUrl": "https://placehold.co/480x360?text=Low%20TV%20bench",
+          "attributes": {
+            "widthIn": 59,
+            "depthIn": 16,
+            "heightIn": 17
+          }
+        }
+      ]
+    },
+    {
+      "need": "Curtains",
+      "keywords": [
+        "curtain",
+        "curtains",
+        "drapes",
+        "blinds"
+      ],
+      "products": [
+        {
+          "key": "blackout-curtain-pair-navy",
+          "title": "Blackout curtain pair, navy",
+          "store": "Target",
+          "priceCents": 3499,
+          "url": "https://www.target.com/s?searchTerm=blackout+curtains",
+          "imageUrl": "https://placehold.co/480x360?text=Blackout%20curtain%20pair%2C%20navy",
+          "attributes": {
+            "color": "navy",
+            "lengthIn": 84
+          }
+        },
+        {
+          "key": "linen-curtain-pair",
+          "title": "Linen curtain pair",
+          "store": "IKEA",
+          "priceCents": 2999,
+          "url": "https://www.ikea.com/us/en/search/?q=linen+curtains",
+          "imageUrl": "https://placehold.co/480x360?text=Linen%20curtain%20pair",
+          "attributes": {
+            "color": "natural",
+            "lengthIn": 98
+          }
+        }
+      ]
+    },
+    {
+      "need": "Throw blanket",
+      "keywords": [
+        "blanket",
+        "throw"
+      ],
+      "products": [
+        {
+          "key": "chunky-knit-throw",
+          "title": "Chunky knit throw",
+          "store": "Target",
+          "priceCents": 3999,
+          "url": "https://www.target.com/s?searchTerm=knit+throw+blanket",
+          "imageUrl": "https://placehold.co/480x360?text=Chunky%20knit%20throw",
+          "attributes": {
+            "color": "cream"
+          }
+        },
+        {
+          "key": "fleece-throw-blanket",
+          "title": "Fleece throw blanket",
+          "store": "Walmart",
+          "priceCents": 1499,
+          "url": "https://www.walmart.com/search?q=fleece+throw",
+          "imageUrl": "https://placehold.co/480x360?text=Fleece%20throw%20blanket",
+          "attributes": {
+            "color": "navy"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Desk",
+      "keywords": [
+        "desk",
+        "work desk"
+      ],
+      "products": [
+        {
+          "key": "48-in-writing-desk",
+          "title": "48 in writing desk",
+          "store": "IKEA",
+          "priceCents": 12999,
+          "url": "https://www.ikea.com/us/en/search/?q=writing+desk",
+          "imageUrl": "https://placehold.co/480x360?text=48%20in%20writing%20desk",
+          "attributes": {
+            "widthIn": 48,
+            "depthIn": 24,
+            "heightIn": 30
+          }
+        },
+        {
+          "key": "standing-desk-frame-and-top",
+          "title": "Standing desk frame and top",
+          "store": "Best Buy",
+          "priceCents": 24999,
+          "url": "https://www.bestbuy.com/site/searchpage.jsp?st=standing+desk",
+          "imageUrl": "https://placehold.co/480x360?text=Standing%20desk%20frame%20and%20top",
+          "attributes": {
+            "widthIn": 55,
+            "depthIn": 28,
+            "heightIn": 48
+          }
+        }
+      ]
+    },
+    {
+      "need": "Desk chair",
+      "keywords": [
+        "chair",
+        "desk chair",
+        "office chair"
+      ],
+      "products": [
+        {
+          "key": "mesh-office-chair",
+          "title": "Mesh office chair",
+          "store": "Target",
+          "priceCents": 11999,
+          "url": "https://www.target.com/s?searchTerm=mesh+office+chair",
+          "imageUrl": "https://placehold.co/480x360?text=Mesh%20office%20chair",
+          "attributes": {
+            "adjustable": "yes"
+          }
+        },
+        {
+          "key": "ergonomic-task-chair",
+          "title": "Ergonomic task chair",
+          "store": "IKEA",
+          "priceCents": 14999,
+          "url": "https://www.ikea.com/us/en/search/?q=ergonomic+chair",
+          "imageUrl": "https://placehold.co/480x360?text=Ergonomic%20task%20chair",
+          "attributes": {
+            "adjustable": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Bed frame",
+      "keywords": [
+        "bed",
+        "bed frame",
+        "frame"
+      ],
+      "products": [
+        {
+          "key": "queen-platform-bed-frame",
+          "title": "Queen platform bed frame",
+          "store": "Walmart",
+          "priceCents": 17900,
+          "url": "https://www.walmart.com/search?q=queen+platform+bed",
+          "imageUrl": "https://placehold.co/480x360?text=Queen%20platform%20bed%20frame",
+          "attributes": {
+            "size": "queen",
+            "widthIn": 64,
+            "depthIn": 84,
+            "heightIn": 14
+          }
+        },
+        {
+          "key": "full-metal-bed-frame",
+          "title": "Full metal bed frame",
+          "store": "IKEA",
+          "priceCents": 12900,
+          "url": "https://www.ikea.com/us/en/search/?q=metal+bed+frame",
+          "imageUrl": "https://placehold.co/480x360?text=Full%20metal%20bed%20frame",
+          "attributes": {
+            "size": "full",
+            "widthIn": 57,
+            "depthIn": 79,
+            "heightIn": 12
+          }
+        }
+      ]
+    },
+    {
+      "need": "Mattress",
+      "keywords": [
+        "mattress"
+      ],
+      "products": [
+        {
+          "key": "queen-memory-foam-mattress",
+          "title": "Queen memory foam mattress",
+          "store": "Walmart",
+          "priceCents": 29900,
+          "url": "https://www.walmart.com/search?q=queen+memory+foam+mattress",
+          "imageUrl": "https://placehold.co/480x360?text=Queen%20memory%20foam%20mattress",
+          "attributes": {
+            "size": "queen"
+          }
+        },
+        {
+          "key": "full-hybrid-mattress",
+          "title": "Full hybrid mattress",
+          "store": "Target",
+          "priceCents": 34900,
+          "url": "https://www.target.com/s?searchTerm=full+hybrid+mattress",
+          "imageUrl": "https://placehold.co/480x360?text=Full%20hybrid%20mattress",
+          "attributes": {
+            "size": "full"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Dining table",
+      "keywords": [
+        "dining table",
+        "kitchen table"
+      ],
+      "products": [
+        {
+          "key": "four-seat-dining-table",
+          "title": "Four-seat dining table",
+          "store": "IKEA",
+          "priceCents": 14900,
+          "url": "https://www.ikea.com/us/en/search/?q=dining+table",
+          "imageUrl": "https://placehold.co/480x360?text=Four-seat%20dining%20table",
+          "attributes": {
+            "seats": 4,
+            "widthIn": 47,
+            "depthIn": 30,
+            "heightIn": 29
+          }
+        },
+        {
+          "key": "round-pedestal-dining-table",
+          "title": "Round pedestal dining table",
+          "store": "Wayfair",
+          "priceCents": 18900,
+          "url": "https://www.wayfair.com/keyword.php?keyword=round+dining+table",
+          "imageUrl": "https://placehold.co/480x360?text=Round%20pedestal%20dining%20table",
+          "attributes": {
+            "seats": 4,
+            "widthIn": 42,
+            "depthIn": 42,
+            "heightIn": 30
+          }
+        }
+      ]
+    },
+    {
+      "need": "Dining chairs",
+      "keywords": [
+        "dining chair",
+        "chairs",
+        "stool"
+      ],
+      "products": [
+        {
+          "key": "wood-dining-chair",
+          "title": "Wood dining chair",
+          "store": "IKEA",
+          "priceCents": 4999,
+          "url": "https://www.ikea.com/us/en/search/?q=dining+chair",
+          "imageUrl": "https://placehold.co/480x360?text=Wood%20dining%20chair",
+          "attributes": {
+            "material": "wood"
+          }
+        },
+        {
+          "key": "upholstered-dining-chair",
+          "title": "Upholstered dining chair",
+          "store": "Target",
+          "priceCents": 7999,
+          "url": "https://www.target.com/s?searchTerm=upholstered+dining+chair",
+          "imageUrl": "https://placehold.co/480x360?text=Upholstered%20dining%20chair",
+          "attributes": {
+            "material": "fabric"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Cookware set",
+      "keywords": [
+        "cookware",
+        "pots",
+        "pans",
+        "pan"
+      ],
+      "products": [
+        {
+          "key": "10-piece-nonstick-cookware-set",
+          "title": "10-piece nonstick cookware set",
+          "store": "Target",
+          "priceCents": 7999,
+          "url": "https://www.target.com/s?searchTerm=nonstick+cookware+set",
+          "imageUrl": "https://placehold.co/480x360?text=10-piece%20nonstick%20cookware%20set",
+          "attributes": {
+            "pieces": 10
+          }
+        },
+        {
+          "key": "stainless-steel-cookware-set",
+          "title": "Stainless steel cookware set",
+          "store": "Walmart",
+          "priceCents": 11900,
+          "url": "https://www.walmart.com/search?q=stainless+cookware+set",
+          "imageUrl": "https://placehold.co/480x360?text=Stainless%20steel%20cookware%20set",
+          "attributes": {
+            "pieces": 8
+          }
+        }
+      ]
+    },
+    {
+      "need": "Planter",
+      "keywords": [
+        "plant",
+        "planter",
+        "pot"
+      ],
+      "products": [
+        {
+          "key": "ceramic-floor-planter",
+          "title": "Ceramic floor planter",
+          "store": "IKEA",
+          "priceCents": 2499,
+          "url": "https://www.ikea.com/us/en/search/?q=floor+planter",
+          "imageUrl": "https://placehold.co/480x360?text=Ceramic%20floor%20planter",
+          "attributes": {
+            "material": "ceramic"
+          }
+        },
+        {
+          "key": "woven-basket-planter",
+          "title": "Woven basket planter",
+          "store": "Target",
+          "priceCents": 1999,
+          "url": "https://www.target.com/s?searchTerm=basket+planter",
+          "imageUrl": "https://placehold.co/480x360?text=Woven%20basket%20planter",
+          "attributes": {
+            "material": "seagrass"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Tent",
+      "keywords": [
+        "tent",
+        "shelter"
+      ],
+      "products": [
+        {
+          "key": "four-person-dome-tent",
+          "title": "Four-person dome tent",
+          "store": "REI",
+          "priceCents": 18000,
+          "url": "https://www.rei.com/search?q=4+person+tent",
+          "imageUrl": "https://placehold.co/480x360?text=Four-person%20dome%20tent",
+          "attributes": {
+            "capacity": 4,
+            "season": 3
+          }
+        },
+        {
+          "key": "six-person-cabin-tent",
+          "title": "Six-person cabin tent",
+          "store": "REI",
+          "priceCents": 29900,
+          "url": "https://www.rei.com/search?q=6+person+tent",
+          "imageUrl": "https://placehold.co/480x360?text=Six-person%20cabin%20tent",
+          "attributes": {
+            "capacity": 6,
+            "season": 3
+          }
+        },
+        {
+          "key": "six-person-instant-tent",
+          "title": "Six-person instant tent",
+          "store": "Target",
+          "priceCents": 14999,
+          "url": "https://www.target.com/s?searchTerm=instant+tent",
+          "imageUrl": "https://placehold.co/480x360?text=Six-person%20instant%20tent",
+          "attributes": {
+            "capacity": 6,
+            "season": 3
+          }
+        }
+      ]
+    },
+    {
+      "need": "Sleeping bag",
+      "keywords": [
+        "sleeping bag",
+        "bag"
+      ],
+      "products": [
+        {
+          "key": "30f-synthetic-sleeping-bag",
+          "title": "30F synthetic sleeping bag",
+          "store": "REI",
+          "priceCents": 4500,
+          "url": "https://www.rei.com/search?q=30+degree+sleeping+bag",
+          "imageUrl": "https://placehold.co/480x360?text=30F%20synthetic%20sleeping%20bag",
+          "attributes": {
+            "tempF": 30
+          }
+        },
+        {
+          "key": "40f-rectangular-sleeping-bag",
+          "title": "40F rectangular sleeping bag",
+          "store": "Target",
+          "priceCents": 3999,
+          "url": "https://www.target.com/s?searchTerm=rectangular+sleeping+bag",
+          "imageUrl": "https://placehold.co/480x360?text=40F%20rectangular%20sleeping%20bag",
+          "attributes": {
+            "tempF": 40
+          }
+        }
+      ]
+    },
+    {
+      "need": "Sleeping pad",
+      "keywords": [
+        "sleeping pad",
+        "pad"
+      ],
+      "products": [
+        {
+          "key": "self-inflating-sleeping-pad",
+          "title": "Self-inflating sleeping pad",
+          "store": "REI",
+          "priceCents": 2500,
+          "url": "https://www.rei.com/search?q=sleeping+pad",
+          "imageUrl": "https://placehold.co/480x360?text=Self-inflating%20sleeping%20pad",
+          "attributes": {
+            "rValue": 3
+          }
+        },
+        {
+          "key": "insulated-air-pad",
+          "title": "Insulated air pad",
+          "store": "REI",
+          "priceCents": 3495,
+          "url": "https://www.rei.com/search?q=insulated+air+pad",
+          "imageUrl": "https://placehold.co/480x360?text=Insulated%20air%20pad",
+          "attributes": {
+            "rValue": 4.2
+          }
+        }
+      ]
+    },
+    {
+      "need": "Camp stove",
+      "keywords": [
+        "stove",
+        "camp stove",
+        "burner"
+      ],
+      "products": [
+        {
+          "key": "two-burner-camp-stove",
+          "title": "Two-burner camp stove",
+          "store": "REI",
+          "priceCents": 7999,
+          "url": "https://www.rei.com/search?q=camp+stove",
+          "imageUrl": "https://placehold.co/480x360?text=Two-burner%20camp%20stove",
+          "attributes": {
+            "fuelType": "isobutane"
+          }
+        },
+        {
+          "key": "propane-camp-stove",
+          "title": "Propane camp stove",
+          "store": "Target",
+          "priceCents": 4999,
+          "url": "https://www.target.com/s?searchTerm=propane+camp+stove",
+          "imageUrl": "https://placehold.co/480x360?text=Propane%20camp%20stove",
+          "attributes": {
+            "fuelType": "propane"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Fuel canister",
+      "keywords": [
+        "fuel",
+        "canister",
+        "propane",
+        "isobutane"
+      ],
+      "products": [
+        {
+          "key": "propane-fuel-canister",
+          "title": "Propane fuel canister",
+          "store": "REI",
+          "priceCents": 1299,
+          "url": "https://www.rei.com/search?q=propane+canister",
+          "imageUrl": "https://placehold.co/480x360?text=Propane%20fuel%20canister",
+          "attributes": {
+            "fuelType": "propane"
+          }
+        },
+        {
+          "key": "isobutane-fuel-canister-8-oz",
+          "title": "Isobutane fuel canister, 8 oz",
+          "store": "REI",
+          "priceCents": 795,
+          "url": "https://www.rei.com/search?q=isobutane+fuel",
+          "imageUrl": "https://placehold.co/480x360?text=Isobutane%20fuel%20canister%2C%208%20oz",
+          "attributes": {
+            "fuelType": "isobutane"
+          }
+        },
+        {
+          "key": "isobutane-fuel-canister-16-oz",
+          "title": "Isobutane fuel canister, 16 oz",
+          "store": "REI",
+          "priceCents": 1195,
+          "url": "https://www.rei.com/search?q=isobutane+fuel+16+oz",
+          "imageUrl": "https://placehold.co/480x360?text=Isobutane%20fuel%20canister%2C%2016%20oz",
+          "attributes": {
+            "fuelType": "isobutane"
+          }
+        }
+      ]
+    },
+    {
+      "need": "Cooler",
+      "keywords": [
+        "cooler",
+        "ice chest"
+      ],
+      "products": [
+        {
+          "key": "48-quart-cooler",
+          "title": "48-quart cooler",
+          "store": "Target",
+          "priceCents": 4999,
+          "url": "https://www.target.com/s?searchTerm=48+quart+cooler",
+          "imageUrl": "https://placehold.co/480x360?text=48-quart%20cooler",
+          "attributes": {
+            "quarts": 48
+          }
+        },
+        {
+          "key": "rotomolded-45-quart-cooler",
+          "title": "Rotomolded 45-quart cooler",
+          "store": "REI",
+          "priceCents": 8995,
+          "url": "https://www.rei.com/search?q=rotomolded+cooler",
+          "imageUrl": "https://placehold.co/480x360?text=Rotomolded%2045-quart%20cooler",
+          "attributes": {
+            "quarts": 45
+          }
+        }
+      ]
+    },
+    {
+      "need": "Headlamp",
+      "keywords": [
+        "headlamp",
+        "flashlight"
+      ],
+      "products": [
+        {
+          "key": "300-lumen-headlamp",
+          "title": "300-lumen headlamp",
+          "store": "REI",
+          "priceCents": 1299,
+          "url": "https://www.rei.com/search?q=headlamp",
+          "imageUrl": "https://placehold.co/480x360?text=300-lumen%20headlamp",
+          "attributes": {
+            "lumens": 300
+          }
+        },
+        {
+          "key": "rechargeable-400-lumen-headlamp",
+          "title": "Rechargeable 400-lumen headlamp",
+          "store": "Target",
+          "priceCents": 1999,
+          "url": "https://www.target.com/s?searchTerm=rechargeable+headlamp",
+          "imageUrl": "https://placehold.co/480x360?text=Rechargeable%20400-lumen%20headlamp",
+          "attributes": {
+            "lumens": 400
+          }
+        }
+      ]
+    },
+    {
+      "need": "First aid kit",
+      "keywords": [
+        "first aid",
+        "aid kit",
+        "medical"
+      ],
+      "products": [
+        {
+          "key": "group-first-aid-kit",
+          "title": "Group first aid kit",
+          "store": "REI",
+          "priceCents": 1999,
+          "url": "https://www.rei.com/search?q=first+aid+kit",
+          "imageUrl": "https://placehold.co/480x360?text=Group%20first%20aid%20kit",
+          "attributes": {
+            "people": 6
+          }
+        },
+        {
+          "key": "compact-first-aid-kit",
+          "title": "Compact first aid kit",
+          "store": "Target",
+          "priceCents": 1299,
+          "url": "https://www.target.com/s?searchTerm=compact+first+aid+kit",
+          "imageUrl": "https://placehold.co/480x360?text=Compact%20first%20aid%20kit",
+          "attributes": {
+            "people": 2
+          }
+        }
+      ]
+    },
+    {
+      "need": "Lantern",
+      "keywords": [
+        "lantern",
+        "camp light"
+      ],
+      "products": [
+        {
+          "key": "led-camp-lantern",
+          "title": "LED camp lantern",
+          "store": "Target",
+          "priceCents": 2499,
+          "url": "https://www.target.com/s?searchTerm=led+lantern",
+          "imageUrl": "https://placehold.co/480x360?text=LED%20camp%20lantern",
+          "attributes": {
+            "lumens": 400
+          }
+        },
+        {
+          "key": "rechargeable-lantern",
+          "title": "Rechargeable lantern",
+          "store": "REI",
+          "priceCents": 3495,
+          "url": "https://www.rei.com/search?q=rechargeable+lantern",
+          "imageUrl": "https://placehold.co/480x360?text=Rechargeable%20lantern",
+          "attributes": {
+            "lumens": 500
+          }
+        }
+      ]
+    }
+  ]
+}
