@@ -111,4 +111,22 @@ describe("checkout orchestrator", () => {
     expect(quillbyRefund.every((refund) => refund.reason === "store_failed")).toBe(true);
     expect(quillbyRefund.reduce((sum, refund) => sum + refund.amountCents, 0)).toBe(quillby.capCents);
   });
+
+  it("approves a Zinc overrun that came back without a total by offering the spare buffer", async () => {
+    await fundedDemo();
+    const started = await startCheckout("grp_apartment", "usr_ani", address, t0);
+    const target = byStore(started).Target;
+    if (!target) throw new Error("Target missing");
+    // Simulate Zinc's real sandbox answer: order_failed, max_price_exceeded, price_components null.
+    const { editGroup } = await import("@/lib/db/ledger");
+    await editGroup("grp_apartment", (state) => {
+      const order = state.storeOrders.find((item) => item.id === target.id);
+      if (order) Object.assign(order, { status: "needs_approval", quotedCents: null });
+    });
+    const approved = await approveCheckout("grp_apartment", "usr_ani", target.id, true, at(1_000));
+    const raised = byStore(approved).Target;
+    expect(raised?.status).toBe("placing");
+    expect(raised?.attempt).toBe(1);
+    expect(raised?.capCents ?? 0).toBeGreaterThan(target.capCents);
+  });
 });

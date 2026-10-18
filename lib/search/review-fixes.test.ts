@@ -76,6 +76,7 @@ describe("shuffle stack without instance memory", () => {
 describe("search cache", () => {
   it("caches failed SerpApi searches and serves the catalog without calling again", async () => {
     vi.stubEnv("MOCK_AI", "0");
+    vi.stubEnv("SERPAPI_LIVE", "1");
     vi.stubEnv("GEMINI_API_KEY", "test");
     vi.stubEnv("SERPAPI_KEY", "test");
     vi.stubEnv("DATABASE_URL", "");
@@ -91,6 +92,7 @@ describe("search cache", () => {
 
   it("marks quota errors and empty results so they aren't retried soon", async () => {
     vi.stubEnv("MOCK_AI", "0");
+    vi.stubEnv("SERPAPI_LIVE", "1");
     vi.stubEnv("GEMINI_API_KEY", "test");
     vi.stubEnv("SERPAPI_KEY", "test");
     vi.stubEnv("DATABASE_URL", "");

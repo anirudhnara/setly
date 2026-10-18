@@ -195,9 +195,10 @@ export async function approveCheckout(groupId: string, userId: string, storeOrde
       order.error = "The group declined the higher total";
       return false;
     }
-    const quoted = order.quotedCents ?? order.capCents;
-    const need = quoted - capCents(order.subtotalCents);
     const spare = spareBuffer(state, order);
+    // Zinc's max_price_exceeded can come back without a total: then offer everything the plan has left.
+    const quoted = order.quotedCents ?? capCents(order.subtotalCents) + spare;
+    const need = quoted - capCents(order.subtotalCents);
     if (need > spare) {
       order.status = "canceled";
       order.error = `Needs ${dollars(need)} more than its buffer; only ${dollars(spare)} is left across the plan`;
