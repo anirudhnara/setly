@@ -24,7 +24,7 @@ const QUERIES: Record<Source, string[]> = {
     "yoga mat", "adjustable dumbbells", "resistance bands set", "foam roller",
     "small desk for dorm", "standing desk", "desk with drawers",
     "twin xl mattress", "twin xl mattress topper", "twin xl bed frame", "loft bed frame",
-    "dorm trash can", "portable cooler", "mini fridge with freezer", "compact microwave",
+    "dorm trash can", "trash can with lid", "portable cooler", "soft cooler bag", "mini fridge with freezer", "compact microwave",
     "wall shelves", "bookshelf for dorm", "ergonomic desk chair",
     "mushroom lamp", "sunset projection lamp", "neon sign light", "led strip lights", "lava lamp",
   ],
