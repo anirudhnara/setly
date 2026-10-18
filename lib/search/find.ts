@@ -195,7 +195,8 @@ export function tagWords(tags: StoredItem["tags"]): string {
 
 function storedToProduct(item: StoredItem): Product {
   const product = catalogItemToProduct(item);
-  return { ...product, attributes: { ...product.attributes, themes: tagWords(item.tags) } };
+  const color = item.tags.color?.family;
+  return { ...product, attributes: { ...product.attributes, themes: tagWords(item.tags), ...(color ? { color } : {}) } };
 }
 
 /** Demo-store matches first (at most half the results), then the rest. */

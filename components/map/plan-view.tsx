@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Info, Plus, Shuffle, Sparkles, ThumbsDown, Trash2, UserPlus, X,
+  ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Info, Palette, Plus, Shuffle, Sparkles, ThumbsDown, Trash2, UserPlus, X,
 } from "lucide-react";
 import { formatBudget, formatCents } from "@/components/shared/format";
 import { Avatar } from "@/components/shared/group-header";
@@ -14,7 +14,8 @@ import { readTaste, stageMap, stageTaste, type Taste } from "@/components/shared
 import { useMe } from "@/components/shared/use-me";
 import { usePlan } from "@/components/shared/use-plan";
 import { needMatches, parseMemberCount, parseQuestionnaireItems } from "@/lib/ai/parse";
-import { addIdea, chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, refineMap, suggestIdeas } from "@/lib/client";
+import { addIdea, chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, recolorSet, refineMap, suggestIdeas } from "@/lib/client";
+import { colorChoices, productColor, SWATCH } from "@/lib/catalog/product-color";
 import type { Idea } from "@/lib/ai/suggest";
 import { parseVibeLine, vibeSummary } from "@/lib/catalog/vibes";
 import { chargedCentsForSlot, planTotalCents } from "@/lib/rules/check";
@@ -71,6 +72,7 @@ export function PlanView({ groupId }: { groupId: string }) {
   const [fresh, setFresh] = useState<string[]>([]);
   const [generation, setGeneration] = useState(0);
   const [fault, setFault] = useState("");
+  const [recoloring, setRecoloring] = useState(false);
   const started = useRef(false);
   const seenSlots = useRef<Map<string, string> | null>(null);
 
@@ -217,6 +219,22 @@ export function PlanView({ groupId }: { groupId: string }) {
       setFault("That swap didn’t go through. Give it another tap.");
     } finally {
       setBusySlot(null);
+    }
+  }
+
+  async function shuffleColors() {
+    setFault("");
+    setRecoloring(true);
+    try {
+      const result = await recolorSet({ groupId });
+      await plan.mutate();
+      setOptions({});
+      setAltFor(null);
+      setReply(result.changed > 0 ? `New colors for ${result.changed} ${result.changed === 1 ? "item" : "items"}, each at about the same price.` : "No other colors at a similar price right now.");
+    } catch (error) {
+      setFault(error instanceof Error ? error.message : "Couldn't shuffle colors.");
+    } finally {
+      setRecoloring(false);
     }
   }
 
@@ -379,6 +397,11 @@ export function PlanView({ groupId }: { groupId: string }) {
             {budgetCents ? <BudgetMeter total={total} budget={budgetCents} /> : null}
           </div>
           <div className="set-actions">
+            {editable && plan.live ? (
+              <button type="button" className="btn btn-ghost" disabled={recoloring} onClick={() => void shuffleColors()}>
+                <Palette aria-hidden="true" /> {recoloring ? "Shuffling…" : "Shuffle colors"}
+              </button>
+            ) : null}
             <Link className="btn btn-ghost" href={`/g/${groupId}/join`}><UserPlus aria-hidden="true" /> Invite</Link>
             <Link className="btn btn-accent" href={`/g/${groupId}/split`}>Split &amp; pay <ArrowRight aria-hidden="true" /></Link>
           </div>
@@ -542,6 +565,29 @@ export function PlanView({ groupId }: { groupId: string }) {
                     <span className="orbit-label">Other {leaf.slot.need.toLowerCase()} picks</span>
                     <button type="button" className="icon-action" aria-label="Close alternatives" onClick={() => setAltFor(null)}><X aria-hidden="true" /></button>
                   </div>
+                  {(() => {
+                    const colors = loadingAlt === leaf.slot.id ? [] : colorChoices(leaf.product, alts);
+                    if (colors.length < 2) return null;
+                    const now = leaf.product ? productColor(leaf.product) : null;
+                    return (
+                      <div className="swatches" role="group" aria-label={`Colors for ${leaf.slot.need}`}>
+                        <span className="swatches-label">Color</span>
+                        {colors.map(({ color, product }) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={`swatch${color === now ? " on" : ""}`}
+                            style={{ "--swatch": SWATCH[color] } as CSSProperties}
+                            aria-pressed={color === now}
+                            aria-label={`${color}${product.id === leaf.product?.id ? " (current)" : `, ${formatCents(product.priceCents)}`}`}
+                            title={`${color[0]?.toUpperCase()}${color.slice(1)}${product.id === leaf.product?.id ? "" : ` · ${formatCents(product.priceCents)}`}`}
+                            disabled={busySlot === leaf.slot.id || product.id === leaf.product?.id}
+                            onClick={() => void choose(leaf.slot, product)}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {loadingAlt === leaf.slot.id ? [0, 1, 2].map((item) => <div key={item} className="alt skeleton" data-node={`alt:${leaf.slot.id}:${item}`} />) : null}
                   {loadingAlt !== leaf.slot.id && alts.length === 0 ? <p className="alts-empty">No other matches from the stores right now.</p> : null}
                   {alts.slice(0, 5).map((product, altIndex) => {

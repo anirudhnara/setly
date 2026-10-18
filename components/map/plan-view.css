@@ -229,6 +229,15 @@ button.zone-node:not(.open) .zone-grow svg { animation: twinkle 2.4s ease-in-out
 .leaf-image { width: 68px; height: 68px; }
 .leaf-text strong { font-size: 13.5px; }
 
+/* Color swatches in an item's alternatives */
+.swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 16px; background: var(--paper); animation: fade .3s var(--ease) both; }
+.swatches-label { margin-right: 2px; color: var(--mute); font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.swatch { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--swatch); box-shadow: inset 0 0 0 1px rgba(28, 26, 23, .18); cursor: pointer; transition: transform .2s var(--ease), box-shadow .2s; }
+.swatch:hover:not(:disabled) { transform: scale(1.12); }
+.swatch.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); cursor: default; }
+.swatch:disabled:not(.on) { opacity: .5; }
+.swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
 /* Ticked items saved for later to fit the budget, one tap to add back */
 .left-out { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow-sm); }
 .left-out > span { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13.5px; }

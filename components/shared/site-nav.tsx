@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Info, LogOut, Receipt, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { Check, ChevronDown, CreditCard, HeartHandshake, Info, LogOut, Receipt, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
 import { readLastGroup, readMode, stageMode, watchMode, type FundingMode } from "@/components/shared/session";
@@ -11,10 +11,15 @@ import { firebaseConfigured, signOut, watchAuth } from "@/lib/auth/client";
 
 const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
 
-const LINKS = [
+const BASE_LINKS = [
   { href: "/home", label: "New set", icon: Sparkles },
   { href: "/account", label: "My sets", icon: Receipt },
 ];
+/** A parent or an insurer funding someone else gets their dashboard in the bar. */
+const MODE_LINKS: Partial<Record<FundingMode, { href: string; label: string; icon: typeof Sparkles }>> = {
+  parent: { href: "/family", label: "Family", icon: HeartHandshake },
+  insurance: { href: "/claims", label: "Claims", icon: ShieldCheck },
+};
 
 /**
  * The top bar on every app screen: slides in, a pill glides to whichever link you point at, it tightens on scroll,
@@ -36,6 +41,8 @@ export function SiteNav() {
   const menuRef = useRef<HTMLDivElement>(null);
   const modeRef = useRef<HTMLDivElement>(null);
 
+  const modeLink = MODE_LINKS[mode] ?? (pathname === "/family" ? MODE_LINKS.parent : pathname === "/claims" ? MODE_LINKS.insurance : undefined);
+  const LINKS = modeLink ? [...BASE_LINKS, modeLink] : BASE_LINKS;
   const active = pathname === "/vibes" ? "/home" : (LINKS.find((link) => pathname === link.href || pathname.startsWith(`${link.href}/`))?.href ?? null);
 
   useEffect(() => {
@@ -151,6 +158,9 @@ export function SiteNav() {
                   <Link role="menuitem" href="/account" onClick={() => setMenu(false)}><UserRound aria-hidden="true" /> Account</Link>
                   <Link role="menuitem" href="/account#purchases" onClick={() => setMenu(false)}><Receipt aria-hidden="true" /> Purchases</Link>
                   <Link role="menuitem" href="/account#protection" onClick={() => setMenu(false)}><ShieldCheck aria-hidden="true" /> Protection</Link>
+                  <Link role="menuitem" href="/family" onClick={() => setMenu(false)}><HeartHandshake aria-hidden="true" /> Family cards</Link>
+                  <Link role="menuitem" href="/claims" onClick={() => setMenu(false)}><ShieldCheck aria-hidden="true" /> Claims</Link>
+                  <Link role="menuitem" href="/card" onClick={() => setMenu(false)}><CreditCard aria-hidden="true" /> Cards sent to me</Link>
                   <Link role="menuitem" href="/" onClick={() => setMenu(false)}><Info aria-hidden="true" /> About Setly</Link>
                   <button type="button" role="menuitem" onClick={() => void leave()}><LogOut aria-hidden="true" /> Sign out</button>
                 </div>
