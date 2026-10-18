@@ -125,6 +125,18 @@ interface SerpShoppingResult {
 }
 
 async function searchSerpApi(query: string): Promise<Product[]> {
+  return toProducts(await fetchShoppingResults(query));
+}
+
+/**
+ * Every usable result for one query, used listings included (marked `condition: "used"`).
+ * For building the catalog (scripts/harvest-catalog.ts); spends one search and skips the cache.
+ */
+export async function searchSerpApiForCatalog(query: string): Promise<Product[]> {
+  return toProducts(await fetchShoppingResults(query), { limit: Infinity, keepUsed: true });
+}
+
+async function fetchShoppingResults(query: string): Promise<SerpShoppingResult[]> {
   const apiKey = getEnv().SERPAPI_KEY;
   if (!apiKey) throw new Error("SERPAPI_KEY is not set");
   const params = new URLSearchParams({ engine: "google_shopping", q: query, gl: "us", hl: "en", api_key: apiKey });
@@ -139,16 +151,16 @@ async function searchSerpApi(query: string): Promise<Product[]> {
   const body: unknown = await response.json();
   if (!isRecord(body)) throw new Error("SerpApi returned an unexpected body");
   if (typeof body.error === "string") throw new Error(body.error);
-  const raw = Array.isArray(body.shopping_results) ? (body.shopping_results as SerpShoppingResult[]) : [];
-  return toProducts(raw);
+  return Array.isArray(body.shopping_results) ? (body.shopping_results as SerpShoppingResult[]) : [];
 }
 
-/** Exported for tests. Drops results without a price, store, or link, used items, and duplicates. */
-export function toProducts(raw: SerpShoppingResult[]): Product[] {
+/** Exported for tests. Drops results without a price, store, or link, duplicates, and (unless `keepUsed`) used items. */
+export function toProducts(raw: SerpShoppingResult[], options: { limit?: number; keepUsed?: boolean } = {}): Product[] {
+  const { limit = MAX_RESULTS, keepUsed = false } = options;
   const seen = new Set<string>();
   const products: Product[] = [];
   for (const item of raw) {
-    if (products.length >= MAX_RESULTS) break;
+    if (products.length >= limit) break;
     const title = typeof item.title === "string" ? item.title.trim() : "";
     const store = typeof item.source === "string" ? normalizeStore(item.source) : "";
     const url = typeof item.link === "string" ? item.link : typeof item.product_link === "string" ? item.product_link : "";
@@ -158,7 +170,7 @@ export function toProducts(raw: SerpShoppingResult[]): Product[] {
         : typeof item.price === "string"
           ? normalizePriceToCents(item.price)
           : 0;
-    if (!title || !store || !url || priceCents <= 0 || item.second_hand_condition) continue;
+    if (!title || !store || !url || priceCents <= 0 || (item.second_hand_condition && !keepUsed)) continue;
     const dedupeKey = `${store.toLowerCase()}|${title.toLowerCase()}`;
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
@@ -166,6 +178,7 @@ export function toProducts(raw: SerpShoppingResult[]): Product[] {
     if (typeof item.rating === "number") attributes.rating = item.rating;
     if (typeof item.reviews === "number") attributes.reviews = item.reviews;
     if (typeof item.delivery === "string") attributes.delivery = item.delivery;
+    if (item.second_hand_condition) attributes.condition = "used";
     const imageUrl =
       typeof item.thumbnail === "string" && item.thumbnail
         ? item.thumbnail

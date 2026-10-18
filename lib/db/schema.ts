@@ -166,7 +166,7 @@ export const catalogItems = pgTable(
     url: text("url").notNull(),
     imageUrl: text("image_url").notNull(),
     condition: text("condition").$type<"new" | "used">().notNull(),
-    source: text("source").$type<"search" | "ebay" | "facebook_marketplace" | "craigslist" | "other">().notNull(),
+    source: text("source").$type<"search" | "bestbuy" | "ebay" | "facebook_marketplace" | "craigslist" | "manual" | "other">().notNull(),
     rating: real("rating"),
     reviewCount: integer("review_count"),
     /** Rating weighted by review count. Higher is better; used to rank within a category. */

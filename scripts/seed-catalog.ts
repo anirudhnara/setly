@@ -7,26 +7,22 @@ import { existsSync } from "node:fs";
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 async function main() {
-  const [{ getDb }, { searchCache }, { catalogItemsFromSearches, CATALOG_CATEGORIES, CATEGORY_TARGET }, { upsertCatalogItems }] =
-    await Promise.all([
-      import("@/lib/db/client"),
-      import("@/lib/db/schema"),
-      import("@/lib/search/catalog"),
-      import("@/lib/search/catalog-store"),
-    ]);
-  const rows = await getDb().select().from(searchCache);
+  const [{ getDb }, { searchCache }, { catalogItemsFromSearches }, { upsertCatalogItems }, { printCoverage }] = await Promise.all([
+    import("@/lib/db/client"),
+    import("@/lib/db/schema"),
+    import("@/lib/search/catalog"),
+    import("@/lib/search/catalog-store"),
+    import("./catalog-report"),
+  ]);
+  // "catalog:" rows are written by harvest-catalog.ts, which already loaded them with their real source.
+  const rows = (await getDb().select().from(searchCache)).filter((row) => !row.query.startsWith("catalog:"));
   const searches = rows.map((row) => ({ query: row.query, products: productsFrom(row.resultsJson), fetchedAt: row.fetchedAt }));
   const items = catalogItemsFromSearches(searches);
   await upsertCatalogItems(items);
 
   const raw = searches.reduce((sum, search) => sum + search.products.length, 0);
   console.log(`${rows.length} cached searches, ${raw} results, ${items.length} catalog items after dedupe and the 3 star floor.`);
-  for (const category of CATALOG_CATEGORIES) {
-    const inCategory = items.filter((item) => item.category === category);
-    const groups = new Set(inCategory.map((item) => item.variantGroup)).size;
-    const flag = inCategory.length < CATEGORY_TARGET ? `  needs ${CATEGORY_TARGET - inCategory.length} more` : "";
-    console.log(`  ${category.padEnd(12)} ${String(inCategory.length).padStart(4)} items, ${String(groups).padStart(4)} variant groups${flag}`);
-  }
+  await printCoverage();
   process.exit(0);
 }
 

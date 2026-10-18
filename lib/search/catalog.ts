@@ -72,7 +72,7 @@ const THEMES: [string, RegExp][] = [
   ["retro", /\b(retro|vintage|groovy|70s|80s)\b/],
   ["quirky", /\b(mushroom|neon|novelty|cloud|moon|dinosaur|frog|cute|funny|lava|disco|squiggle|wavy|kawaii|ufo|astronaut)\b/],
   ["gaming", /\b(gaming|gamer|rgb)\b/],
-  ["glam", /\b(glam|marble|crystal|velvet)\b/],
+  ["glam", /\b(glam|marble|crystal)\b/],
 ];
 /** Themes that pair with almost anything, so they don't make an item a set anchor. */
 const NEUTRAL_THEMES = new Set(["minimalist", "modern", "scandinavian"]);
@@ -164,7 +164,12 @@ function numberAttribute(attributes: Record<string, string | number>, key: strin
 }
 
 /** One search result as a catalog item, or null when it's rated below 3 stars. */
-export function catalogItemFromProduct(product: Product, query: string, fetchedAt: Date): CatalogItem | null {
+export function catalogItemFromProduct(
+  product: Product,
+  query: string,
+  fetchedAt: Date,
+  source: CatalogItem["source"] = "search",
+): CatalogItem | null {
   const rating = numberAttribute(product.attributes, "rating");
   if (rating !== null && rating < MIN_RATING) return null;
   const reviewCount = numberAttribute(product.attributes, "reviews");
@@ -179,8 +184,8 @@ export function catalogItemFromProduct(product: Product, query: string, fetchedA
     priceCents: product.priceCents,
     url: product.url,
     imageUrl: product.imageUrl,
-    condition: "new",
-    source: "search",
+    condition: product.attributes.condition === "used" ? "used" : "new",
+    source,
     rating,
     reviewCount,
     qualityScore: qualityScore(rating, reviewCount),
@@ -220,17 +225,23 @@ const SOURCE_STORE: Record<(typeof SECONDHAND_SOURCES)[number], string> = {
   other: "Other seller",
 };
 
-/** A listing someone adds by hand, usually secondhand from eBay or Facebook Marketplace. */
-export const secondhandItemInputSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  category: z.enum(CATALOG_CATEGORIES),
-  priceCents: z.number().int().positive(),
-  url: z.url(),
-  imageUrl: z.url().optional(),
-  source: z.enum(SECONDHAND_SOURCES),
-  condition: z.enum(["new", "used"]).default("used"),
-  addedBy: z.string().trim().min(1).max(60).optional(),
-});
+/**
+ * A listing someone adds by hand: secondhand from eBay or Facebook Marketplace, or a "manual" pick from any store.
+ * `store` defaults to the marketplace name; manual picks must give one.
+ */
+export const secondhandItemInputSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    category: z.enum(CATALOG_CATEGORIES),
+    priceCents: z.number().int().positive(),
+    url: z.url(),
+    imageUrl: z.url().optional(),
+    source: z.enum([...SECONDHAND_SOURCES, "manual"]),
+    store: z.string().trim().min(1).max(80).optional(),
+    condition: z.enum(["new", "used"]).default("used"),
+    addedBy: z.string().trim().min(1).max(60).optional(),
+  })
+  .refine((input) => input.source !== "manual" || input.store, { message: "Manual items need a store", path: ["store"] });
 export type SecondhandItemInput = z.input<typeof secondhandItemInputSchema>;
 
 export function catalogItemFromSecondhand(input: SecondhandItemInput, now: Date): CatalogItem {
@@ -240,7 +251,7 @@ export function catalogItemFromSecondhand(input: SecondhandItemInput, now: Date)
     id: `user_${shortHash(parsed.url)}`,
     category: parsed.category,
     title: parsed.title,
-    store: SOURCE_STORE[parsed.source],
+    store: parsed.store ?? (parsed.source === "manual" ? "" : SOURCE_STORE[parsed.source]),
     priceCents: parsed.priceCents,
     url: parsed.url,
     imageUrl: parsed.imageUrl ?? `https://placehold.co/480x360?text=${encodeURIComponent(parsed.title.slice(0, 40))}`,

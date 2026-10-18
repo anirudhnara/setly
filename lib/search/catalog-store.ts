@@ -11,10 +11,14 @@ async function db() {
   return { db: getDb(), schema };
 }
 
-/** Inserts or refreshes items and records each price in the price_points hypertable. */
-export async function upsertCatalogItems(items: CatalogItem[]) {
+/**
+ * Inserts or refreshes items and records each price in the price_points hypertable.
+ * One search can list the same product from two stores; the first (cheapest-ranked) copy wins.
+ */
+export async function upsertCatalogItems(input: CatalogItem[]) {
   const { db: database, schema } = await db();
   const { catalogItems, pricePoints } = schema;
+  const items = [...new Map(input.toReversed().map((item) => [item.id, item])).values()];
   for (let start = 0; start < items.length; start += BATCH_SIZE) {
     const batch = items.slice(start, start + BATCH_SIZE);
     await database
@@ -82,4 +86,19 @@ export async function addSecondhandItem(input: SecondhandItemInput) {
   const item = catalogItemFromSecondhand(input, new Date());
   await upsertCatalogItems([item]);
   return item;
+}
+
+/** Item, variant group, and used-item counts per category, for checking coverage against the target. */
+export async function catalogCoverage() {
+  const { db: database, schema } = await db();
+  const { catalogItems } = schema;
+  return database
+    .select({
+      category: catalogItems.category,
+      items: sql<number>`count(*)::int`,
+      variantGroups: sql<number>`count(distinct ${catalogItems.variantGroup})::int`,
+      used: sql<number>`(count(*) filter (where ${catalogItems.condition} = 'used'))::int`,
+    })
+    .from(catalogItems)
+    .groupBy(catalogItems.category);
 }
