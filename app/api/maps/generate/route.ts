@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { generateMapRequestSchema, readRequest, type ApiErrorBody, type GenerateMapResponse } from "@/lib/contracts";
+import { generateMapRequestSchema, type ApiErrorBody, type GenerateMapResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { generateMapFromPrompt } from "@/lib/ai/gemini";
 import { jsonError } from "@/lib/db/http";
 

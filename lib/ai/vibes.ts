@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GEMINI_FAST_MODEL, askGeminiJson, describe, geminiConfigured } from "@/lib/ai/llm";
+import { GEMINI_FAST_MODEL, askGeminiJson, geminiConfigured } from "@/lib/ai/llm";
 import { VIBES, VIBE_LABELS, vibeFor, type VibeGroup } from "@/lib/catalog/vibes";
 
 /**
@@ -44,7 +44,7 @@ export async function seedVibes(request: z.infer<typeof vibeSeedRequestSchema>):
       const vibes = cleanSeed(result.vibes);
       if (vibes.length >= 6) return { title: result.title.trim().slice(0, 60), vibes: vibes.slice(0, 18), source: "gemini" };
     } catch (error) {
-      console.warn(`Vibe seeding fell back to rules: ${describe(error)}`);
+      console.warn("Vibe seeding fell back to rules");
     }
   }
   return { title: titleFrom(request.prompt), vibes: rulesSeed(request.prompt), source: "rules" };

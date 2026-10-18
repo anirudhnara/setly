@@ -7,5 +7,5 @@ export function jsonError(error: unknown) {
   if (error instanceof LedgerError || error instanceof AuthError) {
     return NextResponse.json({ error: error.message } satisfies ApiErrorBody, { status: error.status });
   }
-  throw error;
+  return NextResponse.json({ error: "Internal server error" } satisfies ApiErrorBody, { status: 500 });
 }

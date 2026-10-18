@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GEMINI_FAST_MODEL, askGeminiJson, describe, geminiConfigured } from "@/lib/ai/llm";
+import { GEMINI_FAST_MODEL, askGeminiJson, geminiConfigured } from "@/lib/ai/llm";
 
 /**
  * The chat that builds the brief. Gemini asks one short, relevant question at a time and returns tappable answers
@@ -69,7 +69,7 @@ export async function runInterview(request: InterviewRequest): Promise<Interview
   try {
     return await askGeminiJson({ prompt, system: INTERVIEW_SYSTEM, schema: interviewTurnSchema, timeoutMs: INTERVIEW_TIMEOUT_MS, temperature: 0.6, model: GEMINI_FAST_MODEL });
   } catch (error) {
-    console.warn(`Interview fell back to scripted questions: ${describe(error)}`);
+    console.warn("Interview fell back to scripted questions");
     return null;
   }
 }

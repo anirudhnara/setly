@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, returnItemRequestSchema, type ApiErrorBody, type ReturnItemResponse } from "@/lib/contracts";
+import { returnItemRequestSchema, type ApiErrorBody, type ReturnItemResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { jsonError } from "@/lib/db/http";
 import { requireMember, returnItem } from "@/lib/db/queries";
 import { refundContributions } from "@/lib/payments/stripe-refunds";

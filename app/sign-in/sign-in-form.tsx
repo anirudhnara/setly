@@ -3,12 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { firebaseConfigured, signInWithEmail, signInWithGoogle, signUpWithEmail, watchAuth } from "@/lib/auth/client";
+import { safeNextPath } from "@/lib/auth/redirect";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
-function nextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
-}
 
 function signInMessage(error: unknown) {
   if (typeof error === "object" && error && "code" in error) {
@@ -48,7 +45,7 @@ export function SignInForm() {
   }, []);
 
   function finish() {
-    router.push(nextPath(searchParams.get("next")));
+    router.push(safeNextPath(searchParams.get("next")));
   }
 
   useEffect(() => {

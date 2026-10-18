@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody } from "@/lib/contracts";
+import { type ApiErrorBody } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { interviewRequestSchema, runInterview, type InterviewResponse } from "@/lib/ai/interview";
 import { warmGemini } from "@/lib/ai/llm";
 import { jsonError } from "@/lib/db/http";

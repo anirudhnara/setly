@@ -20,7 +20,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const body: SlotOptionsResponse = { products };
     return NextResponse.json(body);
   } catch (error) {
-    console.error("Slot options failed", error);
+    console.error("Slot options failed");
     return NextResponse.json({ error: "Couldn't load options for this slot." } satisfies ApiErrorBody, { status: 500 });
   }
 }
