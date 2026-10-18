@@ -119,7 +119,7 @@ export function Console() {
       const grown = await growMap(created.group.id).catch(() => null);
       if (grown) stageMap(created.group.id, grown.map);
       setBuildStep(BUILD_STEPS.length);
-      window.setTimeout(() => router.push(`/g/${created.group.id}`), 650);
+      window.setTimeout(() => window.location.assign(`/g/${created.group.id}`), 650);
     } catch {
       setPhase("failed");
     }
