@@ -1,4 +1,5 @@
-import type { MapData, Member, MemberShare, Slot } from "@/lib/types";
+import type { CheckoutLaneName, MapData, Member, MemberShare, ShareLine, Slot } from "@/lib/types";
+import { bufferCents, ZINC_FEE_CENTS } from "@/lib/money/buffer";
 import { splitCents } from "@/lib/money/cents";
 
 /**
@@ -11,27 +12,53 @@ import { splitCents } from "@/lib/money/cents";
  * - Already-owned slots cost nothing and do not add a line.
  * - A slot with no chosen product charges nothing.
  *
+ * With `laneForStore` (checkout pricing), each store also gets:
+ * - a `buffer` line: 10% of the store's subtotal, rounded up, split by each member's item cents at that store;
+ * - for Zinc stores, a `zinc_fee` line: $1 split evenly, leftover cents to the earliest members.
+ * Whatever the buffer and fee don't end up covering is refunded at settle (lib/money/leftover.ts).
+ *
  * `MemberShare.totalCents` is the sum of that member's lines.
  */
-export function computeShares(map: MapData, members: Member[]): MemberShare[] {
+export function computeShares(map: MapData, members: Member[], laneForStore?: (store: string) => CheckoutLaneName): MemberShare[] {
   const ordered = [...members].sort(byJoin);
-  const lines = new Map<string, { slotId: string; cents: number }[]>();
+  const lines = new Map<string, ShareLine[]>();
   for (const member of ordered) lines.set(member.id, []);
 
   for (const slot of map.slots) {
-    const charged = chargedCents(map, slot);
-    if (charged === null || charged <= 0 || slot.payType === "already_owned") continue;
+    const product = chosenProduct(map, slot);
+    const charged = product ? product.priceCents * slot.quantity : null;
+    if (!product || charged === null || charged <= 0 || slot.payType === "already_owned") continue;
+    const store = product.store;
     if (slot.payType === "per_person") {
       for (const member of ordered) {
-        lines.get(member.id)?.push({ slotId: slot.id, cents: charged });
+        lines.get(member.id)?.push({ kind: "item", slotId: slot.id, store, cents: charged });
       }
       continue;
     }
     const parts = splitCents(charged, ordered.map(() => 1));
     ordered.forEach((member, index) => {
       const cents = parts[index] ?? 0;
-      if (cents > 0) lines.get(member.id)?.push({ slotId: slot.id, cents });
+      if (cents > 0) lines.get(member.id)?.push({ kind: "item", slotId: slot.id, store, cents });
     });
+  }
+
+  if (laneForStore) {
+    const stores = [...new Set(ordered.flatMap((member) => (lines.get(member.id) ?? []).map((line) => line.store ?? "")))].filter(Boolean);
+    for (const store of stores) {
+      const weights = ordered.map((member) =>
+        (lines.get(member.id) ?? []).filter((line) => line.store === store).reduce((sum, line) => sum + line.cents, 0),
+      );
+      const subtotal = weights.reduce((sum, cents) => sum + cents, 0);
+      const buffers = splitCents(bufferCents(subtotal), weights);
+      const fees = laneForStore(store) === "zinc" ? splitCents(ZINC_FEE_CENTS, ordered.map(() => 1)) : [];
+      ordered.forEach((member, index) => {
+        const memberLines = lines.get(member.id);
+        const buffer = buffers[index] ?? 0;
+        const fee = fees[index] ?? 0;
+        if (buffer > 0) memberLines?.push({ kind: "buffer", slotId: null, store, cents: buffer });
+        if (fee > 0) memberLines?.push({ kind: "zinc_fee", slotId: null, store, cents: fee });
+      });
+    }
   }
 
   return ordered.map((member) => {
@@ -44,11 +71,9 @@ export function computeShares(map: MapData, members: Member[]): MemberShare[] {
   });
 }
 
-function chargedCents(map: MapData, slot: Slot) {
+function chosenProduct(map: MapData, slot: Slot) {
   if (!slot.chosenProductId) return null;
-  const product = map.products.find((item) => item.id === slot.chosenProductId);
-  if (!product) return null;
-  return product.priceCents * slot.quantity;
+  return map.products.find((item) => item.id === slot.chosenProductId) ?? null;
 }
 
 function byJoin(left: Member, right: Member) {

@@ -13,6 +13,8 @@ const envSchema = z
     BESTBUY_API_KEY: z.string().min(1).optional(),
     EBAY_CLIENT_ID: z.string().min(1).optional(),
     EBAY_CLIENT_SECRET: z.string().min(1).optional(),
+    CHECKOUT_ZINC: z.enum(["off", "sandbox", "live"]).default("off"),
+    ZINC_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.MOCK_AI !== "1") {
@@ -29,6 +31,12 @@ const envSchema = z
       }
       if (!value.STRIPE_WEBHOOK_SECRET) {
         ctx.addIssue({ code: "custom", path: ["STRIPE_WEBHOOK_SECRET"], message: "Required when ISSUER is stripe" });
+      }
+    }
+    if (value.CHECKOUT_ZINC !== "off") {
+      const prefix = value.CHECKOUT_ZINC === "sandbox" ? "zn_test_" : "zn_live_";
+      if (!value.ZINC_API_KEY?.startsWith(prefix)) {
+        ctx.addIssue({ code: "custom", path: ["ZINC_API_KEY"], message: `Must start with ${prefix} when CHECKOUT_ZINC is ${value.CHECKOUT_ZINC}` });
       }
     }
   });
@@ -53,7 +61,15 @@ export function getEnv(): Env {
     BESTBUY_API_KEY: present(process.env.BESTBUY_API_KEY),
     EBAY_CLIENT_ID: present(process.env.EBAY_CLIENT_ID),
     EBAY_CLIENT_SECRET: present(process.env.EBAY_CLIENT_SECRET),
+    CHECKOUT_ZINC: present(process.env.CHECKOUT_ZINC),
+    ZINC_API_KEY: present(process.env.ZINC_API_KEY),
   });
+}
+
+/** Zinc lane mode. `off` runs the in-repo simulator and makes no network calls. */
+export function checkoutZincMode(): Env["CHECKOUT_ZINC"] {
+  const mode = process.env.CHECKOUT_ZINC;
+  return mode === "sandbox" || mode === "live" ? mode : "off";
 }
 
 export function mockAiEnabled() {

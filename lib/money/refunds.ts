@@ -38,8 +38,10 @@ export function computeRefunds(
       id: `ref_${nanoid(8)}`,
       groupId,
       productId,
+      storeOrderId: null,
       memberId: payer.memberId,
       amountCents,
+      reason: "return",
       createdAt,
     };
     return [refund];

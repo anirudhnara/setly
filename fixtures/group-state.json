@@ -212,59 +212,67 @@
       {
         "id": "prod_sofa",
         "slotId": "slot_sofa",
-        "imageUrl": "https://placehold.co/480x360?text=Harlow%203-seat%20sofa",
+        "imageUrl": "",
         "attributes": {
           "seats": 3,
           "color": "warm beige",
           "widthIn": 84,
           "depthIn": 36,
-          "heightIn": 34
+          "heightIn": 34,
+          "source": "demo_store",
+          "sku": "demo_fernwood_sofa_harbor"
         },
-        "title": "Harlow 3-seat sofa",
-        "store": "Wayfair",
-        "priceCents": 54900,
-        "url": "https://www.wayfair.com/keyword.php?keyword=3+seat+sofa"
+        "title": "Harbor 3-Seat Boucle Sofa, Oat",
+        "store": "Fernwood Home",
+        "priceCents": 52900,
+        "url": "/api/stores/fernwood-home"
       },
       {
         "id": "prod_rug",
         "slotId": "slot_rug",
-        "imageUrl": "https://placehold.co/480x360?text=Washable%20woven%20area%20rug",
+        "imageUrl": "",
         "attributes": {
-          "material": "wool blend"
+          "material": "jute",
+          "source": "demo_store",
+          "sku": "demo_fernwood_rug_dune"
         },
-        "title": "Washable woven area rug",
-        "store": "Target",
-        "priceCents": 8990,
-        "url": "https://www.target.com/s?searchTerm=washable+area+rug"
+        "title": "Dune Flatweave Jute Rug, 5x7",
+        "store": "Fernwood Home",
+        "priceCents": 9900,
+        "url": "/api/stores/fernwood-home"
       },
       {
         "id": "prod_lamp",
         "slotId": "slot_lamp",
-        "imageUrl": "https://placehold.co/480x360?text=Tripod%20floor%20lamp",
+        "imageUrl": "",
         "attributes": {
           "bulbBase": "E26",
-          "style": "tripod"
+          "style": "tripod",
+          "source": "demo_store",
+          "sku": "demo_quillby_floor_column"
         },
-        "title": "Tripod floor lamp",
-        "store": "IKEA",
-        "priceCents": 4990,
-        "url": "https://www.ikea.com/us/en/search/?q=floor%20lamp"
+        "title": "Column Paper Floor Lamp, Warm White",
+        "store": "Quillby Lighting",
+        "priceCents": 6900,
+        "url": "/api/stores/quillby-lighting"
       },
       {
         "id": "prod_table",
         "slotId": "slot_table",
-        "imageUrl": "https://placehold.co/480x360?text=Round%20oak%20coffee%20table",
+        "imageUrl": "",
         "attributes": {
           "material": "oak",
           "shape": "round",
           "widthIn": 36,
           "depthIn": 36,
-          "heightIn": 18
+          "heightIn": 18,
+          "source": "demo_store",
+          "sku": "demo_tallpine_table_live_edge"
         },
-        "title": "Round oak coffee table",
-        "store": "Article",
-        "priceCents": 12900,
-        "url": "https://www.article.com/search?query=oak+coffee+table"
+        "title": "Live-Edge Pine Coffee Table",
+        "store": "Tallpine Outfitters",
+        "priceCents": 13900,
+        "url": "/api/stores/tallpine-outfitters"
       },
       {
         "id": "prod_pillows",
@@ -374,7 +382,7 @@
           "maxCents": 120000
         },
         "status": "ok",
-        "message": "$1,047.59 of the $1,200 budget, $152.41 left.",
+        "message": "$1,065.79 of the $1,200 budget, $134.21 left.",
         "groupId": "grp_apartment"
       },
       {
@@ -455,185 +463,457 @@
   "shares": [
     {
       "memberId": "mem_ani",
-      "totalCents": 26192,
+      "totalCents": 29364,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
-          "cents": 13725
+          "store": "Fernwood Home",
+          "cents": 13225
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
-          "cents": 2248
+          "store": "Fernwood Home",
+          "cents": 2475
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
-          "cents": 1248
+          "store": "Quillby Lighting",
+          "cents": 1725
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
-          "cents": 3225
+          "store": "Tallpine Outfitters",
+          "cents": 3475
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1998
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 875
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 500
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 375
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Fernwood Home",
+          "cents": 1570
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Quillby Lighting",
+          "cents": 173
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Tallpine Outfitters",
+          "cents": 348
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Target",
+          "cents": 226
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Target",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 200
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "IKEA",
+          "cents": 151
         }
       ]
     },
     {
       "memberId": "mem_jules",
-      "totalCents": 26192,
+      "totalCents": 29362,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
-          "cents": 13725
+          "store": "Fernwood Home",
+          "cents": 13225
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
-          "cents": 2248
+          "store": "Fernwood Home",
+          "cents": 2475
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
-          "cents": 1248
+          "store": "Quillby Lighting",
+          "cents": 1725
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
-          "cents": 3225
+          "store": "Tallpine Outfitters",
+          "cents": 3475
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1998
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 875
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 500
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 375
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Fernwood Home",
+          "cents": 1570
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Quillby Lighting",
+          "cents": 173
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Tallpine Outfitters",
+          "cents": 348
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Target",
+          "cents": 225
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Target",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 200
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "IKEA",
+          "cents": 150
         }
       ]
     },
     {
       "memberId": "mem_sam",
-      "totalCents": 26189,
+      "totalCents": 29359,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
-          "cents": 13725
+          "store": "Fernwood Home",
+          "cents": 13225
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
-          "cents": 2247
+          "store": "Fernwood Home",
+          "cents": 2475
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
-          "cents": 1247
+          "store": "Quillby Lighting",
+          "cents": 1725
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
-          "cents": 3225
+          "store": "Tallpine Outfitters",
+          "cents": 3475
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1997
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 875
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 500
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 375
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Fernwood Home",
+          "cents": 1570
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Quillby Lighting",
+          "cents": 172
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Tallpine Outfitters",
+          "cents": 347
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Target",
+          "cents": 225
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Target",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 200
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "IKEA",
+          "cents": 150
         }
       ]
     },
     {
       "memberId": "mem_riley",
-      "totalCents": 26186,
+      "totalCents": 29353,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
-          "cents": 13725
+          "store": "Fernwood Home",
+          "cents": 13225
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
-          "cents": 2247
+          "store": "Fernwood Home",
+          "cents": 2475
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
-          "cents": 1247
+          "store": "Quillby Lighting",
+          "cents": 1725
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
-          "cents": 3225
+          "store": "Tallpine Outfitters",
+          "cents": 3475
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1997
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 874
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 499
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 374
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Fernwood Home",
+          "cents": 1570
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Quillby Lighting",
+          "cents": 172
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Tallpine Outfitters",
+          "cents": 347
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Target",
+          "cents": 224
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Target",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 199
+        },
+        {
+          "kind": "zinc_fee",
+          "slotId": null,
+          "store": "Best Buy",
+          "cents": 25
+        },
+        {
+          "kind": "buffer",
+          "slotId": null,
+          "store": "IKEA",
+          "cents": 149
         }
       ]
     }
@@ -643,7 +923,7 @@
       "id": "con_ani",
       "groupId": "grp_apartment",
       "memberId": "mem_ani",
-      "amountCents": 26192,
+      "amountCents": 29364,
       "stripePaymentIntentId": "pi_test_mem_ani",
       "status": "paid"
     },
@@ -651,7 +931,7 @@
       "id": "con_jules",
       "groupId": "grp_apartment",
       "memberId": "mem_jules",
-      "amountCents": 26192,
+      "amountCents": 29362,
       "stripePaymentIntentId": "pi_test_mem_jules",
       "status": "paid"
     },
@@ -659,7 +939,7 @@
       "id": "con_sam",
       "groupId": "grp_apartment",
       "memberId": "mem_sam",
-      "amountCents": 26189,
+      "amountCents": 29359,
       "stripePaymentIntentId": null,
       "status": "pending"
     },
@@ -667,7 +947,7 @@
       "id": "con_riley",
       "groupId": "grp_apartment",
       "memberId": "mem_riley",
-      "amountCents": 26186,
+      "amountCents": 29353,
       "stripePaymentIntentId": null,
       "status": "pending"
     }
@@ -676,6 +956,8 @@
   "storeLimits": [],
   "authorizations": [],
   "refunds": [],
-  "fundedCents": 52384,
-  "totalCents": 104759
+  "storeOrders": [],
+  "address": null,
+  "fundedCents": 58726,
+  "totalCents": 117438
 }

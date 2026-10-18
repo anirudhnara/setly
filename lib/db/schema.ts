@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, unique } from "drizzle-orm/pg-core";
-import type { GroupStatus, MemberShare, PayType, QuantityRule, RuleStatus, RuleType } from "@/lib/types";
+import type { CheckoutLaneName, GroupStatus, MemberShare, PayType, QuantityRule, RefundReason, RuleStatus, RuleType, ShippingAddress, StoreOrderStatus, TrackingInfo } from "@/lib/types";
 import type { ColorProfile } from "@/lib/search/color";
 
 export const groups = pgTable("groups", {
@@ -11,6 +11,7 @@ export const groups = pgTable("groups", {
   status: text("status").$type<GroupStatus>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   sharesJson: jsonb("shares_json").$type<MemberShare[]>().notNull().default(sql`'[]'::jsonb`),
+  addressJson: jsonb("address_json").$type<ShippingAddress>(),
 });
 
 export const users = pgTable(
@@ -128,10 +129,30 @@ export const authorizations = pgTable("authorizations", {
 export const refunds = pgTable("refunds", {
   id: text("id").primaryKey(),
   groupId: text("group_id").notNull().references(() => groups.id),
-  productId: text("product_id").notNull().references(() => products.id),
+  productId: text("product_id").references(() => products.id),
+  storeOrderId: text("store_order_id"),
   memberId: text("member_id").notNull().references(() => members.id),
   amountCents: integer("amount_cents").notNull(),
+  reason: text("reason").$type<RefundReason>().notNull().default("return"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
+/** One store's part of checkout. See StoreOrder in lib/types.ts. */
+export const storeOrders = pgTable("store_orders", {
+  id: text("id").primaryKey(),
+  groupId: text("group_id").notNull().references(() => groups.id),
+  store: text("store").notNull(),
+  lane: text("lane").$type<CheckoutLaneName>().notNull(),
+  status: text("status").$type<StoreOrderStatus>().notNull(),
+  subtotalCents: integer("subtotal_cents").notNull(),
+  capCents: integer("cap_cents").notNull(),
+  quotedCents: integer("quoted_cents"),
+  externalId: text("external_id"),
+  attempt: integer("attempt").notNull().default(0),
+  error: text("error"),
+  tracking: jsonb("tracking").$type<TrackingInfo[]>().notNull().default(sql`'[]'::jsonb`),
+  finalTotalCents: integer("final_total_cents"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 /** Observed prices. The Timescale hypertable conversion lives in db/sql/price_points_hypertable.sql. */
