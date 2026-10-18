@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { needKey } from "@/lib/ai/build-map";
-import { GEMINI_FAST_MODEL, askGeminiJson, describe, geminiConfigured } from "@/lib/ai/llm";
+import { GEMINI_FAST_MODEL, askGeminiJson, geminiConfigured } from "@/lib/ai/llm";
 import { needMatches } from "@/lib/ai/parse";
 import { CATEGORIES } from "@/lib/catalog/taxonomy";
 import { parseVibeLine, vibeSummary } from "@/lib/catalog/vibes";
@@ -64,7 +64,7 @@ export async function suggestForZone(state: GroupState, zoneId: string): Promise
       });
       proposals = result.ideas.slice(0, 6).map((idea) => ({ need: idea.need.trim().slice(0, 60), searchQuery: idea.searchQuery.trim().slice(0, 120), why: idea.why.trim().slice(0, 70) }));
     } catch (error) {
-      console.warn(`Branch ideas fell back to rules: ${describe(error)}`);
+      console.warn("Branch ideas fell back to rules");
     }
   }
   if (proposals.length === 0) proposals = fallbackIdeas(zone.name, needs, loves);

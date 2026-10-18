@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, startCheckoutRequestSchema, type ApiErrorBody, type StartCheckoutResponse } from "@/lib/contracts";
+import { startCheckoutRequestSchema, type ApiErrorBody, type StartCheckoutResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { startCheckout } from "@/lib/checkout/orchestrator";
 import { jsonError } from "@/lib/db/http";
 

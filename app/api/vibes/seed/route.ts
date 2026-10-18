@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody } from "@/lib/contracts";
+import { type ApiErrorBody } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { seedVibes, vibeSeedRequestSchema, type VibeSeedResponse } from "@/lib/ai/vibes";
 import { jsonError } from "@/lib/db/http";
 

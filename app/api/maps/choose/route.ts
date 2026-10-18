@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody } from "@/lib/contracts";
+import { type ApiErrorBody } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { chooseRequestSchema, type ChooseResponse } from "@/lib/ai/refine";
 import { stampChangedSlots } from "@/lib/ai/stamp";
 import { jsonError } from "@/lib/db/http";
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     try {
       return jsonError(error);
     } catch {
-      console.error("Choose failed", error);
+      console.error("Choose failed");
       return NextResponse.json({ error: "Couldn't swap that item. Try again." } satisfies ApiErrorBody, { status: 500 });
     }
   }

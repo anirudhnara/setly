@@ -48,7 +48,7 @@ export async function storedProducts(query: string): Promise<Product[]> {
     }
     return pickStoredProducts(query, await entry.rows);
   } catch (error) {
-    console.warn(`Catalog read failed for "${query}": ${error instanceof Error ? error.message : "unknown error"}`);
+    console.warn("Catalog read failed; using the search fallback");
     return [];
   }
 }

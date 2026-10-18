@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody, type GetGroupResponse } from "@/lib/contracts";
+import { type ApiErrorBody, type GetGroupResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { addRequestSchema, addToZone } from "@/lib/ai/suggest";
 import { jsonError } from "@/lib/db/http";
 import { requireMember, saveMap } from "@/lib/db/queries";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     try {
       return jsonError(error);
     } catch {
-      console.error("Adding to the set failed", error);
+      console.error("Adding to the set failed");
       return NextResponse.json({ error: "Couldn’t add that. Try again." } satisfies ApiErrorBody, { status: 500 });
     }
   }

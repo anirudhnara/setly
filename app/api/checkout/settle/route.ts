@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, settleCheckoutRequestSchema, type ApiErrorBody, type SettleCheckoutResponse } from "@/lib/contracts";
+import { settleCheckoutRequestSchema, type ApiErrorBody, type SettleCheckoutResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { settleCheckout } from "@/lib/checkout/orchestrator";
 import { jsonError } from "@/lib/db/http";
 import { refundContributions } from "@/lib/payments/stripe-refunds";
