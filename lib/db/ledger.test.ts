@@ -14,6 +14,7 @@ import {
   saveMap,
   updateSlot,
 } from "@/lib/db/ledger";
+import { capCents } from "@/lib/money/buffer";
 import { setIssuerForTests } from "@/lib/payments";
 import { mockIssuer } from "@/lib/payments/mock-issuer";
 import type { MapData, Rule } from "@/lib/types";
@@ -53,7 +54,8 @@ describe("ledger", () => {
     await expect(lockGroup(created.group.id, "usr_b")).rejects.toMatchObject({ status: 403 });
     const locked = await lockGroup(created.group.id, userA.id);
     expect(locked.group.status).toBe("funding");
-    expect(locked.shares.reduce((sum, share) => sum + share.totalCents, 0)).toBe(100);
+    // $1.00 lamp at IKEA (guided) plus the 10% buffer.
+    expect(locked.shares.reduce((sum, share) => sum + share.totalCents, 0)).toBe(110);
     expect(locked.card).toBeNull();
 
     const firstShare = locked.shares.find((share) => share.memberId === organizer.id);
@@ -79,7 +81,8 @@ describe("ledger", () => {
     const funded = await getGroupState(created.group.id);
     expect(funded?.group.status).toBe("active");
     expect(funded?.card?.status).toBe("active");
-    expect(funded?.fundedCents).toBe(100);
+    expect(funded?.fundedCents).toBe(110);
+    expect(funded?.storeLimits).toMatchObject([{ store: "IKEA", limitCents: 110 }]);
 
     const again = await recordContribution({
       groupId: created.group.id,
@@ -106,8 +109,8 @@ describe("ledger", () => {
     expect(repeat.refunds.map((refund) => refund.id)).toEqual(returned.refunds.map((refund) => refund.id));
     const settled = await getGroupState(created.group.id);
     expect(settled?.group.status).toBe("settled");
-    expect(settled?.fundedCents).toBe(100);
-    expect(settled?.storeLimits[0]?.spentCents).toBe(100);
+    expect(settled?.fundedCents).toBe(110);
+    expect(settled?.storeLimits[0]?.spentCents).toBe(110);
   });
 
   it("marks a hosted Checkout payment paid only for its matching member and amount", async () => {
@@ -166,9 +169,11 @@ describe("ledger", () => {
     const state = await getGroupState(created.group.id);
     expect(state?.members).toHaveLength(5);
     expect(state?.members.filter((member) => member.isOrganizer)).toHaveLength(1);
-    expect(state?.shares.reduce((sum, share) => sum + share.totalCents, 0)).toBe(102);
+    expect(state?.shares.reduce((sum, share) => sum + share.totalCents, 0)).toBe(102 + 11);
     const ordered = [...(state?.members ?? [])].sort((left, right) => left.joinedAt.localeCompare(right.joinedAt) || left.id.localeCompare(right.id));
-    const amounts = ordered.map((member) => state?.shares.find((share) => share.memberId === member.id)?.totalCents ?? 0);
+    const itemCents = (memberId: string) =>
+      state?.shares.find((share) => share.memberId === memberId)?.lines.filter((line) => line.kind === "item").reduce((sum, line) => sum + line.cents, 0) ?? 0;
+    const amounts = ordered.map((member) => itemCents(member.id));
     expect(amounts).toEqual([21, 21, 20, 20, 20]);
 
     const slots = fourSlotMap(created.group.id);
@@ -202,7 +207,7 @@ describe("ledger", () => {
     await updateSlot("lamp", { chosenProductId: "lamp_big" });
     const after = await getGroupState(created.group.id);
     expect(after?.map.products.map((product) => product.id)).toEqual(["lamp_big"]);
-    expect((after?.totalCents ?? 0) - before.totalCents).toBe(900_00 - 100);
+    expect((after?.totalCents ?? 0) - before.totalCents).toBe(capCents(900_00) - capCents(100));
     await expect(updateSlot("lamp", { chosenProductId: "made_up" })).rejects.toMatchObject({ status: 400 });
   });
 

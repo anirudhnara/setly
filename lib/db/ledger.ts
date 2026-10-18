@@ -9,6 +9,7 @@ import { computeShares } from "@/lib/money/shares";
 import { decideAuthorization } from "@/lib/payments/decide";
 import type { DemoCheckoutResult, StoreLimitInput } from "@/lib/payments/issuer";
 import { storeLimitInputs } from "@/lib/payments/limits";
+import { laneForStore } from "@/lib/checkout/registry";
 import { checkRules } from "@/lib/rules/check";
 import type { Authorization, Contribution, GroupState, MapData, Member, Product, Refund, Slot, User } from "@/lib/types";
 
@@ -362,7 +363,7 @@ export async function seedDemoGroup() {
 async function issueCardIfFunded(state: GroupState) {
   refreshTotals(state);
   if (state.group.status !== "funding" || state.fundedCents !== state.totalCents || state.card) return;
-  const limits: StoreLimitInput[] = storeLimitInputs(state.map, state.members);
+  const limits: StoreLimitInput[] = storeLimitInputs(state.map, state.members, laneForStore);
   const { getIssuer } = await import("@/lib/payments");
   const issuer = getIssuer();
   let card;
@@ -386,7 +387,7 @@ async function issueCardIfFunded(state: GroupState) {
 }
 
 function recomputeShares(state: GroupState) {
-  state.shares = computeShares(state.map, state.members);
+  state.shares = computeShares(state.map, state.members, laneForStore);
   refreshTotals(state);
   state.map.rules = checkRules(state.map, state.members);
 }
