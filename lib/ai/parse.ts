@@ -144,6 +144,8 @@ function cleanName(text: string) {
 export interface QuestionnaireItems {
   owned: string[];
   mustHaves: string[];
+  /** Branch each must-have was picked under ("Sleep"), from "Branches they picked from: Sleep (a; b); Bath (c)." */
+  groups?: Record<string, string>;
 }
 
 /**
@@ -159,15 +161,26 @@ export function parseQuestionnaireItems(text: string): QuestionnaireItems {
       .map((part) => cleanName(part.replace(/^\s*(?:a|an|the|some|our|my)\s+/i, "")))
       .filter((part) => part.length >= 2 && part.length <= 40);
   };
+  const groups: Record<string, string> = {};
+  const branches = text.match(/Branches they picked from:\s*([^\n]+?)\.(?:\s|$)/i)?.[1] ?? "";
+  for (const [, group, list] of branches.matchAll(/([^;()]+?)\s*\(([^)]*)\)/g)) {
+    for (const item of list.split(";")) {
+      const name = cleanName(item);
+      if (name) groups[name.toLowerCase()] = cleanName(group);
+    }
+  }
   return {
     owned: grab(/(?:already (?:have|own|owned)|owned items?|have already|skip)\s*:?\s*([^.;\n]+)/i),
     mustHaves: grab(/(?:must[- ]?haves?|need(?:s)? to have|required items?)\s*:?\s*([^.;\n]+)/i),
+    ...(Object.keys(groups).length ? { groups } : {}),
   };
 }
 
 /** "lamp" matches "Floor lamp", "rugs" matches "Rug". */
 export function needMatches(need: string, item: string) {
-  const clean = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ").replace(/(?<=[a-z]{3})(?:es|s)$/, "");
+  // Every word singular, so "Trash cans (kitchen & bath)" and "Kitchen trash can" share "trash" and "can".
+  const clean = (value: string) =>
+    value.trim().toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim().split(" ").map((word) => word.replace(/(?<=[a-z]{3})(?:es|s)$/, "")).join(" ");
   const [a, b] = [clean(need), clean(item)];
   if (a === b) return true;
   const words = (value: string) => new Set(value.split(" "));
@@ -187,11 +200,21 @@ export function applyQuestionnaire(generated: GeneratedMap, items: Questionnaire
   }));
   const allNeeds = zones.flatMap((zone) => zone.slots.map((slot) => slot.need));
   const missing = items.mustHaves.filter((item) => !allNeeds.some((need) => needMatches(need, item)));
-  if (missing.length > 0 && zones.length > 0) {
-    zones[0] = {
-      ...zones[0],
-      slots: [...zones[0].slots, ...missing.map((need) => ({ need, quantityRule: "per_group" as const, quantity: 1, payType: "shared" as const, searchQuery: need, budgetWeight: 10 }))],
-    };
+  // A dropped must-have goes back under the branch it was picked from (a new branch if the plan has none), else the first.
+  for (const need of missing) {
+    if (zones.length === 0) break;
+    const slot = { need, quantityRule: "per_group" as const, quantity: 1, payType: "shared" as const, searchQuery: need, budgetWeight: 10 };
+    const group = items.groups?.[need.toLowerCase()];
+    // "Home" also finds the plan's "General Home" branch, so a group isn't split in two.
+    const same = (name: string) => group !== undefined && (name.toLowerCase() === group.toLowerCase() || name.toLowerCase().includes(group.toLowerCase()) || group.toLowerCase().includes(name.toLowerCase()));
+    let index = group ? zones.findIndex((zone) => same(zone.name)) : 0;
+    if (index < 0 && group && zones.length < 8) {
+      zones.push({ name: group.slice(0, 40), sortOrder: zones.length, slots: [] });
+      index = zones.length - 1;
+    }
+    const target = zones[Math.max(0, index)];
+    if (target.slots.length >= 15) continue;
+    zones[Math.max(0, index)] = { ...target, slots: [...target.slots, slot] };
   }
   const rules = items.mustHaves.length > 0 ? [...generated.rules, { type: "required_or_banned" as const, needs: [], params: { requiredNeeds: items.mustHaves } }] : generated.rules;
   return { ...generated, zones, rules };

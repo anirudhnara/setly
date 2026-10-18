@@ -47,12 +47,25 @@ export function readLastGroup() {
   return read("setly.lastGroup");
 }
 
-/** Who's paying, picked on the landing page. Display and prompt hint only; money logic doesn't read it. */
+/** Who's paying, picked in the chat or the nav. Display and prompt hint only; money logic doesn't read it. */
 export type FundingMode = "solo" | "group" | "parent" | "insurance";
 const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
+const MODE_EVENT = "setly:mode";
 
+/** Saves the mode and tells every open screen (nav chip, chat, vibe step) so they stay in step. */
 export function stageMode(mode: FundingMode) {
   write("setly.mode", mode);
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<FundingMode>(MODE_EVENT, { detail: mode }));
+}
+
+/** Calls back whenever the mode changes. Returns the unsubscribe function, for an effect cleanup. */
+export function watchMode(onChange: (mode: FundingMode) => void) {
+  const listener = (event: Event) => {
+    const mode = (event as CustomEvent<FundingMode>).detail;
+    if (MODES.includes(mode)) onChange(mode);
+  };
+  window.addEventListener(MODE_EVENT, listener);
+  return () => window.removeEventListener(MODE_EVENT, listener);
 }
 
 export function readMode(): FundingMode {

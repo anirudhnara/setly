@@ -6,6 +6,11 @@ import { firebaseConfigured, signInWithEmail, signInWithGoogle, signUpWithEmail,
 import { safeNextPath } from "@/lib/auth/redirect";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
+/** Where to go after signing in: the page that sent you here (a join link), otherwise straight to the chat. */
+function nextPath(value: string | null) {
+  const safe = safeNextPath(value);
+  return safe === "/" ? "/home" : safe;
+}
 
 function signInMessage(error: unknown) {
   if (typeof error === "object" && error && "code" in error) {
@@ -45,7 +50,7 @@ export function SignInForm() {
   }, []);
 
   function finish() {
-    router.push(safeNextPath(searchParams.get("next")));
+    router.push(nextPath(searchParams.get("next")));
   }
 
   useEffect(() => {
