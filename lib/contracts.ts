@@ -151,6 +151,14 @@ export const approveCheckoutRequestSchema = z.object({
 export type ApproveCheckoutRequest = z.infer<typeof approveCheckoutRequestSchema>;
 export type ApproveCheckoutResponse = GroupState;
 
+/** A member bought a guided store's items with the group card (mock issuer: stands in for the store's charge). */
+export const guidedPurchaseRequestSchema = z.object({
+  groupId: z.string().min(1),
+  storeOrderId: z.string().min(1),
+});
+export type GuidedPurchaseRequest = z.infer<typeof guidedPurchaseRequestSchema>;
+export type GuidedPurchaseResponse = GroupState;
+
 export const settleCheckoutRequestSchema = z.object({
   groupId: z.string().min(1),
 });

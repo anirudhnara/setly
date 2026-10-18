@@ -1,6 +1,8 @@
 import useSWR from "swr";
 import { currentIdToken } from "@/lib/auth/client";
 import type {
+  ApproveCheckoutRequest,
+  ApproveCheckoutResponse,
   AuthorizeRequest,
   AuthorizeResponse,
   CreateGroupRequest,
@@ -14,6 +16,8 @@ import type {
   GenerateMapRequest,
   GenerateMapResponse,
   GetGroupResponse,
+  GuidedPurchaseRequest,
+  GuidedPurchaseResponse,
   JoinGroupRequest,
   JoinGroupResponse,
   LockGroupResponse,
@@ -24,7 +28,11 @@ import type {
   PayResponse,
   ReturnItemRequest,
   ReturnItemResponse,
+  SettleCheckoutRequest,
+  SettleCheckoutResponse,
   SlotOptionsResponse,
+  StartCheckoutRequest,
+  StartCheckoutResponse,
   StripeWebhookRequest,
   StripeWebhookResponse,
   UpdateSlotRequest,
@@ -170,6 +178,26 @@ export function authorizeCard(body: AuthorizeRequest) {
 
 export function runDemoCheckout(body: DemoCheckoutRequest) {
   return post<DemoCheckoutResponse>("/api/checkout/run", body);
+}
+
+/** Creates one order per store and buys from each through its lane. Organizer only. */
+export function startCheckout(body: StartCheckoutRequest) {
+  return post<StartCheckoutResponse>("/api/checkout/start", body);
+}
+
+/** Approves or declines a store that quoted more than its cap. */
+export function approveCheckout(body: ApproveCheckoutRequest) {
+  return post<ApproveCheckoutResponse>("/api/checkout/approve", body);
+}
+
+/** Records that a member bought a guided store's items with the group card. */
+export function recordGuidedPurchase(body: GuidedPurchaseRequest) {
+  return post<GuidedPurchaseResponse>("/api/checkout/guided", body);
+}
+
+/** Refunds unspent buffer once every store order is finished. */
+export function settleCheckout(body: SettleCheckoutRequest) {
+  return post<SettleCheckoutResponse>("/api/checkout/settle", body);
 }
 
 export function returnItem(body: ReturnItemRequest) {
