@@ -4,6 +4,7 @@ import {
   catalogItemFromSecondhand,
   catalogItemsFromSearches,
   categorize,
+  rankCatalogMatches,
   qualityScore,
   roleFor,
   shippingDaysMax,
@@ -85,5 +86,43 @@ describe("secondhand items", () => {
     const base = { title: "Desk", category: "desk", url: "https://ebay.com/itm/1", source: "ebay" } as const;
     expect(() => catalogItemFromSecondhand({ ...base, priceCents: 12.5 }, new Date())).toThrow();
     expect(() => catalogItemFromSecondhand({ ...base, priceCents: 100, url: "not a url" }, new Date())).toThrow();
+  });
+});
+
+describe("rankCatalogMatches", () => {
+  const lamp = (id: string, title: string, extra: Partial<Parameters<typeof catalogItemFromSecondhand>[0]> = {}) => {
+    const item = catalogItemFromSecondhand(
+      { title, category: "lighting", priceCents: 2_999, url: `https://shop.example/${id}`, source: "manual", store: "Target", condition: "new", ...extra },
+      new Date("2026-10-17"),
+    );
+    return { ...item, id };
+  };
+  const lamps = [lamp("a", "Arc floor lamp"), lamp("b", "Tripod floor lamp"), lamp("c", "Globe floor lamps"), lamp("d", "Tall floor lamp"), lamp("e", "Mushroom desk lamp")];
+
+  it("answers generic queries from the catalog, best match first, plural-tolerant", () => {
+    const results = rankCatalogMatches("small floor lamp for dorm", lamps);
+    expect(results?.map((item) => item.id)).toEqual(expect.arrayContaining(["a", "b", "c", "d"]));
+    expect(results).toHaveLength(5);
+    expect(results?.at(-1)?.id).toBe("e");
+  });
+
+  it("matches Gemini styles and color temperature, not just the title", () => {
+    const tagged = lamps.map((item) => ({
+      ...item,
+      tags: { ...item.tags, styles: ["cozy"], color: { family: "cream", accent: "none", temperature: "warm", value: "light", saturation: "muted", confidence: "inferred", palette: "neutrals" } as const },
+    }));
+    expect(rankCatalogMatches("warm cozy lamp", tagged)).toHaveLength(5);
+  });
+
+  it("leaves specific or thin queries to a live search", () => {
+    expect(rankCatalogMatches("dyson v15 detect vacuum", lamps)).toBeNull();
+    expect(rankCatalogMatches("floor lamp", lamps.slice(0, 3))).toBeNull();
+    expect(rankCatalogMatches("for the", lamps)).toBeNull();
+    expect(rankCatalogMatches("floor lamp shade", lamps)).toBeNull();
+  });
+
+  it("skips used listings for map search", () => {
+    const used = lamps.map((item) => ({ ...item, condition: "used" as const }));
+    expect(rankCatalogMatches("floor lamp", used)).toBeNull();
   });
 });

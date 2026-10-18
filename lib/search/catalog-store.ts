@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, isNull, or, sql } from "drizzle-orm";
+import type { Product } from "@/lib/types";
 import type { CatalogCategory, CatalogItem, SecondhandItemInput } from "@/lib/search/catalog";
-import { catalogItemFromSecondhand, MIN_RATING } from "@/lib/search/catalog";
+import { catalogItemFromSecondhand, catalogItemToProduct, categorize, MIN_RATING, rankCatalogMatches } from "@/lib/search/catalog";
 
 /** Database IO for the catalog. Needs DATABASE_URL; the pure logic lives in lib/search/catalog.ts. */
 
@@ -126,4 +127,27 @@ export async function saveCatalogTags(updates: { id: string; tags: CatalogItem["
   await database.execute(
     sql`update catalog_items as c set tags = v.tags, role = v.role from (values ${values}) as v(id, tags, role) where c.id = v.id`,
   );
+}
+
+const CANDIDATE_LIMIT = 400;
+
+/**
+ * Catalog answer for a map search, or null to fall through to SerpApi. One indexed read.
+ * Never throws: a missing database or a bad row just means "not answered here".
+ */
+export async function searchStoredCatalog(query: string): Promise<Product[] | null> {
+  try {
+    const category = categorize(query, "");
+    const { db: database, schema } = await db();
+    const { catalogItems } = schema;
+    const rows = await database
+      .select()
+      .from(catalogItems)
+      .where(and(category === "other" ? undefined : eq(catalogItems.category, category), eq(catalogItems.condition, "new")))
+      .orderBy(desc(catalogItems.qualityScore))
+      .limit(CANDIDATE_LIMIT);
+    return rankCatalogMatches(query, rows)?.map(catalogItemToProduct) ?? null;
+  } catch {
+    return null;
+  }
 }

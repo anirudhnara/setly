@@ -1,7 +1,7 @@
 import catalogJson from "@/fixtures/catalog.json";
 import { getEnv, mockAiEnabled } from "@/lib/env";
 import type { Product } from "@/lib/types";
-import { getCachedSearch, setCachedSearch, type CacheFailure } from "@/lib/search/cache";
+import { databaseConfigured, getCachedSearch, setCachedSearch, type CacheFailure } from "@/lib/search/cache";
 import { dollarsToCents, normalizePriceToCents, normalizeQuery, normalizeStore, shortHash } from "@/lib/search/normalize";
 
 /**
@@ -52,13 +52,21 @@ export function searchCatalog(query: string): Product[] {
 
 /**
  * Real products for a query. Prices, stores, and URLs come from this data, never from the model.
+ * Order: the search cache, then the Tiger catalog (catalog_items), then one live SerpApi search.
+ * The catalog answers generic queries, so SerpApi is only spent on specific ones it can't match.
  * Every outcome is cached, failures included, so a bad query doesn't spend quota on every map.
  * A failure serves the sample catalog, which is never written to the cache as if it were real.
  */
 export async function searchProducts(query: string): Promise<Product[]> {
   if (mockAiEnabled()) return searchCatalog(query);
   const cached = await getCachedSearch(query);
-  if (cached) return cached.failure ? searchCatalog(query) : withoutJunk(cached.results, query);
+  if (cached && !cached.failure) return withoutJunk(cached.results, query);
+  if (databaseConfigured()) {
+    const { searchStoredCatalog } = await import("@/lib/search/catalog-store");
+    const stored = await searchStoredCatalog(query);
+    if (stored) return withoutJunk(stored, query);
+  }
+  if (cached) return searchCatalog(query);
   try {
     const results = withoutJunk(await searchSerpApi(query), query);
     if (results.length > 0) {

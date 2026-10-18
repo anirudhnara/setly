@@ -287,3 +287,63 @@ function round(value: number, places: number) {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
 }
+
+/** Words that don't narrow a search ("small desk for dorm" is about desks). */
+const QUERY_STOPWORDS = new Set([
+  "for", "with", "and", "the", "set", "pack", "piece", "dorm", "room", "apartment", "home", "best", "good", "cheap",
+  "small", "large", "big", "new", "one", "two", "three", "four", "person", "people",
+]);
+
+export const CATALOG_MIN_MATCHES = 4;
+const CATALOG_MAX_RESULTS = 8;
+
+function queryWords(query: string) {
+  return [...new Set(query.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/[\s-]+/))].filter(
+    (word) => word.length > 2 && !QUERY_STOPWORDS.has(word),
+  );
+}
+
+/** Title plus every tag, so "cozy" or "warm" can match an item whose title doesn't say it. */
+function searchableText(item: CatalogItem) {
+  const { color, styles = [], themes, colors, sizes } = item.tags;
+  const colorWords = color ? [color.family, color.accent, color.temperature, color.palette, color.saturation] : [];
+  return [item.title, item.category.replace("_", " "), ...themes, ...colors, ...sizes, ...styles, ...colorWords].join(" ").toLowerCase();
+}
+
+function matchesWord(text: string, word: string) {
+  // Plural-tolerant: "lamps" matches "lamp" and "lamp" matches "lamps".
+  const stem = word.replace(/(es|s)$/, "");
+  return new RegExp(`\\b${stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(text);
+}
+
+/**
+ * Best catalog items for a map query, or null when the catalog can't answer it well and a live search should.
+ * Items must match the head noun (the last word without digits: "mug" in "stoneware mug", "rug" in "boho rug 5x7")
+ * and at least half the query's meaningful words. A query needs four such items, so a specific request
+ * ("dyson v15 detect") still goes to SerpApi while generic ones ("cozy floor lamp") never do.
+ */
+export function rankCatalogMatches(query: string, items: CatalogItem[]): CatalogItem[] | null {
+  const words = queryWords(query);
+  const head = words.findLast((word) => !/\d/.test(word));
+  if (!head) return null;
+  const scored = items
+    .filter((item) => item.condition === "new")
+    .map((item) => {
+      const text = searchableText(item);
+      const matched = words.filter((word) => matchesWord(text, word)).length;
+      return { item, text, coverage: matched / words.length };
+    })
+    .filter((entry) => entry.coverage >= 0.5 && matchesWord(entry.text, head));
+  if (scored.length < CATALOG_MIN_MATCHES) return null;
+  scored.sort((a, b) => b.coverage - a.coverage || b.item.qualityScore - a.item.qualityScore);
+  return scored.slice(0, CATALOG_MAX_RESULTS).map((entry) => entry.item);
+}
+
+/** A catalog item in the shape map search returns. */
+export function catalogItemToProduct(item: CatalogItem): Product {
+  const attributes: Record<string, string | number> = { ...item.attributes, source: "catalog" };
+  if (item.rating !== null) attributes.rating = item.rating;
+  if (item.reviewCount !== null) attributes.reviews = item.reviewCount;
+  if (item.delivery) attributes.delivery = item.delivery;
+  return { id: item.id, slotId: "", title: item.title, store: item.store, priceCents: item.priceCents, url: item.url, imageUrl: item.imageUrl, attributes };
+}
