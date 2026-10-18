@@ -15,22 +15,17 @@ const LIKELY: Array<[RegExp, string[]]> = [
   [/living|apartment|room|house|home/i, ["Sofa", "Rug", "Floor lamp", "Coffee table", "Throw pillows"]],
 ];
 
-function list(text: string) {
-  return text.split(/\s*,\s*/).map((item) => item.trim()).filter(Boolean);
-}
-
 export function LiveSetPreview({ brief, building }: { brief: Brief; building: boolean }) {
-  const must = list(brief.mustHaves);
-  const owned = list(brief.owned);
+  const must = brief.mustHaves;
+  const owned = brief.owned;
   const guessed = (LIKELY.find(([pattern]) => pattern.test(brief.scene))?.[1] ?? [])
     .filter((item) => ![...must, ...owned].some((known) => known.toLowerCase().includes(item.toLowerCase().split(" ")[0]) || item.toLowerCase().includes(known.toLowerCase())));
-  const leaves = [
-    ...must.map((label) => ({ label, kind: "must" as const })),
-    ...owned.map((label) => ({ label, kind: "owned" as const })),
-    ...guessed.slice(0, Math.max(0, 6 - must.length - owned.length)).map((label) => ({ label, kind: "likely" as const })),
-  ];
+  const known = [...must.map((label) => ({ label, kind: "must" as const })), ...owned.map((label) => ({ label, kind: "owned" as const }))];
+  // A long ticked list shows its first few and a count, so the card stays short.
+  const shown = known.length > 8 ? [...known.slice(0, 7), { label: `+${known.length - 7} more`, kind: "more" as const }] : known;
+  const leaves: Array<{ label: string; kind: "must" | "owned" | "likely" | "more" }> = [...shown, ...guessed.slice(0, Math.max(0, 6 - shown.length)).map((label) => ({ label, kind: "likely" as const }))];
   while (leaves.length < 4) leaves.push({ label: "", kind: "likely" });
-  const facts = [brief.people ? `${brief.people} ${brief.people === 1 ? "person" : "people"}` : "", brief.budgetCents ? formatBudget(brief.budgetCents) : "", brief.vibe, brief.doorIn ? `${brief.doorIn}″ door` : "", brief.when && brief.when !== "no deadline" ? brief.when : ""].filter(Boolean);
+  const facts = [brief.people ? `${brief.people} ${brief.people === 1 ? "person" : "people"}` : "", brief.budgetCents ? formatBudget(brief.budgetCents) : "", brief.doorIn ? `${brief.doorIn}″ door` : "", brief.when].filter(Boolean);
 
   return (
     <div className={`live-set${building ? " building" : ""}`}>
@@ -43,9 +38,9 @@ export function LiveSetPreview({ brief, building }: { brief: Brief; building: bo
       <ul className="live-leaves">
         {leaves.map((leaf, index) => (
           <li key={`${leaf.kind}:${leaf.label || index}`} className={`live-leaf ${leaf.kind}${leaf.label ? "" : " empty"}`} style={{ "--i": index } as CSSProperties}>
-            <span className="live-icon" aria-hidden="true">{leaf.label ? createElement(iconForNeed(leaf.label), { strokeWidth: 1.5 }) : null}</span>
+            <span className="live-icon" aria-hidden="true">{leaf.label && leaf.kind !== "more" ? createElement(iconForNeed(leaf.label), { strokeWidth: 1.5 }) : null}</span>
             <span className="live-label">{leaf.label || " "}</span>
-            <span className="live-tag">{leaf.kind === "must" ? "Must-have" : leaf.kind === "owned" ? "Owned" : leaf.label ? "Likely" : ""}</span>
+            <span className="live-tag">{leaf.kind === "must" ? "On the list" : leaf.kind === "owned" ? "Owned" : leaf.kind === "more" ? "" : leaf.label ? "Likely" : ""}</span>
           </li>
         ))}
       </ul>

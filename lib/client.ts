@@ -33,7 +33,6 @@ import type {
 import type { InterviewRequest, InterviewResponse } from "@/lib/ai/interview";
 import type { ChooseRequest, ChooseResponse, RefineRequest, RefineResponse } from "@/lib/ai/refine";
 import type { AddRequest, SuggestRequest, SuggestResponse } from "@/lib/ai/suggest";
-import type { VibeSeedRequest, VibeSeedResponse } from "@/lib/ai/vibes";
 import type { GroupState } from "@/lib/types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -98,11 +97,6 @@ export function growMap(groupId: string) {
   return post<GetGroupResponse>("/api/maps/grow", { groupId });
 }
 
-/** Step 2: the vibes to show for a brief, with starting weights. */
-export function seedVibes(body: VibeSeedRequest) {
-  return post<VibeSeedResponse>("/api/vibes/seed", body);
-}
-
 /** Ideas to grow one branch of a saved set. */
 export function suggestIdeas(body: SuggestRequest) {
   return post<SuggestResponse>("/api/maps/suggest", body);
@@ -118,8 +112,8 @@ export function warmInterview() {
   return request<{ ok: boolean }>("/api/maps/interview").catch(() => null);
 }
 
-/** Next question while building the brief. `turn` is null when the scripted questions should run. */
-export function interviewTurn(body: InterviewRequest) {
+/** The whole questionnaire for a new set, planned once from the first message. */
+export function planInterview(body: InterviewRequest) {
   return post<InterviewResponse>("/api/maps/interview", body);
 }
 

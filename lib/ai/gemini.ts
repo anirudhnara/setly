@@ -8,7 +8,7 @@ import { applyQuestionnaire, parseBudgetCents, parseDoorWidthIn, parseMemberCoun
 import { MAP_SYSTEM_PROMPT, buildMapPrompt, buildPastePrompt } from "@/lib/ai/prompts";
 import { rankWithGemini } from "@/lib/ai/rank";
 import { generatedMapSchema, repairGeneratedMap, type GeneratedMap } from "@/lib/ai/schemas";
-import { starterStructure } from "@/lib/ai/structure";
+import { picksStructure, starterStructure } from "@/lib/ai/structure";
 import { parseVibeLine } from "@/lib/catalog/vibes";
 import { findProducts } from "@/lib/search/find";
 import { searchCatalog } from "@/lib/search/serpapi";
@@ -45,7 +45,8 @@ export async function generateMapFromPrompt(prompt: string, budgetCents?: number
     generated = applyQuestionnaire(await askGemini(buildMapPrompt(prompt, budget, { memberCount, doorWidthIn, ...items })), items);
   } catch (error) {
     console.warn(`Gemini planning fell back to the starter structure: ${describe(error)}`);
-    generated = applyQuestionnaire(starterStructure(prompt), items);
+    // Their own ticked list beats a guess from the scene: build from it when there is one.
+    generated = applyQuestionnaire(items.mustHaves.length ? picksStructure(prompt, items) : starterStructure(prompt), items);
     planned = false;
   }
   try {
@@ -53,7 +54,7 @@ export async function generateMapFromPrompt(prompt: string, budgetCents?: number
     // Ranking only helps when Gemini is reachable; after a planning failure it would fail the same way.
     const rank = planned && Date.now() - started < RANK_IF_PLANNED_WITHIN_MS ? (slots: Parameters<typeof rankWithGemini>[1]) => rankWithGemini(prompt, slots) : undefined;
     const vibes = parseVibeLine(prompt);
-    return await buildMap({ generated, budgetCents: budget, memberCount: people, groupId, doorWidthIn, search: (query) => findProducts(query, vibes), rank });
+    return await buildMap({ generated, budgetCents: budget, memberCount: people, groupId, doorWidthIn, search: (query) => findProducts(query, vibes), rank, trimToBudget: true });
   } catch (error) {
     console.warn(`Map generation fell back to the starter map: ${describe(error)}`);
     return fallback();

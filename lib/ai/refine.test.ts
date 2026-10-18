@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { absorbAnswer, emptyBrief, mergeFacts, parseLooseBudget } from "@/components/console/brief";
 import { buildMap, productKey } from "@/lib/ai/build-map";
 import { labelsToIds } from "@/lib/ai/rank";
 import { applyFeedback, diffMaps, nextBudget } from "@/lib/ai/refine";
@@ -127,7 +126,7 @@ describe("starter structure", () => {
     expect(dorm.zones.map((zone) => zone.name)).toEqual(expect.arrayContaining(["Sleep", "Bath", "Storage"]));
     expect(dorm.zones.length).toBeGreaterThanOrEqual(3);
     const sheets = dorm.zones.flatMap((zone) => zone.slots).find((slot) => slot.need === "Sheet set");
-    expect(sheets).toMatchObject({ payType: "per_person", quantity: 3 });
+    expect(sheets).toMatchObject({ payType: "per_person", quantity: 1 });
     // A thin brief is topped up with the scene's usual branches.
     expect(branchesFromPrompt("dorm").zones.length).toBeGreaterThanOrEqual(3);
     // The vibe line alone doesn't add branches ("Cool tones" isn't a request for decor).
@@ -158,31 +157,6 @@ describe("starter structure", () => {
   });
 });
 
-describe("chat brief", () => {
-  it("doesn't read a headcount as dollars", () => {
-    expect(parseLooseBudget("4 roommates")).toBeNull();
-    expect(parseLooseBudget("1.5k")).toBe(150_000);
-    const brief = absorbAnswer(emptyBrief(), "4 roommates", "How many people?");
-    expect(brief.people).toBe(4);
-    expect(brief.budgetCents).toBeNull();
-  });
-
-  it("matches a bare number to the question it answers", () => {
-    const scene = absorbAnswer(emptyBrief(), "Living room for our apartment", "");
-    expect(absorbAnswer(scene, "4", "How many people are in on this?").people).toBe(4);
-    expect(absorbAnswer(scene, "1200", "What's the total budget?").budgetCents).toBe(120_000);
-  });
-
-  it("lets model facts fill gaps without overwriting what code parsed", () => {
-    const parsed = absorbAnswer(emptyBrief(), "Living room for 4 roommates, $1,200", "");
-    const merged = mergeFacts(parsed, { people: 6, style: "warm", owned: ["Rug"] });
-    expect(merged.people).toBe(4);
-    expect(merged.vibe).toBe("warm");
-    expect(merged.owned).toBe("Rug");
-    expect(merged.budgetCents).toBe(120_000);
-  });
-});
-
 describe("search quality", () => {
   it("drops digital mockups unless the query asks for them", async () => {
     const { withoutJunk } = await import("@/lib/search/serpapi");
@@ -194,5 +168,24 @@ describe("search quality", () => {
     const sofa = (title: string, priceCents: number) => ({ ...real, id: title, title, priceCents });
     const sofas = [sofa("3 seat sofa", 49_900), sofa("Loveseat sofa", 39_900), sofa("Sectional sofa", 89_900), sofa("Sofa leg set", 1_299), sofa("DIY outdoor sofa plans", 380)];
     expect(withoutJunk(sofas, "sofa").map((item) => item.title)).toEqual(["3 seat sofa", "Loveseat sofa", "Sectional sofa"]);
+  });
+});
+
+describe("growing within budget", () => {
+  it("leaves out what doesn't fit, keeps as much as it can, and flags nothing as missing", async () => {
+    const price: Record<string, number> = { sofa: 90_000, rug: 15_000, "floor lamp": 6_000, hangers: 1_500 };
+    const search = async (query: string) => [{ id: `p_${query}`, slotId: "", title: query, store: "Target", priceCents: price[query] ?? 2_000, url: `https://example.com/${encodeURIComponent(query)}`, imageUrl: "", attributes: {} }];
+    const plan: GeneratedMap = {
+      zones: [{ name: "Living", sortOrder: 0, slots: ["Sofa", "Rug", "Floor lamp", "Hangers"].map((need) => ({ need, quantityRule: "per_group" as const, quantity: 1, payType: "shared" as const, searchQuery: need.toLowerCase(), budgetWeight: need === "Sofa" ? 40 : 10 })) }],
+      links: [],
+      rules: [{ type: "required_or_banned", needs: [], params: { requiredNeeds: ["Sofa", "Rug", "Floor lamp", "Hangers"] } }],
+    };
+    const map = await buildMap({ generated: plan, budgetCents: 30_000, memberCount: 2, groupId: "g", search, trimToBudget: true });
+    const total = map.slots.reduce((sum, slot) => sum + (map.products.find((product) => product.id === slot.chosenProductId)?.priceCents ?? 0), 0);
+    expect(total).toBeLessThanOrEqual(30_000);
+    expect(map.slots.map((slot) => slot.need)).toEqual(["Rug", "Floor lamp", "Hangers"]);
+    expect(map.rules.some((rule) => rule.status === "broken")).toBe(false);
+    // Every saved product belongs to a slot that's still in the set (the database would reject an orphan).
+    expect(map.products.every((product) => map.slots.some((slot) => slot.id === product.slotId))).toBe(true);
   });
 });

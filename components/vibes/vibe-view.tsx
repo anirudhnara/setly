@@ -10,9 +10,8 @@ import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
 import { readDraft, readMode, stageMap, stageMember, watchMode, type Draft, type FundingMode } from "@/components/shared/session";
 import type { SpaceLink, SpaceNode } from "@/components/space/space-graph";
-import type { VibeNodeData } from "@/lib/ai/vibes";
-import { vibeLine, vibeSummary, type VibeGroup } from "@/lib/catalog/vibes";
-import { createGroup, growMap, seedVibes, warmInterview } from "@/lib/client";
+import { VIBES, vibeLine, vibeSummary, type VibeGroup } from "@/lib/catalog/vibes";
+import { createGroup, growMap, warmInterview } from "@/lib/client";
 
 const SpaceGraph = dynamic(() => import("@/components/space/space-graph"), {
   ssr: false,
@@ -20,19 +19,33 @@ const SpaceGraph = dynamic(() => import("@/components/space/space-graph"), {
 });
 
 const GROUPS: VibeGroup[] = ["Style", "Color", "Material", "Priority"];
+
+interface VibeNodeData {
+  label: string;
+  group: VibeGroup;
+  color: string;
+  hint: string;
+  /** 0..1: how much "you" this vibe is. Everything starts in the middle. */
+  weight: number;
+}
+
+/** The same vibes every time, all starting at 50%: the person sets them, nothing is guessed. */
+function startingVibes(): VibeNodeData[] {
+  return VIBES.map((vibe) => ({ label: vibe.label, group: vibe.group, color: vibe.color, hint: vibe.hint, weight: 0.5 }));
+}
 const GROW_STEPS = ["Reading your answers", "Weighing your vibe", "Planning the branches", "Finding real products", "Picking the best fit for you"];
 const GROW_AT_MS = [0, 1500, 4000, 9000, 15000];
 
 /**
  * Step 2 of a new set: no products, just vibes floating around you. Pull what feels like you closer, push the rest
- * away. Nothing is bought here; the weights go to Gemini with the chat brief to plan the set in step 3.
+ * away, or use the sliders. Nothing is bought here; the weights go to Gemini with the chat brief to plan the set.
  */
 export function VibeView() {
   const router = useRouter();
   const [draft] = useState<Draft | null>(() => readDraft());
   const [mode, setMode] = useState<FundingMode>(() => readMode());
-  const [title, setTitle] = useState(draft?.name ?? "Your set");
-  const [vibes, setVibes] = useState<VibeNodeData[]>([]);
+  const [title] = useState(draft?.name ?? "Your set");
+  const [vibes, setVibes] = useState<VibeNodeData[]>(startingVibes);
   const [selected, setSelected] = useState<SpaceNode | null>(null);
   const [toast, setToast] = useState("");
   const [hint, setHint] = useState(true);
@@ -45,22 +58,9 @@ export function VibeView() {
       router.replace("/home");
       return;
     }
-    let cancelled = false;
-    const start = window.setTimeout(() => {
-      void warmInterview();
-      seedVibes({ prompt: draft.prompt, mode })
-        .then((result) => {
-          if (cancelled) return;
-          setTitle(result.title || draft.name);
-          setVibes(result.vibes);
-        })
-        .catch(() => !cancelled && setFault("Couldn’t load your vibes. Refresh to try again."));
-    }, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(start);
-    };
-  }, [draft, mode, router]);
+    // Growing the set is the next Gemini call; open the connection while they pick.
+    void warmInterview();
+  }, [draft, router]);
 
   useEffect(() => watchMode(setMode), []);
 
@@ -73,12 +73,13 @@ export function VibeView() {
   const weights = useMemo(() => Object.fromEntries(vibes.map((vibe) => [vibe.label, vibe.weight])), [vibes]);
   const { loves, avoids } = vibeSummary(weights);
 
-  function setWeight(label: string, weight: number) {
+  function setWeight(label: string, weight: number, announce = true) {
     const clamped = Math.min(1, Math.max(0, weight));
     setHint(false);
     setVibes((current) => current.map((vibe) => (vibe.label === label ? { ...vibe, weight: clamped } : vibe)));
     setSelected((current) => (current && current.label === label ? { ...current, weight: clamped } : current));
-    setToast(`${label} · ${Math.round(clamped * 100)}% you`);
+    // Sliders show their own number; drags and buttons get a toast.
+    if (announce) setToast(`${label} · ${Math.round(clamped * 100)}% you`);
   }
 
   async function grow() {
@@ -94,9 +95,9 @@ export function VibeView() {
       const grown = await growMap(created.group.id);
       stageMap(created.group.id, grown.map);
       router.push(`/g/${created.group.id}`);
-    } catch (error) {
+    } catch {
       setGrowing(false);
-      setFault(error instanceof Error ? error.message : "Couldn’t grow the set. Try again.");
+      setFault("Growing took longer than usual. Tap Grow my set again.");
     }
   }
 
@@ -126,13 +127,12 @@ export function VibeView() {
         <div className="hud-title">
           <span className="hud-mode">{MODE_INFO[mode].label}</span>
           <h1>What’s the vibe?</h1>
-          <p className="hud-note"><Sparkles aria-hidden="true" /> Drag what feels like you toward the center. Push away what doesn’t. No wrong answers.</p>
+          <p className="hud-note"><Sparkles aria-hidden="true" /> Drag what feels like you toward the center, or slide it up. Push away what doesn’t. No wrong answers.</p>
         </div>
       </header>
 
       <aside className="space-hud priorities vibe-list" aria-label="Your vibe">
         <span className="hud-label">Your vibe</span>
-        {vibes.length === 0 ? <p className="vibe-loading"><JarvisMark size={22} live /> Gemini is picking vibes for “{draft.name}”…</p> : null}
         {GROUPS.map((group) => {
           const members = vibes.filter((vibe) => vibe.group === group);
           if (members.length === 0) return null;
@@ -146,9 +146,19 @@ export function VibeView() {
                       <i style={{ background: vibe.color }} aria-hidden="true" />
                       {vibe.label}
                     </button>
-                    <span className="prio-bar" aria-hidden="true"><b style={{ width: `${Math.round(vibe.weight * 100)}%`, background: vibe.color }} /></span>
-                    <button type="button" className="prio-step" aria-label={`Less ${vibe.label}`} onClick={() => setWeight(vibe.label, vibe.weight - 0.2)}><Minus aria-hidden="true" /></button>
-                    <button type="button" className="prio-step" aria-label={`More ${vibe.label}`} onClick={() => setWeight(vibe.label, vibe.weight + 0.2)}><Plus aria-hidden="true" /></button>
+                    <input
+                      type="range"
+                      className="vibe-slider"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={Math.round(vibe.weight * 100)}
+                      aria-label={`${vibe.label}: how much you`}
+                      aria-valuetext={`${Math.round(vibe.weight * 100)}% you`}
+                      style={{ "--c": vibe.color, "--v": `${Math.round(vibe.weight * 100)}%` } as CSSProperties}
+                      onChange={(event) => setWeight(vibe.label, Number(event.target.value) / 100, false)}
+                    />
+                    <span className="vibe-pct">{Math.round(vibe.weight * 100)}</span>
                   </li>
                 ))}
               </ul>
@@ -193,7 +203,7 @@ export function VibeView() {
           </div>
           <div className="vibe-actions">
             <Link href="/home" className="btn btn-glass"><ArrowLeft aria-hidden="true" /> Chat</Link>
-            <button type="button" className="btn btn-accent grow-btn" disabled={vibes.length === 0 || growing} onClick={() => void grow()}>
+            <button type="button" className="btn btn-accent grow-btn" disabled={growing} onClick={() => void grow()}>
               Grow my set <ArrowRight aria-hidden="true" />
             </button>
           </div>

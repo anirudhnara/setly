@@ -18,11 +18,6 @@
 .priorities { top: 150px; left: 22px; width: 270px; padding: 16px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255, 255, 255, .86); box-shadow: var(--shadow-md); backdrop-filter: blur(14px); animation: rise .6s var(--ease) .1s both; }
 .prio-name { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 6px 0; border: 0; background: none; color: var(--ink); font-size: 13.5px; text-align: left; }
 .prio-name i { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; }
-.prio-bar { height: 6px; overflow: hidden; border-radius: 6px; background: var(--paper-2); }
-.prio-bar b { display: block; height: 100%; border-radius: inherit; transition: width .6s var(--ease); }
-.prio-step { display: grid; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); transition: background .2s, color .2s, transform .2s var(--ease); }
-.prio-step:hover { background: var(--accent-soft); color: var(--accent-2); transform: scale(1.08); }
-.prio-step svg { width: 13px; height: 13px; }
 
 .space-hint { position: absolute; z-index: 5; top: 50%; left: 50%; display: flex; align-items: center; gap: 12px; max-width: 460px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 255, 255, .92); color: var(--ink-2); font-size: 14px; line-height: 1.45; box-shadow: var(--shadow-md); backdrop-filter: blur(14px); transform: translate(-50%, 140px); animation: hint-in .8s var(--ease) 1.2s both; }
 .space-hint b { color: var(--ink); }
@@ -44,7 +39,7 @@
 .btn-glass:hover:not(:disabled) { background: var(--line); }
 
 .space-hud.bottom { left: 50%; bottom: 20px; display: grid; justify-items: center; gap: 10px; width: min(720px, calc(100% - 24px)); transform: translateX(-50%); }
-.space-fault { margin: 0; padding: 8px 14px; border-radius: 999px; background: var(--bad-soft); color: var(--bad) !important; font-size: 13.5px; }
+.space-fault { margin: 0; padding: 8px 14px; border-radius: 999px; background: var(--card); color: var(--ink-2) !important; font-size: 13.5px; box-shadow: var(--shadow-sm); }
 
 /* Hover card from the 3D graph */
 .space-tip { display: grid; gap: 4px; max-width: 220px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .97); color: var(--ink); font: 13px/1.35 var(--font-sans), system-ui, sans-serif; box-shadow: var(--shadow-md); }
@@ -61,7 +56,16 @@
 .vibe-group + .vibe-group { margin-top: 10px; }
 .vibe-group-name { display: block; margin: 8px 0 2px; color: var(--mute); font-size: 11.5px; font-weight: 600; }
 .vibe-group ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.vibe-group li { display: grid; grid-template-columns: minmax(0, 1fr) 54px auto auto; align-items: center; gap: 6px; }
+.vibe-group li { display: grid; grid-template-columns: minmax(0, 1fr) 104px 26px; align-items: center; gap: 8px; }
+.vibe-list { width: 300px; }
+.vibe-slider { width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; appearance: none; }
+.vibe-slider::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--c) var(--v), var(--paper-2) var(--v)); }
+.vibe-slider::-moz-range-track { height: 6px; border-radius: 6px; background: linear-gradient(90deg, var(--c) var(--v), var(--paper-2) var(--v)); }
+.vibe-slider::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -5px; border: 2px solid #fff; border-radius: 50%; background: var(--c); box-shadow: 0 1px 4px rgba(28, 26, 23, .3); appearance: none; transition: transform .15s var(--ease); }
+.vibe-slider::-moz-range-thumb { width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; background: var(--c); box-shadow: 0 1px 4px rgba(28, 26, 23, .3); }
+.vibe-slider:hover::-webkit-slider-thumb { transform: scale(1.15); }
+.vibe-slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.vibe-pct { color: var(--mute); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
 .vibe-loading { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; color: var(--ink-2) !important; font-size: 13.5px; }
 .vibe-toast { position: absolute; z-index: 6; top: 50%; left: 50%; padding: 8px 16px; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 14px; font-weight: 600; box-shadow: var(--shadow-md); pointer-events: none; transform: translate(-50%, -150px); animation: toast-pop 1.6s var(--ease) both; }
 .vibe-cta { display: flex; width: 100%; align-items: center; gap: 14px; padding: 12px 12px 12px 18px; border: 1px solid var(--line); border-radius: 26px; background: var(--card); color: var(--ink); box-shadow: var(--shadow-lg); animation: rise .6s var(--ease) .2s both; }

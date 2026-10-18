@@ -1,5 +1,6 @@
 import { customAlphabet } from "nanoid";
 import type { GeneratedMap, GeneratedSlot } from "@/lib/ai/schemas";
+import { needMatches } from "@/lib/ai/parse";
 import { chargedCentsForSlot, checkRules } from "@/lib/rules/check";
 import { attachToSlot, generatedSlotId, registerMapSlots } from "@/lib/search/options";
 import type { Link, MapData, Product, Rule, Slot, Zone } from "@/lib/types";
@@ -22,6 +23,11 @@ export interface BuildMapInput {
   keep?: Map<string, Product>;
   /** Products to avoid, by need key, as "store|title" keys: an item someone passed on isn't picked again. */
   avoid?: Map<string, string[]>;
+  /**
+   * Growing a new set: when cheaper picks alone can't reach the budget, leave out the items that overshoot their
+   * share most until the set fits, so it opens within budget with as many things as the money covers.
+   */
+  trimToBudget?: boolean;
   now?: Date;
 }
 
@@ -111,6 +117,15 @@ export async function buildMap(input: BuildMapInput): Promise<MapData> {
     if (pick) chosen.set(draft.slot.id, pick);
   }
   if (budgetCents !== null) fitToBudget(drafts, chosen, budgetCents, memberCount);
+  const dropped = budgetCents !== null && input.trimToBudget ? trimToBudget(drafts, chosen, budgetCents, memberCount) : [];
+  if (dropped.length > 0) {
+    const gone = new Set(dropped.map((draft) => draft.slot.id));
+    for (const id of gone) chosen.delete(id);
+    drafts.splice(0, drafts.length, ...drafts.filter((draft) => !gone.has(draft.slot.id)));
+    for (const [key, id] of slotIdByNeed) if (gone.has(id)) slotIdByNeed.delete(key);
+    const used = new Set(drafts.map((draft) => draft.slot.zoneId));
+    zones.splice(0, zones.length, ...zones.filter((zone) => used.has(zone.id)));
+  }
   for (const draft of drafts) {
     const product = chosen.get(draft.slot.id) ?? null;
     draft.slot.chosenProductId = product?.id ?? null;
@@ -126,7 +141,7 @@ export async function buildMap(input: BuildMapInput): Promise<MapData> {
     if (fromSlotId && toSlotId && fromSlotId !== toSlotId) links.push({ id: `link_${suffix}${index}`, fromSlotId, toSlotId, label: link.label });
   });
 
-  const rules = buildRules(generated, slotIdByNeed, slots, groupId, suffix, budgetCents, input.doorWidthIn ?? null);
+  const rules = buildRules(generated, slotIdByNeed, slots, groupId, suffix, budgetCents, input.doorWidthIn ?? null, dropped.map((draft) => draft.slot.need));
   const map: MapData = { zones, slots, products, links, rules };
   map.rules = checkRules(map, [], { memberCount, now: input.now });
 
@@ -172,6 +187,24 @@ function pickProduct(draft: Draft): Product | null {
   return draft.options.find((product) => product.priceCents * units <= draft.slot.budgetCents) ?? cheapest(draft.options);
 }
 
+/**
+ * Still over after the cheaper picks: leave out, one at a time, the item that overshoots its share of the budget
+ * most, until the set fits. Keeps at least one item. Returns what was left out.
+ */
+function trimToBudget(drafts: Draft[], chosen: Map<string, Product>, budgetCents: number, memberCount: number): Draft[] {
+  const charged = (draft: Draft) => chargedCentsForSlot(draft.slot, chosen.get(draft.slot.id) ?? null, memberCount);
+  const kept = [...drafts];
+  const dropped: Draft[] = [];
+  while (kept.reduce((sum, draft) => sum + charged(draft), 0) > budgetCents) {
+    const costly = kept.filter((draft) => charged(draft) > 0);
+    if (costly.length <= 1) break;
+    const worst = costly.reduce((a, b) => (charged(b) - b.slot.budgetCents > charged(a) - a.slot.budgetCents ? b : a));
+    kept.splice(kept.indexOf(worst), 1);
+    dropped.push(worst);
+  }
+  return dropped;
+}
+
 /** While the plan is over budget, step the most expensive slot down to its next cheaper option. */
 function fitToBudget(drafts: Draft[], chosen: Map<string, Product>, budgetCents: number, memberCount: number) {
   const charged = (draft: Draft) => chargedCentsForSlot(draft.slot, chosen.get(draft.slot.id) ?? null, memberCount);
@@ -200,6 +233,7 @@ function buildRules(
   suffix: string,
   budgetCents: number | null,
   doorWidthIn: number | null,
+  leftOut: string[] = [],
 ): Rule[] {
   const rules: Rule[] = [];
   const add = (rule: Omit<Rule, "id" | "groupId" | "status" | "message">) =>
@@ -210,6 +244,11 @@ function buildRules(
     if (rule.type === "budget") continue;
     const slotIds = rule.needs.map((need) => slotIdByNeed.get(needKey(need))).filter((id): id is string => id !== undefined);
     const params = Object.fromEntries(Object.entries(rule.params).filter(([, value]) => value !== undefined));
+    // Items left out to fit the budget aren't required any more.
+    if (Array.isArray(params.requiredNeeds) && leftOut.length) {
+      params.requiredNeeds = (params.requiredNeeds as string[]).filter((need) => !leftOut.some((left) => needMatches(left, need)));
+      if ((params.requiredNeeds as string[]).length === 0 && !params.bannedNeeds && !params.bannedStores) continue;
+    }
     if (rule.type !== "required_or_banned" && slotIds.length === 0) continue;
     if (rule.type === "size" && doorWidthIn !== null && params.doorWidthIn === undefined && params.maxWidthIn === undefined && params.relation === undefined) {
       params.doorWidthIn = doorWidthIn;

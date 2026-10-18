@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, ArrowUp, BedDouble, Check, Laptop, Mic, RotateCcw, Sofa, Tent } from "lucide-react";
 import { LiveSetPreview } from "@/components/console/live-set";
+import { QuestionCard } from "@/components/console/question-card";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
 import { SiteNav } from "@/components/shared/site-nav";
@@ -12,31 +13,18 @@ import { CreationSteps } from "@/components/shared/creation-steps";
 import { readMode, readYou, stageDraft, stageMode, stageYou, watchMode, type FundingMode } from "@/components/shared/session";
 import { firebaseConfigured, watchAuth } from "@/lib/auth/client";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
-import { interviewTurn, warmInterview } from "@/lib/client";
-import {
-  QUESTIONS,
-  chipsFor,
-  RETRY,
-  absorbAnswer,
-  applyStep,
-  canBuild,
-  composePrompt,
-  emptyBrief,
-  essentials,
-  groupName,
-  knownFacts,
-  mergeFacts,
-  missingEssential,
-  nextStep,
-  type Brief,
-  type Step,
-} from "@/components/console/brief";
+import { planInterview, warmInterview } from "@/lib/client";
+import type { Question, QuestionOption, QuestionPlan } from "@/lib/ai/interview";
+import { answerText, applyAnswer, canBuild, composePrompt, emptyBrief, essentialQuestions, groupName, readOpening, readyLine, sceneOk, type Brief } from "@/components/console/brief";
 
 interface Line {
   id: string;
   role: "assistant" | "user";
   text: string;
-  chips?: string[];
+  /** A short line said before the question ("Got it: a dorm for three."). */
+  lead?: string;
+  /** The question this line asks, answered with the card under it. */
+  question?: Question;
 }
 
 interface SpeechRec {
@@ -48,6 +36,7 @@ interface SpeechRec {
 }
 
 const BUILD_STEPS = ["Reading your answers", "Lining up vibes for you"];
+const BUILD_STEP_AT_MS = [0, 700];
 const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
 
 /** Tap-to-start ideas on the welcome screen. Each sends its text as the first message. */
@@ -57,9 +46,17 @@ const STARTERS = [
   { icon: Tent, title: "Weekend camping trip", text: "Weekend camping trip with friends" },
   { icon: Laptop, title: "Home office", text: "A home office I can work in all day" },
 ];
-const BUILD_STEP_AT_MS = [0, 700];
-const MAX_MODEL_QUESTIONS = 6;
 
+const RETRY: Partial<Record<Question["topic"], string>> = {
+  people: "Just a number is fine, like 3.",
+  budget: "A dollar amount works, like $900.",
+};
+
+/**
+ * Step 1 of a new set. The first message sends Gemini off to plan the whole questionnaire (one careful call), and
+ * while it thinks the person answers the two questions code can ask at once: how many people and the budget. Then
+ * every question is a tap: one choice, or many things to buy from a picker. No waiting between questions.
+ */
 export function Console() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -70,28 +67,28 @@ export function Console() {
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [phase, setPhase] = useState<"talk" | "building" | "failed">("talk");
+  const [phase, setPhase] = useState<"talk" | "building">("talk");
   const [buildStep, setBuildStep] = useState(0);
   const [listening, setListening] = useState(false);
-  const [mode, setMode] = useState<"model" | "script">("model");
-  const [step, setStep] = useState<Step>("scene");
-  const [modelTurns, setModelTurns] = useState(0);
-  const [modelMisses, setModelMisses] = useState(0);
   const [fundingMode, setFundingMode] = useState<FundingMode>("group");
+  const [active, setActive] = useState<Question | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [extra, setExtra] = useState<QuestionOption[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const seq = useRef(0);
+  // The question queue lives in refs: the plan can land while someone is mid-answer.
+  const queue = useRef<Question[]>([]);
+  const position = useRef(0);
+  const planState = useRef<"idle" | "loading" | "ready">("idle");
+  const lead = useRef("");
+  const waiting = useRef<{ brief: Brief; history: Line[] } | null>(null);
 
   // The nav chip and the welcome screen both change who's paying; keep this screen in step.
   useEffect(() => watchMode(setFundingMode), []);
-  const input = useRef<HTMLTextAreaElement>(null);
-  const seq = useRef(0);
 
   // Groups belong to signed-in people, so the chat needs a Firebase session before it can build anything.
   useEffect(() => {
-    function enter(name: string) {
-      setYou(name);
-      setBrief((current) => ({ ...current, name }));
-      setReady(true);
-    }
     if (!firebaseConfigured()) return;
     return watchAuth((user) => {
       if (!user) {
@@ -101,14 +98,16 @@ export function Console() {
       const name = user.displayName?.trim() || prettyName(user.email ?? "") || "Friend";
       stageYou(name);
       setFundingMode(readMode());
-      enter(name);
+      setYou(name);
+      setBrief((current) => ({ ...current, name }));
+      setReady(true);
       void warmInterview();
     });
   }, [router]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [lines, thinking, phase, buildStep]);
+  }, [lines, thinking, phase, buildStep, extra]);
 
   useEffect(() => {
     if (phase !== "building") return;
@@ -116,132 +115,156 @@ export function Console() {
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [phase]);
 
-  function line(role: Line["role"], text: string, chips?: string[]): Line {
+  function line(role: Line["role"], text: string, extras: Pick<Line, "lead" | "question"> = {}): Line {
     seq.current += 1;
-    return { id: `m${seq.current}`, role, text, chips };
+    return { id: `m${seq.current}`, role, text, ...extras };
   }
 
   /** Step 1 is done: hand the brief to the vibe step. The set itself is created after the vibe is picked. */
-  async function build(next: Brief) {
+  function build(next: Brief) {
     setPhase("building");
     setBuildStep(0);
     const person = readYou() || you || next.name || "You";
     stageDraft({
       name: groupName(next),
-      prompt: `${composePrompt({ ...next, name: person, vibe: next.vibe || "" })} ${MODE_INFO[fundingMode].promptLine}`.replace(/Style: \./, "").replace(/\s+/g, " ").trim(),
+      prompt: `${composePrompt({ ...next, name: person })} ${MODE_INFO[readMode()].promptLine}`.replace(/\s+/g, " ").trim(),
       budgetCents: next.budgetCents ?? 0,
       people: next.people,
     });
     window.setTimeout(() => router.push("/vibes"), 1400);
   }
 
-  /** Scripted interview, used when Gemini is off: one question per step from brief.ts. */
-  function scriptedTurn(current: Brief, text: string, history: Line[]) {
-    const result = applyStep(current, step, text);
-    if (!result.accepted) {
-      setLines([...history, line("assistant", RETRY[step], chipsFor(step, current))]);
+  function finish(next: Brief, history: Line[]) {
+    setActive(null);
+    setLines([...history, line("assistant", readyLine(next))]);
+    build(next);
+  }
+
+  /** Shows the next question, waits for the plan if it hasn't landed, or finishes. */
+  function askNext(next: Brief, history: Line[], intro?: string) {
+    const question = queue.current[position.current];
+    if (question) {
+      // The plan's "here's what I understood" line rides along with its first question.
+      const said = intro ?? (question.topic !== "people" && question.topic !== "budget" && lead.current ? lead.current : undefined);
+      if (said === lead.current) lead.current = "";
+      setActive(question);
+      setPicked(question.options.filter((option) => option.pick).map((option) => option.label));
+      setExtra([]);
+      setLines([...history, line("assistant", question.ask, { lead: said, question })]);
+      return;
+    }
+    if (planState.current === "loading") {
+      waiting.current = { brief: next, history };
+      setActive(null);
+      setLines(history);
+      setThinking(true);
+      return;
+    }
+    finish(next, history);
+  }
+
+  function receivePlan(plan: QuestionPlan | null) {
+    planState.current = "ready";
+    if (plan) {
+      queue.current = [...queue.current, ...plan.questions];
+      lead.current = plan.understood;
+      setBrief((current) => ({ ...current, title: plan.title }));
+    }
+    const held = waiting.current;
+    if (!held) return;
+    waiting.current = null;
+    setThinking(false);
+    askNext({ ...held.brief, title: plan?.title ?? held.brief.title }, held.history);
+  }
+
+  /** The first message: read what it says, ask the essentials at once, and plan the rest in the background. */
+  function start(text: string, history: Line[]) {
+    if (!sceneOk(text)) {
+      setLines([...history, line("assistant", "Tell me what you’re shopping for: a room, a trip, a move, anything.")]);
+      return;
+    }
+    const opened = readOpening({ ...emptyBrief(), name: you }, text);
+    setBrief(opened);
+    queue.current = essentialQuestions(opened, fundingMode);
+    position.current = 0;
+    planState.current = "loading";
+    planInterview({
+      request: text,
+      known: {
+        ...(opened.people ? { people: String(opened.people) } : {}),
+        ...(opened.budgetCents ? { budget: formatBudget(opened.budgetCents) } : {}),
+        whoPays: MODE_INFO[fundingMode].promptLine,
+      },
+    })
+      .then(({ plan }) => receivePlan(plan))
+      .catch(() => receivePlan(null));
+    askNext(opened, history, queue.current.length ? "Love it. A couple of quick ones while I put your list together." : undefined);
+  }
+
+  function answer(values: string[]) {
+    const question = active;
+    if (!question || thinking || phase === "building") return;
+    const history = [...lines, line("user", answerText(question, values))];
+    const result = applyAnswer(brief, question, values);
+    if (!result.ok) {
+      setLines([...history, line("assistant", RETRY[question.topic] ?? question.ask, { question })]);
       return;
     }
     setBrief(result.brief);
-    const following = nextStep(result.brief);
-    if (!following) {
-      setLines([...history, line("assistant", readyLine(result.brief))]);
-      void build(result.brief);
-      return;
-    }
-    setStep(following);
-    setLines([...history, line("assistant", QUESTIONS[following].ask, chipsFor(following, result.brief))]);
+    position.current += 1;
+    askNext(result.brief, history);
+    queueMicrotask(() => input.current?.focus());
   }
 
-  async function send(raw: string) {
+  function toggle(label: string) {
+    setPicked((current) => (current.includes(label) ? current.filter((item) => item !== label) : [...current, label]));
+  }
+
+  function addOwn(label: string) {
+    if (!active) return;
+    const exists = [...active.options, ...extra].some((option) => option.label.toLowerCase() === label.toLowerCase());
+    if (!exists) setExtra((current) => [...current, { label }]);
+    setPicked((current) => (current.some((item) => item.toLowerCase() === label.toLowerCase()) ? current : [...current, label]));
+  }
+
+  /** Typing works everywhere: the first message, a typed answer, or an extra item for a picker. */
+  function send(raw: string) {
     const text = raw.trim();
     if (!text || thinking || phase === "building") return;
     setDraft("");
-    const mine = line("user", text);
-    const history = [...lines.map((item) => ({ ...item, chips: undefined })), mine];
+    if (active?.kind === "multi") {
+      addOwn(text.slice(0, 40));
+      return;
+    }
+    if (active) {
+      answer([text]);
+      return;
+    }
+    const history = [...lines, line("user", text)];
     setLines(history);
-
-    if (phase === "failed") setPhase("talk");
-    if (mode === "script") {
-      scriptedTurn(brief, text, history);
-      return;
-    }
-
-    const lastQuestion = [...lines].reverse().find((item) => item.role === "assistant")?.text ?? "";
-    let next = absorbAnswer(brief, text, lastQuestion);
-    if (/^(go|go ahead|build it|grow it|that'?s it|done|let'?s go|build my set|grow my set)[.!]*$/i.test(text) && canBuild(next)) {
-      setBrief(next);
-      setLines([...history, line("assistant", readyLine(next))]);
-      void build(next);
-      return;
-    }
-
-    setThinking(true);
-    try {
-      const { turn } = await interviewTurn({
-        messages: history.slice(-24).map((item) => ({ role: item.role, text: item.text.slice(0, 2000) })),
-        known: { ...knownFacts(next), whoPays: MODE_INFO[fundingMode].promptLine },
-      });
-      if (!turn) {
-        // Gemini is off: continue with the scripted questions from wherever the brief is.
-        setMode("script");
-        const following = nextStep(next);
-        setBrief(next);
-        if (!following) {
-          setLines([...history, line("assistant", readyLine(next))]);
-          void build(next);
-          return;
-        }
-        setStep(following);
-        setLines([...history, line("assistant", QUESTIONS[following].ask, chipsFor(following, next))]);
-        return;
-      }
-      next = mergeFacts(next, turn.facts);
-      setBrief(next);
-      setModelMisses(0);
-      const asked = modelTurns + 1;
-      setModelTurns(asked);
-      if (canBuild(next) && (turn.ready || asked >= MAX_MODEL_QUESTIONS)) {
-        setLines([...history, line("assistant", turn.ready ? turn.reply : readyLine(next))]);
-        void build(next);
-        return;
-      }
-      const gap = turn.ready ? missingEssential(next) : null;
-      if (gap) {
-        setLines([...history, line("assistant", QUESTIONS[gap].ask, chipsFor(gap, next))]);
-        return;
-      }
-      setLines([...history, line("assistant", turn.reply, turn.chips)]);
-    } catch {
-      // A slow or rate-limited turn: ask the next scripted question this once, and try Gemini again next turn.
-      // Two misses in a row means it's down, so the rest of the chat stays scripted.
-      const misses = modelMisses + 1;
-      setModelMisses(misses);
-      if (misses >= 2) setMode("script");
-      const following = nextStep(next) ?? "scene";
-      setBrief(next);
-      setStep(following);
-      setLines([...history, line("assistant", QUESTIONS[following].ask, chipsFor(following, next))]);
-    } finally {
-      setThinking(false);
-      queueMicrotask(() => input.current?.focus());
-    }
+    if (planState.current === "idle") start(text, history);
   }
 
+  /** "Next: pick your vibe" before every question is answered: what's known so far is enough. */
   function growNow() {
     if (!canBuild(brief) || phase === "building") return;
-    setLines((current) => [...current.map((item) => ({ ...item, chips: undefined })), line("assistant", readyLine(brief))]);
-    void build(brief);
+    finish(brief, lines);
   }
 
   function restart() {
     setBrief({ ...emptyBrief(), name: you });
     setLines([]);
-    setStep("scene");
-    setMode("model");
-    setModelTurns(0);
+    setActive(null);
+    setPicked([]);
+    setExtra([]);
+    setThinking(false);
     setPhase("talk");
     setDraft("");
+    queue.current = [];
+    position.current = 0;
+    planState.current = "idle";
+    lead.current = "";
+    waiting.current = null;
   }
 
   function speak() {
@@ -257,7 +280,7 @@ export function Console() {
     setListening(true);
     rec.onresult = (event) => {
       const heard = event.results[0]?.[0]?.transcript ?? "";
-      if (heard) void send(heard);
+      if (heard) send(heard);
     };
     rec.onend = () => setListening(false);
     rec.onerror = () => setListening(false);
@@ -277,8 +300,14 @@ export function Console() {
   const empty = lines.length === 0;
   const latest = lines[lines.length - 1];
   const busy = thinking || phase === "building";
-  const known = essentials(brief);
-  const knownCount = Number(known.scene) + Number(known.people) + Number(known.budget);
+  const known = [Boolean(brief.scene), Boolean(brief.people), Boolean(brief.budgetCents)];
+  const placeholder = empty
+    ? "e.g. Living room for 3 roommates, around $1,000"
+    : active?.kind === "multi"
+      ? "Add something not listed…"
+      : active
+        ? "Or type your own answer…"
+        : "Type here…";
 
   return (
     <div className="orbit chat-page">
@@ -292,25 +321,21 @@ export function Console() {
               <section className="chat-hero">
                 <span className="hello-badge" aria-hidden="true"><JarvisMark size={46} live={thinking || listening} /></span>
                 <h1>Hi {you.split(" ")[0] || "there"}! <em>What are we shopping for?</em></h1>
-                <p>Tell me in your own words: a room, a trip, a move. I’ll ask a couple of quick questions, you’ll pick a vibe, and I’ll grow a full set from real stores.</p>
+                <p>Tell me in your own words: a room, a trip, a move. You’ll tap through a few quick choices, pick a vibe, and I’ll grow a full set from real stores.</p>
               </section>
             ) : null}
 
             {lines.map((item, index) => {
               const first = item.role === "assistant" && lines[index - 1]?.role !== "assistant";
+              const open = item.question && item === latest && active === item.question && !busy;
               return (
-                <div key={item.id} className={`msg ${item.role}`}>
+                <div key={item.id} className={`msg ${item.role}${open ? " has-card" : ""}`}>
                   {item.role === "assistant" ? <span className="msg-avatar" aria-hidden="true">{first ? <JarvisMark size={28} /> : null}</span> : null}
                   <div className="msg-body">
+                    {item.lead ? <p className="msg-lead">{item.lead}</p> : null}
                     <p>{item.text}</p>
-                    {item.chips?.length && item === latest && !busy ? (
-                      <div className="msg-chips" role="group" aria-label="Quick answers">
-                        {item.chips.map((chip, chipIndex) => (
-                          <button key={chip} type="button" className="chip" style={{ "--i": chipIndex } as CSSProperties} onClick={() => void send(chip)}>
-                            {chip}
-                          </button>
-                        ))}
-                      </div>
+                    {open && item.question ? (
+                      <QuestionCard question={item.question} picked={picked} extra={extra} onToggle={toggle} onAdd={addOwn} onAnswer={answer} />
                     ) : null}
                   </div>
                 </div>
@@ -320,27 +345,18 @@ export function Console() {
             {thinking ? (
               <div className="msg assistant">
                 <span className="msg-avatar" aria-hidden="true"><JarvisMark size={28} live /></span>
-                <div className="msg-body"><span className="typing" role="status"><i /><i /><i /><span>Thinking</span></span></div>
+                <div className="msg-body">
+                  <span className="typing" role="status"><i /><i /><i /><span>Putting your list together…</span></span>
+                </div>
               </div>
             ) : null}
 
             {phase === "building" ? <BuildStage step={buildStep} /> : null}
-            {phase === "failed" ? (
-              <div className="msg assistant">
-                <span className="msg-avatar" aria-hidden="true"><JarvisMark size={28} /></span>
-                <div className="msg-body">
-                  <p>I couldn’t reach the stores just now. Your brief is safe — want me to try again?</p>
-                  <div className="msg-chips">
-                    <button type="button" className="chip" onClick={() => void build(brief)}>Try again</button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {!empty ? (
             <div className="brief-strip" aria-label="What Setly knows so far">
-              {[brief.people ? `${brief.people} people` : "", brief.budgetCents ? formatBudget(brief.budgetCents) : "", brief.vibe].filter(Boolean).map((fact) => (
+              {[brief.people ? `${brief.people} people` : "", brief.budgetCents ? formatBudget(brief.budgetCents) : "", brief.mustHaves.length ? `${brief.mustHaves.length} items` : ""].filter(Boolean).map((fact) => (
                 <span key={fact}>{fact}</span>
               ))}
               <button type="button" className="chip" disabled={!canBuild(brief) || busy} onClick={growNow}>
@@ -352,7 +368,7 @@ export function Console() {
             className={`composer ${busy ? "is-busy" : ""}`}
             onSubmit={(event) => {
               event.preventDefault();
-              void send(draft);
+              send(draft);
             }}
           >
             <label className="sr-only" htmlFor="brief-input">Message Setly</label>
@@ -363,12 +379,12 @@ export function Console() {
               value={draft}
               autoFocus
               disabled={phase === "building"}
-              placeholder={empty ? "e.g. Living room for 3 roommates, around $1,000" : "Type your answer…"}
+              placeholder={placeholder}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  void send(draft);
+                  send(draft);
                 }
               }}
             />
@@ -384,7 +400,7 @@ export function Console() {
             <div className="hello-extras">
               <div className="starter-grid" role="group" aria-label="Ideas to start with">
                 {STARTERS.map(({ icon: Icon, title, text }, index) => (
-                  <button key={title} type="button" className="starter" style={{ "--i": index } as CSSProperties} disabled={busy} onClick={() => void send(text)}>
+                  <button key={title} type="button" className="starter" style={{ "--i": index } as CSSProperties} disabled={busy} onClick={() => send(text)}>
                     <span className="starter-icon" aria-hidden="true"><Icon /></span>
                     <span className="starter-text"><strong>{title}</strong><span>{text}</span></span>
                   </button>
@@ -406,15 +422,15 @@ export function Console() {
           <aside className="brief-card" aria-label="Your set, taking shape">
             <div className="brief-head">
               <span className="orbit-label">{MODE_INFO[fundingMode].label} · your set</span>
-              <span className="brief-progress" aria-label={`${knownCount} of 3 essentials known`}>
-                {[known.scene, known.people, known.budget].map((done, index) => <i key={index} className={done ? "done" : ""} />)}
+              <span className="brief-progress" aria-label={`${known.filter(Boolean).length} of 3 essentials known`}>
+                {known.map((done, index) => <i key={index} className={done ? "done" : ""} />)}
               </span>
             </div>
             <LiveSetPreview brief={brief} building={phase === "building"} />
             <button type="button" className="btn btn-accent brief-go" disabled={!canBuild(brief) || busy} onClick={growNow}>
               Next: pick your vibe <ArrowRight aria-hidden="true" />
             </button>
-            <p className="brief-note">{canBuild(brief) ? "Or keep answering — every detail sharpens the picks." : "I need what it’s for, how many people, and a total budget."}</p>
+            <p className="brief-note">{canBuild(brief) ? "Or keep tapping: every answer sharpens the picks." : "I need what it’s for, how many people, and a total budget."}</p>
             <button type="button" className="btn btn-ghost restart-btn" onClick={restart} disabled={phase === "building"}><RotateCcw aria-hidden="true" /> Start over</button>
           </aside>
         ) : null}
@@ -453,9 +469,4 @@ function BuildStage({ step }: { step: number }) {
 
 function prettyName(email: string) {
   return email.split("@")[0]?.replace(/[._-]+/g, " ").replace(/\d+/g, "").trim().replace(/\b\w/g, (letter) => letter.toUpperCase()) ?? "";
-}
-
-function readyLine(brief: Brief) {
-  const bits = [`${brief.people} ${brief.people === 1 ? "person" : "people"}`, brief.budgetCents ? `${formatBudget(brief.budgetCents)} all in` : ""].filter(Boolean);
-  return `Perfect — ${bits.join(", ")}. Next, show me your vibe: it takes ten seconds.`;
 }

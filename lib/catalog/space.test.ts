@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { cleanSeed, rulesSeed } from "@/lib/ai/vibes";
 import { fallbackIdeas } from "@/lib/ai/suggest";
 import { INNER, OUTER, weightForDistance } from "@/lib/catalog/space";
 import { parseVibeLine, sortByVibe, vibeLine, vibeScore } from "@/lib/catalog/vibes";
@@ -11,18 +10,6 @@ describe("vibe space", () => {
     expect(weightForDistance(INNER)).toBe(1);
     expect(weightForDistance(OUTER)).toBe(0);
     expect(weightForDistance((INNER + OUTER) / 2)).toBeCloseTo(0.5);
-  });
-
-  it("keeps only known vibes from the model, clamped, without duplicates", () => {
-    const vibes = cleanSeed([{ label: "minimal", weight: 2 }, { label: "Minimal", weight: 0.1 }, { label: "Cyberpunk", weight: 1 }, { label: "Wood", weight: -3, why: "Oak floors already" }]);
-    expect(vibes.map((vibe) => [vibe.label, vibe.weight])).toEqual([["Minimal", 1], ["Wood", 0]]);
-    expect(vibes[1].hint).toBe("Oak floors already");
-  });
-
-  it("seeds sensibly without Gemini: camping skips velvet, words in the request start closer", () => {
-    const camping = rulesSeed("camping trip for 6 on a tight budget");
-    expect(camping.some((vibe) => vibe.label === "Velvet & plush")).toBe(false);
-    expect(camping.find((vibe) => vibe.label === "Budget-smart")?.weight).toBe(0.8);
   });
 });
 
@@ -55,10 +42,12 @@ describe("catalog-first search", () => {
     expect(await catalogProducts("4 person dome tent")).toEqual([]);
   });
 
-  it("orders catalog results by vibe", async () => {
+  it("nudges catalog results toward the vibe without overriding the best match", async () => {
     const minimal = await findProducts("sofa", { Minimal: 1, Cozy: 0 });
     const cozy = await findProducts("sofa", { Cozy: 1, Minimal: 0 });
-    expect(minimal[0].id).not.toBe(cozy[0].id);
+    expect(minimal.map((item) => item.id)).not.toEqual(cozy.map((item) => item.id));
+    const sherpa = (list: typeof cozy) => list.findIndex((item) => /sherpa/i.test(item.title));
+    expect(sherpa(cozy)).toBeLessThan(sherpa(minimal));
   });
 
   it("proposes branch ideas the set doesn't have yet when Gemini is off", () => {
@@ -114,3 +103,15 @@ describe("store catalog ranking", () => {
   });
 });
 
+
+describe("live search relevance", () => {
+  const product = (id: string, title: string) => ({ id, slotId: "", title, store: "Target", priceCents: 2000, url: `https://example.com/${id}`, imageUrl: "", attributes: {} });
+
+  it("keeps the thing asked for, not lookalikes or add-ons", async () => {
+    const { relevantProducts } = await import("@/lib/search/find");
+    const pillows = [product("t1", "Throw Pillow Cover 18x18"), product("t2", "Velvet Throw Pillow"), product("b1", "Standard Bed Pillow 2 Pack"), product("b2", "Down Alternative Bed Pillow"), product("b3", "Cooling Bed Pillows Set of 2")];
+    expect(relevantProducts("bed pillow", pillows).map((item) => item.id)).toEqual(["b1", "b2", "b3"]);
+    const organizers = [product("bag", "Cotton Gusseted Coat Bag"), product("o1", "Hanging Closet Organizer 6 Shelves"), product("o2", "Closet Organizer System")];
+    expect(relevantProducts("hanging closet organizer", organizers).map((item) => item.id)).toEqual(["o1", "o2"]);
+  });
+});

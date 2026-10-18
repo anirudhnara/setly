@@ -104,18 +104,25 @@ export function vibeScore(text: string, weights: VibeWeights, priceRank = 0.5) {
     total += Math.abs(pull);
     if (vibe.label === "Budget-smart") score += pull * (1 - priceRank) * 1.5;
     else if (vibe.label === "Premium") score += pull * priceRank * 1.5;
-    else if (vibe.match?.test(text)) score += pull;
+    // Something they pushed away counts double: an avoided look should sink, a liked one only lifts.
+    else if (vibe.match?.test(text)) score += pull < 0 ? pull * 2 : pull;
   }
   return total === 0 ? 0 : score / Math.max(1, total * 0.6);
 }
 
-/** Stable re-order by vibe fit; search relevance breaks ties. */
+/** How far down the list a strong vibe match can climb past better search matches: about three places. */
+const VIBE_PULL = 0.3;
+
+/**
+ * Nudges items toward the vibe without overriding relevance: the list arrives best match first, and a strong vibe
+ * fit can lift an item a few places, never from the bottom to the top.
+ */
 export function sortByVibe<T extends { title: string; priceCents: number }>(items: T[], weights: VibeWeights, extra: (item: T) => string = () => "") {
   if (Object.keys(weights).length === 0 || items.length < 2) return items;
   const prices = [...items].map((item) => item.priceCents).sort((a, b) => a - b);
   const rankOf = (cents: number) => (prices.length > 1 ? prices.indexOf(cents) / (prices.length - 1) : 0.5);
   return items
-    .map((item, index) => ({ item, index, score: vibeScore(`${item.title} ${extra(item)}`, weights, rankOf(item.priceCents)) }))
+    .map((item, index) => ({ item, index, score: vibeScore(`${item.title} ${extra(item)}`, weights, rankOf(item.priceCents)) - index * VIBE_PULL }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.item);
 }

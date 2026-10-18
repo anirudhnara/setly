@@ -57,11 +57,12 @@ export function searchCatalog(query: string): Product[] {
  * Every outcome is cached, failures included, so a bad query doesn't spend quota on every map.
  * A failure serves the sample catalog, which is never written to the cache as if it were real.
  */
-export async function searchProducts(query: string): Promise<Product[]> {
+export async function searchProducts(query: string, options: { skipCatalog?: boolean } = {}): Promise<Product[]> {
   if (mockAiEnabled()) return searchCatalog(query);
   const cached = await getCachedSearch(query);
   if (cached && !cached.failure) return withoutJunk(cached.results, query);
-  if (databaseConfigured()) {
+  // Callers that already searched the catalog more strictly (lib/search/find.ts) skip it here.
+  if (databaseConfigured() && !options.skipCatalog) {
     const { searchStoredCatalog } = await import("@/lib/search/catalog-store");
     const stored = await searchStoredCatalog(query);
     if (stored) return withoutJunk(stored, query);

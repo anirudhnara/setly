@@ -22,14 +22,15 @@
 .budget-track { display: block; width: 180px; height: 5px; overflow: hidden; border-radius: 5px; background: var(--paper-2); }
 .budget-track i { display: block; height: 100%; border-radius: inherit; background: var(--ok); transition: width 1s var(--ease); }
 .budget-meter.near .budget-track i { background: var(--warn); }
-.budget-meter.over .budget-track i { background: var(--bad); }
+.budget-meter.over .budget-track i { background: var(--warn); }
 .budget-meter small { display: inline-flex; align-items: center; gap: 4px; color: var(--ok); font-size: 12px; }
 .budget-meter.near small { color: var(--warn); }
-.budget-meter.over small { color: var(--bad); }
+.budget-meter.over small { color: var(--warn); }
 .budget-meter small svg { width: 13px; height: 13px; }
 
 .rule-alerts { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.rule-alerts li { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--bad-soft); color: var(--bad); font-size: 13.5px; }
+.rule-alerts li { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--warn-soft); color: var(--ink-2); font-size: 13.5px; }
+.rule-alerts svg { color: var(--warn); }
 .rule-alerts svg { width: 16px; height: 16px; flex: 0 0 auto; }
 
 /* Tree canvas */
@@ -88,7 +89,6 @@ button.zone-node:not(.open) .zone-grow svg { animation: twinkle 2.4s ease-in-out
 .leaf-issue { display: flex; align-items: center; gap: 6px; margin: -4px 12px 10px; padding: 6px 9px; border-radius: 10px; font-size: 12px; line-height: 1.35; }
 .leaf-issue svg { width: 13px; height: 13px; flex: 0 0 auto; }
 .leaf-issue.warning { background: var(--warn-soft); color: var(--warn) !important; }
-.leaf-issue.broken { background: var(--bad-soft); color: var(--bad) !important; }
 
 .leaf-actions { position: absolute; left: 50%; bottom: -18px; display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--ink); box-shadow: var(--shadow-md); opacity: 0; pointer-events: none; transform: translate(-50%, 6px) scale(.96); transition: opacity .2s var(--ease), transform .25s var(--ease); }
 .leaf:hover .leaf-actions, .leaf.selected .leaf-actions, .leaf:focus-within .leaf-actions { opacity: 1; pointer-events: auto; transform: translate(-50%, 0) scale(1); }
@@ -122,7 +122,7 @@ button.zone-node:not(.open) .zone-grow svg { animation: twinkle 2.4s ease-in-out
 .refine-dock { position: fixed; left: 50%; bottom: 18px; z-index: 30; display: grid; width: min(760px, calc(100% - 24px)); gap: 8px; transform: translateX(-50%); animation: dock-in .6s var(--ease) .9s both; }
 .refine-reply { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow-lg), inset 0 0 0 1px var(--line); animation: rise .35s var(--ease) both; }
 .refine-reply p { flex: 1; margin: 0; color: var(--ink) !important; font-size: 14.5px; }
-.refine-reply.is-fault p { color: var(--bad) !important; }
+.refine-reply.is-fault p { color: var(--ink-2) !important; }
 .refine-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px; scrollbar-width: none; }
 .refine-chips::-webkit-scrollbar { display: none; }
 .refine-chips .chip { flex: 0 0 auto; min-height: 32px; background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px); box-shadow: var(--shadow-sm); font-size: 13px; }
@@ -228,3 +228,11 @@ button.zone-node:not(.open) .zone-grow svg { animation: twinkle 2.4s ease-in-out
 .leaf-main { grid-template-columns: 68px minmax(0, 1fr); gap: 12px; }
 .leaf-image { width: 68px; height: 68px; }
 .leaf-text strong { font-size: 13.5px; }
+
+/* Ticked items saved for later to fit the budget, one tap to add back */
+.left-out { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow-sm); }
+.left-out > span { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13.5px; }
+.left-out > span svg { width: 15px; height: 15px; color: var(--accent); }
+.left-out-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.left-out-chips .chip { display: inline-flex; align-items: center; gap: 4px; }
+.left-out-chips .chip svg { width: 13px; height: 13px; }
