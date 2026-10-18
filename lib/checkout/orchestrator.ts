@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { getLane } from "@/lib/checkout/lanes";
 import { storeItems, type LaneOrder, type LaneUpdate } from "@/lib/checkout/lane";
 import { laneForStore } from "@/lib/checkout/registry";
-import { editGroup, getGroupState, LedgerError } from "@/lib/db/ledger";
+import { authorizeCharge, editGroup, getGroupState, LedgerError } from "@/lib/db/ledger";
 import { capCents, storeSubtotals } from "@/lib/money/buffer";
 import { contributionsByStore, leftoverRefunds } from "@/lib/money/leftover";
 import type { GroupState, Refund, ShippingAddress, StoreOrder, StoreOrderStatus } from "@/lib/types";
@@ -232,6 +232,30 @@ export async function approveCheckout(groupId: string, userId: string, storeOrde
     return true;
   });
   if (ready) await runOrders(groupId, [storeOrderId], now);
+  return requireState(groupId);
+}
+
+/**
+ * A member bought a guided store's part with the group card. With the mock issuer there is no real store to
+ * charge the card, so this makes that one charge: the store's quoted subtotal, at that store, through the same
+ * authorization rules a real charge goes through. Then the order is checked right away instead of on the next poll.
+ */
+export async function recordGuidedPurchase(groupId: string, userId: string, storeOrderId: string, now = new Date()) {
+  if ((process.env.ISSUER ?? "mock") === "stripe") throw new LedgerError("Buy it on the store's site with the group card; the charge shows up here", 409);
+  const state = await requireState(groupId);
+  if (!state.members.some((member) => member.userId === userId)) throw new LedgerError("You are not in this group", 403);
+  const order = state.storeOrders.find((item) => item.id === storeOrderId);
+  if (!order) throw new LedgerError("Store order not found", 404);
+  if (order.lane !== "guided" || order.status !== "placing") throw new LedgerError(`${order.store} isn't waiting for a buyer`, 409);
+  if (!state.card) throw new LedgerError("The group card isn't active", 409);
+  const authorization = await authorizeCharge(state.card.id, order.store, order.quotedCents ?? order.subtotalCents);
+  if (!authorization.approved) throw new LedgerError(authorization.reason, 402);
+  const after = await requireState(groupId);
+  const read = after.storeOrders.find((item) => item.id === storeOrderId);
+  if (read?.status === "placing") {
+    const update = await getLane("guided").status(laneOrder(after, read, now));
+    await writeOrders(groupId, [{ read, patch: fromLane(update) }], now);
+  }
   return requireState(groupId);
 }
 

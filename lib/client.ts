@@ -16,6 +16,8 @@ import type {
   GenerateMapRequest,
   GenerateMapResponse,
   GetGroupResponse,
+  GuidedPurchaseRequest,
+  GuidedPurchaseResponse,
   JoinGroupRequest,
   JoinGroupResponse,
   LockGroupResponse,
@@ -186,6 +188,11 @@ export function startCheckout(body: StartCheckoutRequest) {
 /** Approves or declines a store that quoted more than its cap. */
 export function approveCheckout(body: ApproveCheckoutRequest) {
   return post<ApproveCheckoutResponse>("/api/checkout/approve", body);
+}
+
+/** Records that a member bought a guided store's items with the group card. */
+export function recordGuidedPurchase(body: GuidedPurchaseRequest) {
+  return post<GuidedPurchaseResponse>("/api/checkout/guided", body);
 }
 
 /** Refunds unspent buffer once every store order is finished. */

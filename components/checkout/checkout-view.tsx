@@ -9,7 +9,7 @@ import { Avatar, GroupHeader } from "@/components/shared/group-header";
 import { GroupLoading, GroupMissing } from "@/components/group/group-states";
 import { useMe } from "@/components/shared/use-me";
 import { usePlan } from "@/components/shared/use-plan";
-import { approveCheckout, authorizeCard, payShare, settleCheckout, startCheckout } from "@/lib/client";
+import { approveCheckout, payShare, recordGuidedPurchase, settleCheckout, startCheckout } from "@/lib/client";
 import type { ShippingAddress, StoreOrder } from "@/lib/types";
 
 export function CheckoutView({ groupId }: { groupId: string }) {
@@ -95,12 +95,10 @@ export function CheckoutView({ groupId }: { groupId: string }) {
   }
 
   function bought(order: StoreOrder) {
-    const cardId = plan.data?.card?.id;
-    if (!cardId) return;
     void act(`bought:${order.id}`, async () => {
-      const result = await authorizeCard({ cardId, merchant: order.store, amountCents: order.quotedCents ?? order.subtotalCents });
-      if (!result.approved) throw new Error(result.reason);
-      return `${order.store} charged ${formatCents(result.amountCents)} on the group card.`;
+      const state = await recordGuidedPurchase({ groupId, storeOrderId: order.id });
+      const charged = state.storeOrders.find((item) => item.id === order.id)?.finalTotalCents;
+      return `${order.store} charged ${formatCents(charged ?? order.quotedCents ?? order.subtotalCents)} on the group card.`;
     });
   }
 

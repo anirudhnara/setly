@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { advanceCheckout, approveCheckout, resetCheckoutPollsForTests, settleCheckout, startCheckout } from "@/lib/checkout/orchestrator";
-import { authorizeCharge, getGroupState, recordContribution, resetLedgerForTests } from "@/lib/db/ledger";
+import { advanceCheckout, approveCheckout, recordGuidedPurchase, resetCheckoutPollsForTests, settleCheckout, startCheckout } from "@/lib/checkout/orchestrator";
+import { getGroupState, recordContribution, resetLedgerForTests } from "@/lib/db/ledger";
 import { ZINC_FEE_CENTS } from "@/lib/money/buffer";
 import { setIssuerForTests } from "@/lib/payments";
 import type { GroupState, ShippingAddress } from "@/lib/types";
@@ -72,12 +72,11 @@ describe("checkout orchestrator", () => {
 
     // A roommate buys the IKEA part with the group card.
     const ikea = byStore(approved).IKEA;
-    if (!ikea || !approved.card) throw new Error("IKEA order missing");
-    const charge = await authorizeCharge(approved.card.id, "IKEA", ikea.subtotalCents + 300);
-    expect(charge.approved).toBe(true);
-    resetCheckoutPollsForTests();
-    const bought = await advanceCheckout((await getGroupState("grp_apartment")) as GroupState, at(10_000));
-    expect(byStore(bought).IKEA).toMatchObject({ status: "placed", finalTotalCents: ikea.subtotalCents + 300 });
+    if (!ikea) throw new Error("IKEA order missing");
+    await expect(recordGuidedPurchase("grp_apartment", "usr_nobody", ikea.id, at(10_000))).rejects.toMatchObject({ status: 403 });
+    const bought = await recordGuidedPurchase("grp_apartment", "usr_riley", ikea.id, at(10_000));
+    expect(byStore(bought).IKEA).toMatchObject({ status: "placed", finalTotalCents: ikea.quotedCents });
+    await expect(recordGuidedPurchase("grp_apartment", "usr_riley", ikea.id, at(10_500))).rejects.toMatchObject({ status: 409 });
 
     const { state: settled, refunds } = await settleCheckout("grp_apartment", "usr_ani", at(11_000));
     expect(settled.group.status).toBe("purchased");
