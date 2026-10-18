@@ -56,7 +56,7 @@ export async function generateMapFromPrompt(prompt: string, budgetCents?: number
     const vibes = parseVibeLine(prompt);
     return await buildMap({ generated, budgetCents: budget, memberCount: people, groupId, doorWidthIn, search: (query) => findProducts(query, vibes), rank, trimToBudget: true });
   } catch (error) {
-    console.warn(`Map generation fell back to the starter map: ${describe(error)}`);
+    console.warn("Map generation fell back to the starter map");
     return fallback();
   }
 }
@@ -71,7 +71,7 @@ export async function generateMapFromPaste(text: string, groupId = ""): Promise<
     const generated = await askGemini(buildPastePrompt(text));
     return await buildMap({ generated, budgetCents: budget, memberCount, groupId, search: (query) => findProducts(query) });
   } catch (error) {
-    console.warn(`Paste parsing fell back to the line parser: ${describe(error)}`);
+    console.warn("Paste parsing fell back to the line parser");
     return fromLines();
   }
 }

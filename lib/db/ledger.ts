@@ -9,8 +9,9 @@ import { computeShares } from "@/lib/money/shares";
 import { decideAuthorization } from "@/lib/payments/decide";
 import type { DemoCheckoutResult, StoreLimitInput } from "@/lib/payments/issuer";
 import { storeLimitInputs } from "@/lib/payments/limits";
+import { laneForStore } from "@/lib/checkout/registry";
 import { checkRules } from "@/lib/rules/check";
-import type { Authorization, Contribution, GroupState, MapData, Member, Refund, Slot, User } from "@/lib/types";
+import type { Authorization, Contribution, GroupState, MapData, Member, Product, Refund, Slot, User } from "@/lib/types";
 
 type Actor = Pick<User, "id" | "name">;
 
@@ -67,6 +68,8 @@ export async function createGroup(input: { name: string; prompt: string; budgetC
     storeLimits: [],
     authorizations: [],
     refunds: [],
+    storeOrders: [],
+    address: null,
     fundedCents: 0,
     totalCents: 0,
   };
@@ -151,10 +154,21 @@ export async function createSlot(input: {
 export async function updateSlot(slotId: string, patch: Partial<Omit<Slot, "id" | "zoneId">>) {
   const located = await (await getLedgerStore()).findBySlotId(slotId);
   if (!located) throw new LedgerError("Slot not found", 404);
+  const chosenId = patch.chosenProductId;
+  // A swapped-in option isn't saved yet: look it up before the lock, so no search runs inside it.
+  let swapped: Product | null = null;
+  if (chosenId && !located.map.products.some((product) => product.id === chosenId)) {
+    const { findSlotOption } = await import("@/lib/search/options");
+    swapped = await findSlotOption(slotId, chosenId);
+    if (!swapped) throw new LedgerError("That option is not available for this slot", 400);
+  }
   return editGroup(located.group.id, async (state) => {
     requireEditing(state);
     const slot = state.map.slots.find((item) => item.id === slotId);
     if (!slot) throw new LedgerError("Slot not found", 404);
+    if (swapped && !state.map.products.some((product) => product.id === swapped.id)) {
+      state.map.products = [...state.map.products.filter((product) => product.slotId !== slotId), { ...swapped, slotId }];
+    }
     Object.assign(slot, patch, { id: slotId, zoneId: slot.zoneId, updatedAt: new Date().toISOString() });
     recomputeShares(state);
     return slot;
@@ -349,15 +363,14 @@ export async function seedDemoGroup() {
 async function issueCardIfFunded(state: GroupState) {
   refreshTotals(state);
   if (state.group.status !== "funding" || state.fundedCents !== state.totalCents || state.card) return;
-  const limits: StoreLimitInput[] = storeLimitInputs(state.map, state.members);
+  const limits: StoreLimitInput[] = storeLimitInputs(state.map, state.members, laneForStore);
   const { getIssuer } = await import("@/lib/payments");
   const issuer = getIssuer();
   let card;
   try {
     card = await issuer.createCard(state.group.id, limits);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Card issuer failed";
-    console.error(message);
+    console.error("Card issuer failed; attempting the demo fallback");
     const { mockIssuer } = await import("@/lib/payments/mock-issuer");
     if (issuer === mockIssuer) throw error;
     card = await mockIssuer.createCard(state.group.id, limits);
@@ -373,7 +386,7 @@ async function issueCardIfFunded(state: GroupState) {
 }
 
 function recomputeShares(state: GroupState) {
-  state.shares = computeShares(state.map, state.members);
+  state.shares = computeShares(state.map, state.members, laneForStore);
   refreshTotals(state);
   state.map.rules = checkRules(state.map, state.members);
 }
@@ -415,7 +428,8 @@ function applyAuthorization(state: GroupState | null, cardId: string, merchant: 
   return authorization;
 }
 
-async function editGroup<T>(groupId: string, fn: (state: GroupState) => Promise<T> | T): Promise<T> {
+/** Runs `fn` on the group inside its lock (reusing an open one). Keep `fn` short: no lanes or network inside. */
+export async function editGroup<T>(groupId: string, fn: (state: GroupState) => Promise<T> | T): Promise<T> {
   const open = openMutation.getStore();
   if (open?.groupId === groupId) {
     if (!open.draft.state) throw new LedgerError("Group not found", 404);

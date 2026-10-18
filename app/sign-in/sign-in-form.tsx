@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { firebaseConfigured, signInWithEmail, signInWithGoogle, signUpWithEmail, watchAuth } from "@/lib/auth/client";
+import { safeNextPath } from "@/lib/auth/redirect";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
 /** Where to go after signing in: the page that sent you here (a join link), otherwise straight to the chat. */
 function nextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value === "/") return "/home";
-  return value;
+  const safe = safeNextPath(value);
+  return safe === "/" ? "/home" : safe;
 }
 
 function signInMessage(error: unknown) {

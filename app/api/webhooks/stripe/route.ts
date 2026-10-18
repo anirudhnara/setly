@@ -1,3 +1,4 @@
+import { readText } from "@/lib/security/request";
 import { NextResponse } from "next/server";
 import { stripeWebhookRequestSchema, type ApiErrorBody, type StripeWebhookResponse } from "@/lib/contracts";
 import { jsonError } from "@/lib/db/http";
@@ -15,7 +16,12 @@ export async function POST(request: Request) {
   if (!stripe) {
     return NextResponse.json({ error: "Stripe is not configured" } satisfies ApiErrorBody, { status: 400 });
   }
-  const raw = await request.text();
+  let raw: string;
+  try {
+    raw = await readText(request);
+  } catch (error) {
+    return jsonError(error);
+  }
   let event: ReturnType<typeof stripe.webhooks.constructEvent>;
   try {
     event = stripe.webhooks.constructEvent(raw, signature, secret);
@@ -23,6 +29,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid Stripe signature" } satisfies ApiErrorBody, { status: 400 });
   }
   try {
+    if (event.livemode) return NextResponse.json({ error: "Live Stripe events are not allowed" }, { status: 400 });
     const parsed = stripeWebhookRequestSchema.safeParse(event);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });

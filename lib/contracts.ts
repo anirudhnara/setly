@@ -124,6 +124,47 @@ export const returnItemRequestSchema = z.object({
 export type ReturnItemRequest = z.infer<typeof returnItemRequestSchema>;
 export type ReturnItemResponse = { refunds: Refund[] };
 
+export const shippingAddressSchema = z.object({
+  firstName: z.string().trim().min(1).max(60),
+  lastName: z.string().trim().min(1).max(60),
+  line1: z.string().trim().min(1).max(60),
+  line2: z.string().trim().max(60).nullable().default(null),
+  city: z.string().trim().min(1).max(60),
+  state: z.string().trim().regex(/^[A-Za-z]{2}$/, "Use the 2-letter state code").transform((value) => value.toUpperCase()),
+  postalCode: z.string().trim().regex(/^\d{5}(-\d{4})?$/, "Use a 5-digit ZIP code"),
+  phone: z.string().trim().regex(/^\+?[0-9 ().-]{7,20}$/, "Use a phone number"),
+});
+
+export const startCheckoutRequestSchema = z.object({
+  groupId: z.string().min(1),
+  address: shippingAddressSchema,
+});
+export type StartCheckoutRequest = z.infer<typeof startCheckoutRequestSchema>;
+export type StartCheckoutResponse = GroupState;
+
+/** The approving member comes from the session, never the body. */
+export const approveCheckoutRequestSchema = z.object({
+  groupId: z.string().min(1),
+  storeOrderId: z.string().min(1),
+  approve: z.boolean(),
+});
+export type ApproveCheckoutRequest = z.infer<typeof approveCheckoutRequestSchema>;
+export type ApproveCheckoutResponse = GroupState;
+
+/** A member bought a guided store's items with the group card (mock issuer: stands in for the store's charge). */
+export const guidedPurchaseRequestSchema = z.object({
+  groupId: z.string().min(1),
+  storeOrderId: z.string().min(1),
+});
+export type GuidedPurchaseRequest = z.infer<typeof guidedPurchaseRequestSchema>;
+export type GuidedPurchaseResponse = GroupState;
+
+export const settleCheckoutRequestSchema = z.object({
+  groupId: z.string().min(1),
+});
+export type SettleCheckoutRequest = z.infer<typeof settleCheckoutRequestSchema>;
+export type SettleCheckoutResponse = GroupState;
+
 export const demoResetRequestSchema = z.object({});
 export type DemoResetResponse = { reseeded: true };
 

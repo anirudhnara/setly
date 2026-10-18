@@ -442,3 +442,33 @@ button.mode-chip { border: 0; cursor: pointer; }
   .creation-steps { flex-wrap: nowrap; }
   .creation-steps li:not(.current) { gap: 0; padding: 5px; font-size: 0; }
 }
+
+/* Checkout, store by store */
+.store-orders { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.store-order { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); animation: rise .4s var(--ease) both; animation-delay: calc(var(--i) * .06s); }
+.store-order-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
+.store-order-name, .store-order-amount { display: grid; min-width: 0; }
+.store-order-name strong { font-size: 15px; }
+.store-order-name small, .store-order-amount small { color: var(--mute); font-size: 12px; }
+.store-order-amount { text-align: right; }
+.store-order-ask { display: grid; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--paper); }
+.store-order.warn .store-order-ask { background: var(--warn-soft); }
+.store-order-ask p { margin: 0; color: var(--ink-2); font-size: 14px; }
+.store-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.store-order-note { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--mute); font-size: 13px; }
+.store-order-note svg { width: 14px; height: 14px; }
+.address-form { display: grid; gap: 12px; }
+.address-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.address-field { display: grid; gap: 4px; min-width: 0; }
+.address-field span { color: var(--ink-2); font-size: 12.5px; font-weight: 550; }
+.address-field input { width: 100%; min-width: 0; }
+.address-field.line1, .address-field.line2 { grid-column: 1 / -1; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.muted.small { font-size: 12.5px; }
+@media (max-width: 520px) {
+  .store-order-head { grid-template-columns: minmax(0, 1fr) auto; }
+  .store-order-head .pill { grid-column: 1 / -1; justify-self: start; }
+  .address-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

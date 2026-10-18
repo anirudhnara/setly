@@ -1,0 +1,153 @@
+{
+  "_note": "Sample data: a fictional demo store hosted by Setly. Every product and price here is made up.",
+  "slug": "fernwood-home",
+  "name": "Fernwood Home",
+  "taxBasisPoints": 600,
+  "shippingSurprise": false,
+  "items": [
+    {
+      "id": "demo_fernwood_sofa_harbor",
+      "title": "Harbor 3-Seat Boucle Sofa, Oat",
+      "store": "Fernwood Home",
+      "priceCents": 52900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Sofa",
+      "room": "Living room",
+      "themes": [
+        "Cozy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_sofa_linden",
+      "title": "Linden Compact Loveseat, Sage Linen",
+      "store": "Fernwood Home",
+      "priceCents": 42900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Sofa",
+      "room": "Living room",
+      "themes": [
+        "Natural",
+        "Compact"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_rug_meadow",
+      "title": "Meadow Hand-Loomed Wool Area Rug, 5x8",
+      "store": "Fernwood Home",
+      "priceCents": 15900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Rug",
+      "room": "Living room",
+      "themes": [
+        "Cozy",
+        "Natural"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_rug_dune",
+      "title": "Dune Flatweave Jute Rug, 5x7",
+      "store": "Fernwood Home",
+      "priceCents": 9900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Rug",
+      "room": "Living room",
+      "themes": [
+        "Natural"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_table_alder",
+      "title": "Alder Round Oak Coffee Table",
+      "store": "Fernwood Home",
+      "priceCents": 18900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Coffee table",
+      "room": "Living room",
+      "themes": [
+        "Natural",
+        "Minimal"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_side_alder",
+      "title": "Alder Oak Side Table",
+      "store": "Fernwood Home",
+      "priceCents": 7900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Side table",
+      "room": "Living room",
+      "themes": [
+        "Natural"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_chair_nook",
+      "title": "Nook Sherpa Accent Armchair",
+      "store": "Fernwood Home",
+      "priceCents": 27900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Armchair",
+      "room": "Living room",
+      "themes": [
+        "Cozy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_pillows_ember",
+      "title": "Ember Knit Throw Pillow Covers, Set of 2",
+      "store": "Fernwood Home",
+      "priceCents": 3400,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Throw pillows",
+      "room": "Living room",
+      "themes": [
+        "Cozy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_blanket_hearth",
+      "title": "Hearth Chunky Knit Throw Blanket",
+      "store": "Fernwood Home",
+      "priceCents": 5900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Throw blanket",
+      "room": "Living room",
+      "themes": [
+        "Cozy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_fernwood_shelf_ridge",
+      "title": "Ridge 5-Shelf Oak Bookcase",
+      "store": "Fernwood Home",
+      "priceCents": 14900,
+      "url": "/api/stores/fernwood-home",
+      "imageUrl": "",
+      "category": "Bookshelf",
+      "room": "Living room",
+      "themes": [
+        "Natural",
+        "Minimal"
+      ],
+      "rating": 4.6
+    }
+  ]
+}

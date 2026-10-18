@@ -5,6 +5,8 @@ import { mockAiEnabled } from "@/lib/env";
 import { databaseConfigured } from "@/lib/search/cache";
 import { catalogItemToProduct, categorize as storedCategory, type CatalogItem as StoredItem } from "@/lib/search/catalog";
 import { JUNK_TITLE, searchProducts } from "@/lib/search/serpapi";
+import { demoStoreProducts } from "@/lib/stores/catalog";
+import { withCheckoutBadge } from "@/lib/checkout/badges";
 import type { Product } from "@/lib/types";
 
 /**
@@ -23,7 +25,10 @@ const categoryCache = new Map<string, { at: number; rows: Promise<StoredItem[]> 
 
 export async function findProducts(query: string, vibes: VibeWeights = {}): Promise<Product[]> {
   const useStore = !mockAiEnabled() && databaseConfigured();
-  const fromCatalog = useStore ? await storedProducts(query) : await catalogProducts(query);
+  const catalog = useStore ? await storedProducts(query) : await catalogProducts(query);
+  // Demo stores lead the database catalog so a generated plan has protocol-lane stores to check out from.
+  // The JSON catalog path already puts them first.
+  const fromCatalog = useStore ? withDemoStores(query, catalog) : catalog;
   // The catalog was just searched (more strictly than searchProducts would), so live search goes to the stores.
   const live = fromCatalog.length >= MIN_CATALOG ? [] : await searchProducts(query, { skipCatalog: useStore });
   // Live results get the same "is it actually the thing?" check as the catalog. Order of preference: relevant live
@@ -38,9 +43,13 @@ export async function findProducts(query: string, vibes: VibeWeights = {}): Prom
     const retried = simpler && simpler !== query.toLowerCase().trim() ? await findProducts(simpler, vibes) : [];
     if (retried.length) return retried;
     const loose = useStore ? await storedProducts(query, false) : [];
-    return sortByVibe(loose, vibes, (product) => String(product.attributes.themes ?? ""));
+    return badgeProducts(sortByVibe(loose, vibes, (product) => String(product.attributes.themes ?? "")));
   }
-  return sortByVibe(results, vibes, (product) => String(product.attributes.themes ?? ""));
+  return badgeProducts(sortByVibe(results, vibes, (product) => String(product.attributes.themes ?? "")));
+}
+
+function badgeProducts(products: Product[]): Product[] {
+  return products.map(withCheckoutBadge);
 }
 
 /** The item itself from a styled query: its last two meaningful words ("led desk lamp" → "desk lamp"). */
@@ -64,7 +73,7 @@ export async function storedProducts(query: string, strict = true): Promise<Prod
     }
     return pickStoredProducts(query, await entry.rows, strict);
   } catch (error) {
-    console.warn(`Catalog read failed for "${query}": ${error instanceof Error ? error.message : "unknown error"}`);
+    console.warn("Catalog read failed; using the search fallback");
     return [];
   }
 }
@@ -189,17 +198,27 @@ function storedToProduct(item: StoredItem): Product {
   return { ...product, attributes: { ...product.attributes, themes: tagWords(item.tags) } };
 }
 
-/** Placeholder JSON catalog items in the query's category, most query words in the title first. Exported for tests. */
+/** Demo-store matches first (at most half the results), then the rest. */
+function withDemoStores(query: string, products: Product[]): Product[] {
+  const demo = demoStoreProducts(query).slice(0, MAX_RESULTS / 2);
+  return [...demo, ...products].slice(0, MAX_RESULTS);
+}
+
+/**
+ * Demo-store items, then placeholder JSON catalog items in the query's category, most query words in the
+ * title first. Exported for tests.
+ */
 export async function catalogProducts(query: string): Promise<Product[]> {
   const category = categorize(query);
   if (!category) return [];
   const words = query.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 2);
   const items = (await loadCatalog()).filter((item) => item.category === category.label);
-  return items
+  const fromCatalog = items
     .map((item, index) => ({ item, index, hits: words.filter((word) => item.title.toLowerCase().includes(word)).length }))
     .sort((a, b) => b.hits - a.hits || (b.item.rating ?? 0) - (a.item.rating ?? 0) || a.index - b.index)
     .slice(0, MAX_RESULTS)
     .map(({ item }) => toProduct(item));
+  return withDemoStores(query, fromCatalog);
 }
 
 function toProduct(item: CatalogItem): Product {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fixtureMapForPrompt } from "@/lib/ai/fixture-map";
 import { normalizePriceToCents, normalizeStore } from "@/lib/search/normalize";
 import { findSlotOption, getSlotOptions, mergeOptions } from "@/lib/search/options";
@@ -62,5 +62,27 @@ describe("slot options", () => {
     const base = { slotId: "s", url: "", imageUrl: "", attributes: {} };
     const merged = mergeOptions({ ...base, id: "a", title: "Lamp", store: "IKEA", priceCents: 1 }, [{ ...base, id: "b", title: "lamp", store: "ikea", priceCents: 1 }, { ...base, id: "c", title: "Lamp 2", store: "IKEA", priceCents: 2 }]);
     expect(merged.map((product) => product.id)).toEqual(["a", "c"]);
+  });
+});
+
+describe("SERPAPI_LIVE", () => {
+  it("never calls SerpApi unless it is exactly 1", async () => {
+    const { searchProducts } = await import("@/lib/search/serpapi");
+    const saved = { mock: process.env.MOCK_AI, live: process.env.SERPAPI_LIVE, db: process.env.DATABASE_URL };
+    const fetchSpy = vi.fn(() => Promise.reject(new Error("no network")));
+    vi.stubGlobal("fetch", fetchSpy);
+    process.env.MOCK_AI = "0";
+    delete process.env.SERPAPI_LIVE;
+    delete process.env.DATABASE_URL;
+    try {
+      await searchProducts("velvet mustard sofa");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+      process.env.MOCK_AI = saved.mock;
+      if (saved.live === undefined) delete process.env.SERPAPI_LIVE;
+      else process.env.SERPAPI_LIVE = saved.live;
+      if (saved.db !== undefined) process.env.DATABASE_URL = saved.db;
+    }
   });
 });

@@ -13,6 +13,7 @@ import {
   rules,
   slots,
   storeLimits,
+  storeOrders,
   zones,
 } from "@/lib/db/schema";
 import type { GroupDraft, LedgerStore } from "@/lib/db/store";
@@ -33,8 +34,15 @@ import type {
   Rule,
   RuleStatus,
   RuleType,
+  ShareLine,
+  ShippingAddress,
   Slot,
   StoreLimit,
+  StoreOrder,
+  StoreOrderStatus,
+  CheckoutLaneName,
+  RefundReason,
+  TrackingInfo,
   Zone,
   GroupState,
 } from "@/lib/types";
@@ -55,8 +63,10 @@ export const drizzleLedger: LedgerStore = {
     return db.transaction(async (tx) => {
       await tx.execute(sql`select ${groups.id} from ${groups} where ${groups.id} = ${groupId} for update`);
       const draft: GroupDraft = { state: await readGroup(groupId, tx) };
+      // Compared after `fn`, so only the sections it changed are written back.
+      const before = draft.state ? structuredClone(draft.state) : null;
       const result = await fn(draft);
-      if (draft.state) await writeGroup(tx, draft.state);
+      if (draft.state) await writeGroup(tx, draft.state, before);
       return result;
     });
   },
@@ -107,7 +117,7 @@ export const drizzleLedger: LedgerStore = {
 
 async function readGroup(groupId: string, db: Database | Transaction = getDb()): Promise<GroupState | null> {
   // Independent reads run together: four round trips instead of thirteen against the remote database.
-  const [[group], memberRows, zoneRows, ruleRows, contributionRows, cardRows, refundRows] = await Promise.all([
+  const [[group], memberRows, zoneRows, ruleRows, contributionRows, cardRows, refundRows, orderRows] = await Promise.all([
     db.select().from(groups).where(eq(groups.id, groupId)).limit(1),
     db.select().from(members).where(eq(members.groupId, groupId)),
     db.select().from(zones).where(eq(zones.groupId, groupId)),
@@ -115,6 +125,7 @@ async function readGroup(groupId: string, db: Database | Transaction = getDb()):
     db.select().from(contributions).where(eq(contributions.groupId, groupId)),
     db.select().from(cards).where(eq(cards.groupId, groupId)),
     db.select().from(refunds).where(eq(refunds.groupId, groupId)),
+    db.select().from(storeOrders).where(eq(storeOrders.groupId, groupId)),
   ]);
   if (!group) return null;
   const zoneIds = zoneRows.map((zone) => zone.id);
@@ -146,166 +157,179 @@ async function readGroup(groupId: string, db: Database | Transaction = getDb()):
     storeLimits: limitRows.map(toStoreLimit),
     authorizations: authorizationRows.map(toAuthorization),
     refunds: refundRows.map(toRefund),
+    storeOrders: orderRows.map(toStoreOrder).sort((left, right) => left.store.localeCompare(right.store)),
+    address: asAddress(group.addressJson),
     fundedCents: 0,
     totalCents: 0,
   };
   return state;
 }
 
-async function writeGroup(tx: Transaction, state: GroupState) {
+/**
+ * Writes a group back. With `before` (the state read under the lock), only sections that changed are
+ * rewritten: a remote database costs a round trip per statement, and a checkout poll usually touches one order.
+ * Foreign keys tie some sections together: members are referenced by slots, contributions and refunds, and
+ * products by refunds, so changing those rewrites what points at them too.
+ */
+async function writeGroup(tx: Transaction, state: GroupState, before: GroupState | null = null) {
   const groupId = state.group.id;
-  await tx
-    .insert(groups)
-    .values({
-      id: state.group.id,
-      name: state.group.name,
-      prompt: state.group.prompt,
-      budgetCents: state.group.budgetCents,
-      status: state.group.status,
-      createdAt: new Date(state.group.createdAt),
-      sharesJson: state.shares,
-    })
-    .onConflictDoUpdate({
-      target: groups.id,
-      set: {
-        name: state.group.name,
-        prompt: state.group.prompt,
-        budgetCents: state.group.budgetCents,
-        status: state.group.status,
-        sharesJson: state.shares,
-      },
-    });
+  const changed = (pick: (value: GroupState) => unknown) => !before || JSON.stringify(pick(before)) !== JSON.stringify(pick(state));
+  const membersChanged = changed((value) => value.members);
+  const mapChanged = membersChanged || changed((value) => value.map);
+  const refundsChanged = mapChanged || changed((value) => value.refunds);
+  const contributionsChanged = membersChanged || changed((value) => value.contributions);
+  const cardChanged = changed((value) => [value.card, value.storeLimits, value.authorizations]);
+  const ordersChanged = changed((value) => value.storeOrders);
+  const groupChanged = changed((value) => [value.group, value.shares, value.address]);
 
-  const existingZones = await tx.select({ id: zones.id }).from(zones).where(eq(zones.groupId, groupId));
-  const zoneIds = existingZones.map((zone) => zone.id);
-  const existingSlots = zoneIds.length === 0 ? [] : await tx.select({ id: slots.id }).from(slots).where(inArray(slots.zoneId, zoneIds));
-  const slotIds = existingSlots.map((slot) => slot.id);
-  const existingCards = await tx.select({ id: cards.id }).from(cards).where(eq(cards.groupId, groupId));
-  const cardIds = existingCards.map((card) => card.id);
+  // Statements are queued in foreign-key order and sent together. One transaction is one connection, which
+  // runs them in the order sent, so this is one round trip instead of one per statement.
+  const queue: PromiseLike<unknown>[] = [];
+  const groupCards = tx.select({ id: cards.id }).from(cards).where(eq(cards.groupId, groupId));
+  const groupZones = tx.select({ id: zones.id }).from(zones).where(eq(zones.groupId, groupId));
+  const groupSlots = tx.select({ id: slots.id }).from(slots).where(inArray(slots.zoneId, groupZones));
 
-  if (cardIds.length > 0) {
-    await tx.delete(authorizations).where(inArray(authorizations.cardId, cardIds));
-    await tx.delete(storeLimits).where(inArray(storeLimits.cardId, cardIds));
+  if (groupChanged) {
+    queue.push(
+      tx
+        .insert(groups)
+        .values({
+          id: state.group.id,
+          name: state.group.name,
+          prompt: state.group.prompt,
+          budgetCents: state.group.budgetCents,
+          status: state.group.status,
+          createdAt: new Date(state.group.createdAt),
+          sharesJson: state.shares,
+          addressJson: state.address,
+        })
+        .onConflictDoUpdate({
+          target: groups.id,
+          set: {
+            name: state.group.name,
+            prompt: state.group.prompt,
+            budgetCents: state.group.budgetCents,
+            status: state.group.status,
+            sharesJson: state.shares,
+            addressJson: state.address,
+          },
+        }),
+    );
   }
-  await tx.delete(refunds).where(eq(refunds.groupId, groupId));
-  await tx.delete(cards).where(eq(cards.groupId, groupId));
-  await tx.delete(contributions).where(eq(contributions.groupId, groupId));
-  if (slotIds.length > 0) {
-    await tx.delete(links).where(inArray(links.fromSlotId, slotIds));
-    await tx.delete(links).where(inArray(links.toSlotId, slotIds));
-    await tx.delete(products).where(inArray(products.slotId, slotIds));
-    await tx.delete(slots).where(inArray(slots.id, slotIds));
-  }
-  await tx.delete(rules).where(eq(rules.groupId, groupId));
-  if (zoneIds.length > 0) await tx.delete(zones).where(inArray(zones.id, zoneIds));
-  await tx.delete(members).where(eq(members.groupId, groupId));
 
-  if (state.members.length > 0) {
-    await tx
-      .insert(users)
-      .values(
+  if (cardChanged) {
+    queue.push(tx.delete(authorizations).where(inArray(authorizations.cardId, groupCards)));
+    queue.push(tx.delete(storeLimits).where(inArray(storeLimits.cardId, groupCards)));
+    queue.push(tx.delete(cards).where(eq(cards.groupId, groupId)));
+  }
+  if (refundsChanged) queue.push(tx.delete(refunds).where(eq(refunds.groupId, groupId)));
+  if (ordersChanged) queue.push(tx.delete(storeOrders).where(eq(storeOrders.groupId, groupId)));
+  if (contributionsChanged) queue.push(tx.delete(contributions).where(eq(contributions.groupId, groupId)));
+  if (mapChanged) {
+    queue.push(tx.delete(links).where(inArray(links.fromSlotId, groupSlots)));
+    queue.push(tx.delete(links).where(inArray(links.toSlotId, groupSlots)));
+    queue.push(tx.delete(products).where(inArray(products.slotId, groupSlots)));
+    queue.push(tx.delete(slots).where(inArray(slots.zoneId, groupZones)));
+    queue.push(tx.delete(rules).where(eq(rules.groupId, groupId)));
+    queue.push(tx.delete(zones).where(eq(zones.groupId, groupId)));
+  }
+  if (membersChanged) queue.push(tx.delete(members).where(eq(members.groupId, groupId)));
+
+  if (membersChanged && state.members.length > 0) {
+    queue.push(
+      tx
+        .insert(users)
+        .values(
+          state.members.map((member) => ({
+            id: member.userId,
+            firebaseUid: `demo:${member.userId}`,
+            email: `${member.userId}@demo.setly.local`,
+            name: member.name,
+            createdAt: new Date(member.joinedAt),
+          })),
+        )
+        .onConflictDoNothing(),
+    );
+    queue.push(
+      tx.insert(members).values(
         state.members.map((member) => ({
-          id: member.userId,
-          firebaseUid: `demo:${member.userId}`,
-          email: `${member.userId}@demo.setly.local`,
+          id: member.id,
+          groupId: member.groupId,
+          userId: member.userId,
           name: member.name,
-          createdAt: new Date(member.joinedAt),
+          isOrganizer: member.isOrganizer,
+          joinedAt: new Date(member.joinedAt),
         })),
-      )
-      .onConflictDoNothing();
-    await tx.insert(members).values(
-      state.members.map((member) => ({
-        id: member.id,
-        groupId: member.groupId,
-        userId: member.userId,
-        name: member.name,
-        isOrganizer: member.isOrganizer,
-        joinedAt: new Date(member.joinedAt),
-      })),
+      ),
     );
   }
-  if (state.map.zones.length > 0) {
-    await tx.insert(zones).values(
-      state.map.zones.map((zone) => ({
-        id: zone.id,
-        groupId: zone.groupId,
-        name: zone.name,
-        sortOrder: zone.sortOrder,
-      })),
+  if (mapChanged && state.map.zones.length > 0) {
+    queue.push(tx.insert(zones).values(state.map.zones.map((zone) => ({ id: zone.id, groupId: zone.groupId, name: zone.name, sortOrder: zone.sortOrder }))));
+  }
+  if (mapChanged && state.map.slots.length > 0) {
+    queue.push(
+      tx.insert(slots).values(
+        state.map.slots.map((slot) => ({
+          id: slot.id,
+          zoneId: slot.zoneId,
+          need: slot.need,
+          quantityRule: slot.quantityRule,
+          quantity: slot.quantity,
+          budgetCents: slot.budgetCents,
+          payType: slot.payType,
+          ownerMemberId: slot.ownerMemberId,
+          chosenProductId: slot.chosenProductId,
+          updatedBy: slot.updatedBy,
+          updatedAt: new Date(slot.updatedAt),
+        })),
+      ),
     );
   }
-  if (state.map.slots.length > 0) {
-    await tx.insert(slots).values(
-      state.map.slots.map((slot) => ({
-        id: slot.id,
-        zoneId: slot.zoneId,
-        need: slot.need,
-        quantityRule: slot.quantityRule,
-        quantity: slot.quantity,
-        budgetCents: slot.budgetCents,
-        payType: slot.payType,
-        ownerMemberId: slot.ownerMemberId,
-        chosenProductId: slot.chosenProductId,
-        updatedBy: slot.updatedBy,
-        updatedAt: new Date(slot.updatedAt),
-      })),
+  if (mapChanged && state.map.products.length > 0) {
+    queue.push(
+      tx.insert(products).values(
+        state.map.products.map((product) => ({
+          id: product.id,
+          slotId: product.slotId,
+          title: product.title,
+          store: product.store,
+          priceCents: product.priceCents,
+          url: product.url,
+          imageUrl: product.imageUrl,
+          attributes: product.attributes,
+        })),
+      ),
     );
   }
-  if (state.map.products.length > 0) {
-    await tx.insert(products).values(
-      state.map.products.map((product) => ({
-        id: product.id,
-        slotId: product.slotId,
-        title: product.title,
-        store: product.store,
-        priceCents: product.priceCents,
-        url: product.url,
-        imageUrl: product.imageUrl,
-        attributes: product.attributes,
-      })),
+  if (mapChanged && state.map.links.length > 0) queue.push(tx.insert(links).values(state.map.links));
+  if (mapChanged && state.map.rules.length > 0) {
+    queue.push(
+      tx.insert(rules).values(
+        state.map.rules.map((rule) => ({
+          id: rule.id,
+          groupId: rule.groupId,
+          type: rule.type,
+          slotIds: rule.slotIds,
+          params: rule.params,
+          status: rule.status,
+          message: rule.message,
+        })),
+      ),
     );
   }
-  if (state.map.links.length > 0) {
-    await tx.insert(links).values(state.map.links);
+  if (contributionsChanged && state.contributions.length > 0) queue.push(tx.insert(contributions).values(state.contributions));
+  if (cardChanged && state.card) queue.push(tx.insert(cards).values(state.card));
+  if (cardChanged && state.storeLimits.length > 0) queue.push(tx.insert(storeLimits).values(state.storeLimits));
+  if (cardChanged && state.authorizations.length > 0) {
+    queue.push(tx.insert(authorizations).values(state.authorizations.map((authorization) => ({ ...authorization, createdAt: new Date(authorization.createdAt) }))));
   }
-  if (state.map.rules.length > 0) {
-    await tx.insert(rules).values(
-      state.map.rules.map((rule) => ({
-        id: rule.id,
-        groupId: rule.groupId,
-        type: rule.type,
-        slotIds: rule.slotIds,
-        params: rule.params,
-        status: rule.status,
-        message: rule.message,
-      })),
-    );
+  if (refundsChanged && state.refunds.length > 0) {
+    queue.push(tx.insert(refunds).values(state.refunds.map((refund) => ({ ...refund, createdAt: new Date(refund.createdAt) }))));
   }
-  if (state.contributions.length > 0) {
-    await tx.insert(contributions).values(state.contributions);
+  if (ordersChanged && state.storeOrders.length > 0) {
+    queue.push(tx.insert(storeOrders).values(state.storeOrders.map((order) => ({ ...order, updatedAt: new Date(order.updatedAt) }))));
   }
-  if (state.card) {
-    await tx.insert(cards).values(state.card);
-  }
-  if (state.storeLimits.length > 0) {
-    await tx.insert(storeLimits).values(state.storeLimits);
-  }
-  if (state.authorizations.length > 0) {
-    await tx.insert(authorizations).values(
-      state.authorizations.map((authorization) => ({
-        ...authorization,
-        createdAt: new Date(authorization.createdAt),
-      })),
-    );
-  }
-  if (state.refunds.length > 0) {
-    await tx.insert(refunds).values(
-      state.refunds.map((refund) => ({
-        ...refund,
-        createdAt: new Date(refund.createdAt),
-      })),
-    );
-  }
+  await Promise.all(queue);
 }
 
 function iso(value: Date | string) {
@@ -415,7 +439,87 @@ function toAuthorization(row: typeof authorizations.$inferSelect): Authorization
 }
 
 function toRefund(row: typeof refunds.$inferSelect): Refund {
-  return { id: row.id, groupId: row.groupId, productId: row.productId, memberId: row.memberId, amountCents: row.amountCents, createdAt: iso(row.createdAt) };
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    productId: row.productId,
+    storeOrderId: row.storeOrderId,
+    memberId: row.memberId,
+    amountCents: row.amountCents,
+    reason: asRefundReason(row.reason),
+    createdAt: iso(row.createdAt),
+  };
+}
+
+function toStoreOrder(row: typeof storeOrders.$inferSelect): StoreOrder {
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    store: row.store,
+    lane: asLane(row.lane),
+    status: asStoreOrderStatus(row.status),
+    subtotalCents: row.subtotalCents,
+    capCents: row.capCents,
+    quotedCents: row.quotedCents,
+    externalId: row.externalId,
+    attempt: row.attempt,
+    error: row.error,
+    tracking: asTracking(row.tracking),
+    finalTotalCents: row.finalTotalCents,
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function asRefundReason(value: string): RefundReason {
+  if (value === "return" || value === "leftover_buffer" || value === "zinc_held" || value === "store_failed") return value;
+  return "return";
+}
+
+function asLane(value: string): CheckoutLaneName {
+  if (value === "protocol" || value === "zinc" || value === "guided") return value;
+  return "guided";
+}
+
+function asStoreOrderStatus(value: string): StoreOrderStatus {
+  if (
+    value === "pending" ||
+    value === "quoting" ||
+    value === "needs_approval" ||
+    value === "placing" ||
+    value === "placed" ||
+    value === "failed" ||
+    value === "canceled"
+  ) {
+    return value;
+  }
+  return "pending";
+}
+
+function asTracking(value: unknown): TrackingInfo[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    if (typeof record.carrier !== "string" || typeof record.number !== "string") return [];
+    return [{ carrier: record.carrier, number: record.number, url: typeof record.url === "string" ? record.url : null }];
+  });
+}
+
+function asAddress(value: unknown): ShippingAddress | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const text = (key: string) => (typeof record[key] === "string" ? (record[key] as string) : "");
+  const address: ShippingAddress = {
+    firstName: text("firstName"),
+    lastName: text("lastName"),
+    line1: text("line1"),
+    line2: typeof record.line2 === "string" ? record.line2 : null,
+    city: text("city"),
+    state: text("state"),
+    postalCode: text("postalCode"),
+    phone: text("phone"),
+  };
+  return address.line1 && address.postalCode ? address : null;
 }
 
 function asGroupStatus(value: string): GroupStatus {
@@ -475,11 +579,15 @@ function asShares(value: unknown): MemberShare[] {
     if (!item || typeof item !== "object") return [];
     const record = item as Record<string, unknown>;
     if (typeof record.memberId !== "string" || typeof record.totalCents !== "number" || !Array.isArray(record.lines)) return [];
-    const lines = record.lines.flatMap((line) => {
+    const lines = record.lines.flatMap((line): ShareLine[] => {
       if (!line || typeof line !== "object") return [];
       const entry = line as Record<string, unknown>;
-      if (typeof entry.slotId !== "string" || typeof entry.cents !== "number") return [];
-      return [{ slotId: entry.slotId, cents: entry.cents }];
+      if (typeof entry.cents !== "number") return [];
+      const slotId = typeof entry.slotId === "string" ? entry.slotId : null;
+      const kind = entry.kind === "buffer" || entry.kind === "zinc_fee" ? entry.kind : "item";
+      // Lines saved before buffers existed have no kind and are items, so they need a slot.
+      if (kind === "item" && !slotId) return [];
+      return [{ kind, slotId, store: typeof entry.store === "string" ? entry.store : null, cents: entry.cents }];
     });
     return [{ memberId: record.memberId, totalCents: record.totalCents, lines }];
   });

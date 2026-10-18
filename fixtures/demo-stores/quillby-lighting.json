@@ -1,0 +1,94 @@
+{
+  "_note": "Sample data: a fictional demo store hosted by Setly. Every product and price here is made up.",
+  "slug": "quillby-lighting",
+  "name": "Quillby Lighting",
+  "taxBasisPoints": 600,
+  "shippingSurprise": true,
+  "items": [
+    {
+      "id": "demo_quillby_floor_arc",
+      "title": "Arc Brass Floor Lamp with Linen Shade",
+      "store": "Quillby Lighting",
+      "priceCents": 8900,
+      "url": "/api/stores/quillby-lighting",
+      "imageUrl": "",
+      "category": "Floor lamp",
+      "room": "Living room",
+      "themes": [
+        "Cozy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_quillby_floor_column",
+      "title": "Column Paper Floor Lamp, Warm White",
+      "store": "Quillby Lighting",
+      "priceCents": 6900,
+      "url": "/api/stores/quillby-lighting",
+      "imageUrl": "",
+      "category": "Floor lamp",
+      "room": "Living room",
+      "themes": [
+        "Minimal"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_quillby_floor_tripod",
+      "title": "Tripod Walnut Floor Lamp",
+      "store": "Quillby Lighting",
+      "priceCents": 11900,
+      "url": "/api/stores/quillby-lighting",
+      "imageUrl": "",
+      "category": "Floor lamp",
+      "room": "Living room",
+      "themes": [
+        "Natural"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_quillby_desk_pivot",
+      "title": "Pivot LED Desk Lamp, Matte Black",
+      "store": "Quillby Lighting",
+      "priceCents": 3900,
+      "url": "/api/stores/quillby-lighting",
+      "imageUrl": "",
+      "category": "Desk lamp",
+      "room": "Office",
+      "themes": [
+        "Minimal",
+        "Compact"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_quillby_desk_dome",
+      "title": "Dome Ceramic Desk Lamp, Clay",
+      "store": "Quillby Lighting",
+      "priceCents": 4900,
+      "url": "/api/stores/quillby-lighting",
+      "imageUrl": "",
+      "category": "Desk lamp",
+      "room": "Office",
+      "themes": [
+        "Cozy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_quillby_desk_clip",
+      "title": "Clip-On Dorm Desk Lamp",
+      "store": "Quillby Lighting",
+      "priceCents": 2400,
+      "url": "/api/stores/quillby-lighting",
+      "imageUrl": "",
+      "category": "Desk lamp",
+      "room": "Office",
+      "themes": [
+        "Compact"
+      ],
+      "rating": 4.6
+    }
+  ]
+}

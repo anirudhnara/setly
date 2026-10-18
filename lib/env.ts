@@ -4,8 +4,9 @@ const envSchema = z
   .object({
     GEMINI_API_KEY: z.string().min(1).optional(),
     SERPAPI_KEY: z.string().min(1).optional(),
+    SERPAPI_LIVE: z.enum(["0", "1"]).default("0"),
     DATABASE_URL: z.string().min(1).optional(),
-    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_SECRET_KEY: z.string().regex(/^sk_test_/, "Only Stripe test keys are allowed").optional(),
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
     ISSUER: z.enum(["mock", "stripe"]).default("mock"),
@@ -13,14 +14,16 @@ const envSchema = z
     BESTBUY_API_KEY: z.string().min(1).optional(),
     EBAY_CLIENT_ID: z.string().min(1).optional(),
     EBAY_CLIENT_SECRET: z.string().min(1).optional(),
+    CHECKOUT_ZINC: z.enum(["off", "sandbox", "live"]).default("off"),
+    ZINC_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.MOCK_AI !== "1") {
       if (!value.GEMINI_API_KEY) {
         ctx.addIssue({ code: "custom", path: ["GEMINI_API_KEY"], message: "Required when MOCK_AI is not 1" });
       }
-      if (!value.SERPAPI_KEY) {
-        ctx.addIssue({ code: "custom", path: ["SERPAPI_KEY"], message: "Required when MOCK_AI is not 1" });
+      if (value.SERPAPI_LIVE === "1" && !value.SERPAPI_KEY) {
+        ctx.addIssue({ code: "custom", path: ["SERPAPI_KEY"], message: "Required when SERPAPI_LIVE is 1" });
       }
     }
     if (value.ISSUER === "stripe") {
@@ -29,6 +32,12 @@ const envSchema = z
       }
       if (!value.STRIPE_WEBHOOK_SECRET) {
         ctx.addIssue({ code: "custom", path: ["STRIPE_WEBHOOK_SECRET"], message: "Required when ISSUER is stripe" });
+      }
+    }
+    if (value.CHECKOUT_ZINC !== "off") {
+      const prefix = value.CHECKOUT_ZINC === "sandbox" ? "zn_test_" : "zn_live_";
+      if (!value.ZINC_API_KEY?.startsWith(prefix)) {
+        ctx.addIssue({ code: "custom", path: ["ZINC_API_KEY"], message: `Must start with ${prefix} when CHECKOUT_ZINC is ${value.CHECKOUT_ZINC}` });
       }
     }
   });
@@ -44,6 +53,7 @@ export function getEnv(): Env {
   return envSchema.parse({
     GEMINI_API_KEY: present(process.env.GEMINI_API_KEY),
     SERPAPI_KEY: present(process.env.SERPAPI_KEY),
+    SERPAPI_LIVE: present(process.env.SERPAPI_LIVE),
     DATABASE_URL: present(process.env.DATABASE_URL),
     STRIPE_SECRET_KEY: present(process.env.STRIPE_SECRET_KEY),
     STRIPE_WEBHOOK_SECRET: present(process.env.STRIPE_WEBHOOK_SECRET),
@@ -53,16 +63,29 @@ export function getEnv(): Env {
     BESTBUY_API_KEY: present(process.env.BESTBUY_API_KEY),
     EBAY_CLIENT_ID: present(process.env.EBAY_CLIENT_ID),
     EBAY_CLIENT_SECRET: present(process.env.EBAY_CLIENT_SECRET),
+    CHECKOUT_ZINC: present(process.env.CHECKOUT_ZINC),
+    ZINC_API_KEY: present(process.env.ZINC_API_KEY),
   });
+}
+
+/** Zinc lane mode. `off` runs the in-repo simulator and makes no network calls. */
+export function checkoutZincMode(): Env["CHECKOUT_ZINC"] {
+  const mode = process.env.CHECKOUT_ZINC;
+  return mode === "sandbox" || mode === "live" ? mode : "off";
 }
 
 export function mockAiEnabled() {
   return (process.env.MOCK_AI ?? "1") !== "0";
 }
 
+/** Live SerpApi searches. Off unless this is exactly "1": the cache and the Tiger catalog serve everything else. */
+export function serpApiLiveEnabled() {
+  return process.env.SERPAPI_LIVE === "1";
+}
+
 /** Demo laptop reset. Off unless this is exactly "1". */
 export function demoResetEnabled() {
-  return process.env.DEMO_RESET === "1";
+  return process.env.NODE_ENV !== "production" && process.env.DEMO_RESET === "1";
 }
 
 const firebaseWebConfigSchema = z.object({
@@ -116,4 +139,10 @@ export function getFirebaseAdminCredentials(): FirebaseAdminCredentials | null {
     privateKey,
   });
   return parsed.success ? parsed.data : null;
+}
+
+/** Server-only secret for the destructive local demo reset. */
+export function demoResetToken() {
+  const token = process.env.DEMO_RESET_TOKEN;
+  return token && token.length >= 32 ? token : null;
 }

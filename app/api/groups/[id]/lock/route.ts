@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { lockGroupRequestSchema, readRequest, type ApiErrorBody, type LockGroupResponse } from "@/lib/contracts";
+import { lockGroupRequestSchema, type ApiErrorBody, type LockGroupResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { jsonError } from "@/lib/db/http";
 import { lockGroup } from "@/lib/db/queries";
 

@@ -1,14 +1,15 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { getDb } from "@/lib/db/client";
-import { createGroup, getGroupState, joinGroup, saveMap, updateSlot } from "@/lib/db/ledger";
+import { createGroup, editGroup, getGroupState, joinGroup, saveMap, updateSlot } from "@/lib/db/ledger";
 import { useDatabaseLedgerForTests } from "@/lib/db/memory-store";
 import { pricePoints } from "@/lib/db/schema";
 import type { MapData } from "@/lib/types";
 
 const databaseUrl = process.env.DATABASE_URL;
 
-describe.skipIf(!databaseUrl)("ledger against postgres", () => {
+// A remote database takes seconds per locked write, so these get more than the 5s default.
+describe.skipIf(!databaseUrl)("ledger against postgres", { timeout: 120_000 }, () => {
   it("serializes joins and keeps price history across map saves", async () => {
     useDatabaseLedgerForTests();
     process.env.ISSUER = "mock";
@@ -36,6 +37,44 @@ describe.skipIf(!databaseUrl)("ledger against postgres", () => {
     expect(state?.members).toHaveLength(5);
     expect(state?.members.filter((member) => member.isOrganizer)).toHaveLength(1);
     expect(state?.map.slots.map((slot) => slot.need).sort()).toEqual(slots.slots.map((slot) => `kept-${slot.id}`).sort());
+  });
+
+  it("round-trips checkout store orders, the address, and refunds without a product", async () => {
+    useDatabaseLedgerForTests();
+    const created = await createGroup({ name: "Postgres checkout", prompt: "lamp", budgetCents: 1000 }, { id: "usr_pg_checkout", name: "Pg" });
+    const member = created.members[0];
+    if (!member) throw new Error("Organizer missing");
+    const updatedAt = "2026-10-18T09:00:00.000Z";
+    await editGroup(created.group.id, (state) => {
+      state.address = { firstName: "Ada", lastName: "Park", line1: "1 Main St", line2: null, city: "Seattle", state: "WA", postalCode: "98105", phone: "2065550100" };
+      state.storeOrders = [
+        {
+          id: `so_pg_${created.group.id}`,
+          groupId: created.group.id,
+          store: "Target",
+          lane: "zinc",
+          status: "placed",
+          subtotalCents: 1000,
+          capCents: 1100,
+          quotedCents: 1000,
+          externalId: "zsim_1_x",
+          attempt: 1,
+          error: null,
+          tracking: [{ carrier: "UPS", number: "1ZTEST", url: null }],
+          finalTotalCents: 1085,
+          updatedAt,
+        },
+      ];
+      state.contributions = [{ id: `con_pg_${created.group.id}`, groupId: created.group.id, memberId: member.id, amountCents: 1100, stripePaymentIntentId: null, status: "paid" }];
+      state.refunds = [
+        { id: `ref_pg_${created.group.id}`, groupId: created.group.id, productId: null, storeOrderId: `so_pg_${created.group.id}`, memberId: member.id, amountCents: 15, reason: "zinc_held", createdAt: updatedAt },
+      ];
+    });
+    const state = await getGroupState(created.group.id);
+    expect(state?.address?.postalCode).toBe("98105");
+    expect(state?.storeOrders).toEqual([expect.objectContaining({ lane: "zinc", status: "placed", attempt: 1, finalTotalCents: 1085, updatedAt })]);
+    expect(state?.storeOrders[0]?.tracking).toEqual([{ carrier: "UPS", number: "1ZTEST", url: null }]);
+    expect(state?.refunds).toEqual([expect.objectContaining({ productId: null, reason: "zinc_held", amountCents: 15 })]);
   });
 });
 
