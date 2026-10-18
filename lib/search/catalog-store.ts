@@ -39,8 +39,9 @@ export async function upsertCatalogItems(input: CatalogItem[]) {
           delivery: sql`excluded.delivery`,
           shippingDaysMax: sql`excluded.shipping_days_max`,
           variantGroup: sql`excluded.variant_group`,
-          role: sql`excluded.role`,
-          tags: sql`excluded.tags`,
+          // Keep Gemini's color, styles, and role when a reseed rewrites the keyword tags.
+          role: sql`case when ${catalogItems.tags} ? 'color' then ${catalogItems.role} else excluded.role end`,
+          tags: sql`excluded.tags || jsonb_strip_nulls(jsonb_build_object('color', ${catalogItems.tags} -> 'color', 'styles', ${catalogItems.tags} -> 'styles'))`,
           scores: sql`excluded.scores`,
           attributes: sql`excluded.attributes`,
           fetchedAt: sql`excluded.fetched_at`,
@@ -101,4 +102,28 @@ export async function catalogCoverage() {
     })
     .from(catalogItems)
     .groupBy(catalogItems.category);
+}
+
+/** Items Gemini hasn't tagged yet. */
+export async function untaggedCatalogItems(limit: number) {
+  const { db: database, schema } = await db();
+  const { catalogItems } = schema;
+  return database
+    .select({ id: catalogItems.id, title: catalogItems.title, category: catalogItems.category, tags: catalogItems.tags })
+    .from(catalogItems)
+    .where(sql`not (${catalogItems.tags} ? 'color')`)
+    .limit(limit);
+}
+
+/** Saves Gemini tags and the role they imply, in one statement per batch. */
+export async function saveCatalogTags(updates: { id: string; tags: CatalogItem["tags"]; role: CatalogItem["role"] }[]) {
+  if (updates.length === 0) return;
+  const { db: database } = await db();
+  const values = sql.join(
+    updates.map((update) => sql`(${update.id}, ${JSON.stringify(update.tags)}::jsonb, ${update.role})`),
+    sql`, `,
+  );
+  await database.execute(
+    sql`update catalog_items as c set tags = v.tags, role = v.role from (values ${values}) as v(id, tags, role) where c.id = v.id`,
+  );
 }

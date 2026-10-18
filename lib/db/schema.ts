@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, unique } from "drizzle-orm/pg-core";
 import type { GroupStatus, MemberShare, PayType, QuantityRule, RuleStatus, RuleType } from "@/lib/types";
+import type { ColorProfile } from "@/lib/search/color";
 
 export const groups = pgTable("groups", {
   id: text("id").primaryKey(),
@@ -176,7 +177,8 @@ export const catalogItems = pgTable(
     variantGroup: text("variant_group").notNull(),
     /** "anchor" items set a look (themed or colorful); "neutral" items fit into many sets. */
     role: text("role").$type<"anchor" | "neutral">().notNull(),
-    tags: jsonb("tags").$type<{ colors: string[]; themes: string[]; sizes: string[] }>().notNull(),
+    /** Keyword tags from the title; `color` and `styles` are added by Gemini (scripts/tag-catalog.ts). */
+    tags: jsonb("tags").$type<{ colors: string[]; themes: string[]; sizes: string[]; color?: ColorProfile; styles?: string[] }>().notNull(),
     /** 1 to 5 each, plus popularity from 0 to 1. */
     scores: jsonb("scores").$type<{ usability: number; practicality: number; health: number; popularity: number }>().notNull(),
     attributes: jsonb("attributes").$type<Record<string, string | number>>().notNull(),

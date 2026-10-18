@@ -30,6 +30,11 @@ const QUERIES: Record<Source, string[]> = {
     // Best Buy's developer sign-up wasn't available, so SerpApi covers computers and electronics too.
     "laptop", "computer monitor", "wireless keyboard and mouse", "webcam", "laptop stand",
     "bluetooth speaker", "noise cancelling headphones", "desk fan", "surge protector power strip", "alarm clock",
+    // Apartments, hiking, and baby sets.
+    "cookware set", "dinnerware set", "air fryer", "electric kettle", "coffee maker",
+    "comforter set", "bath towel set", "shower caddy", "laundry hamper", "cordless vacuum",
+    "hiking backpack", "sleeping bag", "headlamp", "trekking poles", "backpacking tent",
+    "crib", "baby stroller", "baby monitor", "high chair", "infant car seat",
   ],
   bestbuy: [
     "laptop", "computer monitor", "keyboard", "mouse", "webcam", "tablet",

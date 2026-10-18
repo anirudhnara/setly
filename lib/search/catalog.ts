@@ -12,7 +12,8 @@ export type CatalogItem = typeof catalogItems.$inferSelect;
 
 export const CATALOG_CATEGORIES = [
   "lighting", "desk_chair", "mattress", "bed_frame", "frames", "mini_fridge", "microwave", "cooler", "trash_can",
-  "hangers", "shelving", "computer", "electronics", "athletics", "desk", "seating", "tables", "decor", "other",
+  "hangers", "shelving", "computer", "electronics", "athletics", "desk", "seating", "tables", "decor",
+  "baby", "outdoor", "kitchen", "bedding", "bath", "laundry", "cleaning", "other",
 ] as const;
 export type CatalogCategory = (typeof CATALOG_CATEGORIES)[number];
 
@@ -21,6 +22,9 @@ export const CATEGORY_TARGET = 50;
 
 /** First match wins, so specific phrases ("desk lamp", "bed frame") come before broad ones ("desk", "frame"). */
 const CATEGORY_RULES: [CatalogCategory, RegExp][] = [
+  // Baby and outdoor first: "baby monitor" isn't a computer monitor and "camp table" isn't living room furniture.
+  ["baby", /\b(baby|babies|infants?|newborn|crib|bassinet|strollers?|high ?chairs?|changing (table|pad)|nursery|car seats?)\b/],
+  ["outdoor", /\b(hiking|backpacking|camping|camp|tents?|sleeping (bag|pad)s?|headlamps?|trekking poles?|water filters?)\b/],
   ["lighting", /\b(lamps?|lights?|lighting|sconces?|lanterns?|led strips?)\b/],
   ["desk_chair", /\b(desk|office|gaming|task|computer) chairs?\b/],
   ["mattress", /\bmattress(es)?\b/],
@@ -38,7 +42,12 @@ const CATEGORY_RULES: [CatalogCategory, RegExp][] = [
   ["desk", /\b(desks?|writing tables?)\b/],
   ["seating", /\b(sofas?|couch(es)?|loveseats?|sectionals?|armchairs?|accent chairs?|ottomans?|bean bags?|futons?|chairs?|seating)\b/],
   ["tables", /\b(tables?|nightstands?)\b/],
+  ["bedding", /\b(comforters?|duvets?|sheet sets?|bed sheets?|pillowcases?|bedding|quilts?)\b/],
   ["decor", /\b(rugs?|pillows?|blankets?|throws?|curtains?|wall art|posters?|plants?|houseplants?|planters?|mirrors?|tapestr(y|ies)|vases?|candles?|decor)\b/],
+  ["kitchen", /\b(cookware|pots?|pans?|skillets?|dinnerware|plates?|bowls?|mugs?|utensils?|knife|knives|air fryers?|kettles?|coffee makers?|toasters?|blenders?|cutting boards?)\b/],
+  ["bath", /\b(towels?|shower|bath ?mats?|bathroom)\b/],
+  ["laundry", /\b(laundry|hampers?|drying racks?|ironing)\b/],
+  ["cleaning", /\b(vacuums?|mops?|brooms?|air purifiers?|humidifiers?)\b/],
 ];
 
 export function categorize(query: string, title: string): CatalogCategory {
@@ -88,7 +97,8 @@ const BASE_SCORES: Record<CatalogCategory, [number, number, number]> = {
   lighting: [4, 3, 3], desk_chair: [4, 4, 3], mattress: [3, 4, 4], bed_frame: [3, 4, 3], frames: [4, 2, 3],
   mini_fridge: [4, 5, 3], microwave: [4, 5, 3], cooler: [4, 4, 3], trash_can: [4, 5, 3], hangers: [5, 5, 3],
   shelving: [3, 5, 3], computer: [4, 5, 3], electronics: [4, 4, 3], athletics: [3, 3, 5], desk: [3, 5, 3],
-  seating: [4, 3, 3], tables: [3, 4, 3], decor: [4, 2, 3], other: [3, 3, 3],
+  seating: [4, 3, 3], tables: [3, 4, 3], decor: [4, 2, 3], baby: [4, 4, 5], outdoor: [4, 4, 5], kitchen: [4, 5, 4],
+  bedding: [4, 4, 4], bath: [4, 5, 4], laundry: [4, 5, 3], cleaning: [4, 5, 5], other: [3, 3, 3],
 };
 
 /** Prior for the weighted rating: an item needs reviews before its own stars outweigh the average. */

@@ -24,7 +24,9 @@ describe("categorize", () => {
     expect(categorize("small waste bin", "Step can")).toBe("trash_can");
     expect(categorize("cozy rug", "Cloud Lamp Rug")).toBe("decor");
     expect(categorize("gift ideas", "Gallery wall frames set")).toBe("frames");
-    expect(categorize("6 person tent", "Dome tent")).toBe("other");
+    expect(categorize("6 person tent", "Dome tent")).toBe("outdoor");
+    expect(categorize("baby monitor", "Video monitor")).toBe("baby");
+    expect(categorize("gift ideas", "Mystery box")).toBe("other");
   });
 });
 
