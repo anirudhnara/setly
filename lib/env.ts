@@ -4,6 +4,7 @@ const envSchema = z
   .object({
     GEMINI_API_KEY: z.string().min(1).optional(),
     SERPAPI_KEY: z.string().min(1).optional(),
+    SERPAPI_LIVE: z.enum(["0", "1"]).default("0"),
     DATABASE_URL: z.string().min(1).optional(),
     STRIPE_SECRET_KEY: z.string().regex(/^sk_test_/, "Only Stripe test keys are allowed").optional(),
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
@@ -21,8 +22,8 @@ const envSchema = z
       if (!value.GEMINI_API_KEY) {
         ctx.addIssue({ code: "custom", path: ["GEMINI_API_KEY"], message: "Required when MOCK_AI is not 1" });
       }
-      if (!value.SERPAPI_KEY) {
-        ctx.addIssue({ code: "custom", path: ["SERPAPI_KEY"], message: "Required when MOCK_AI is not 1" });
+      if (value.SERPAPI_LIVE === "1" && !value.SERPAPI_KEY) {
+        ctx.addIssue({ code: "custom", path: ["SERPAPI_KEY"], message: "Required when SERPAPI_LIVE is 1" });
       }
     }
     if (value.ISSUER === "stripe") {
@@ -52,6 +53,7 @@ export function getEnv(): Env {
   return envSchema.parse({
     GEMINI_API_KEY: present(process.env.GEMINI_API_KEY),
     SERPAPI_KEY: present(process.env.SERPAPI_KEY),
+    SERPAPI_LIVE: present(process.env.SERPAPI_LIVE),
     DATABASE_URL: present(process.env.DATABASE_URL),
     STRIPE_SECRET_KEY: present(process.env.STRIPE_SECRET_KEY),
     STRIPE_WEBHOOK_SECRET: present(process.env.STRIPE_WEBHOOK_SECRET),
@@ -74,6 +76,11 @@ export function checkoutZincMode(): Env["CHECKOUT_ZINC"] {
 
 export function mockAiEnabled() {
   return (process.env.MOCK_AI ?? "1") !== "0";
+}
+
+/** Live SerpApi searches. Off unless this is exactly "1": the cache and the Tiger catalog serve everything else. */
+export function serpApiLiveEnabled() {
+  return process.env.SERPAPI_LIVE === "1";
 }
 
 /** Demo laptop reset. Off unless this is exactly "1". */

@@ -3,6 +3,7 @@ import type { MapData, Product, Slot } from "@/lib/types";
 import { parseVibeLine, type VibeWeights } from "@/lib/catalog/vibes";
 import { findProducts } from "@/lib/search/find";
 import { searchProducts } from "@/lib/search/serpapi";
+import { withCheckoutBadge } from "@/lib/checkout/badges";
 
 /**
  * Options for a slot's shuffle stack. The chosen product comes first, then search results for the slot.
@@ -46,7 +47,7 @@ export function registerMapSlots(map: MapData, searchQueries: Map<string, string
 
 /** Gives search results slot-scoped ids and the slot's id. */
 export function attachToSlot(products: Product[], slotId: string): Product[] {
-  return products.map((product) => ({ ...product, id: `${slotId}_${product.id}`, slotId }));
+  return products.map((product) => withCheckoutBadge({ ...product, id: `${slotId}_${product.id}`, slotId }));
 }
 
 /** Chosen product first, then the rest without repeating the same store and title. */

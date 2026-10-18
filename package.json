@@ -19,7 +19,8 @@
     "catalog:harvest": "tsx scripts/harvest-catalog.ts",
     "catalog:import": "tsx scripts/import-catalog.ts",
     "catalog:report": "tsx scripts/catalog-report.ts",
-    "catalog:tag": "tsx scripts/tag-catalog.ts"
+    "catalog:tag": "tsx scripts/tag-catalog.ts",
+    "zinc:sandbox": "tsx scripts/zinc-sandbox-order.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

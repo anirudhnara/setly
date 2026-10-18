@@ -6,6 +6,7 @@ import { databaseConfigured } from "@/lib/search/cache";
 import { catalogItemToProduct, categorize as storedCategory, type CatalogItem as StoredItem } from "@/lib/search/catalog";
 import { JUNK_TITLE, searchProducts } from "@/lib/search/serpapi";
 import { demoStoreProducts } from "@/lib/stores/catalog";
+import { withCheckoutBadge } from "@/lib/checkout/badges";
 import type { Product } from "@/lib/types";
 
 /**
@@ -29,7 +30,7 @@ export async function findProducts(query: string, vibes: VibeWeights = {}): Prom
   const live = fromCatalog.length >= MIN_CATALOG ? [] : await searchProducts(query);
   // A slow or empty live search still gets the closest catalog items rather than an empty slot.
   const results = live.length ? live : fromCatalog;
-  return sortByVibe(results, vibes, (product) => String(product.attributes.themes ?? ""));
+  return sortByVibe(results, vibes, (product) => String(product.attributes.themes ?? "")).map(withCheckoutBadge);
 }
 
 /** Catalog items for a need from the database, best matches first. Never throws: no database means no items. */
