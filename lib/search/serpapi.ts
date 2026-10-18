@@ -75,8 +75,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
     }
     await setCachedSearch(query, [], "empty");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown error";
-    console.warn(`SerpApi search failed for "${query}": ${message}`);
+    console.warn("SerpApi search failed; using the cached fallback");
     await setCachedSearch(query, [], failureKind(error));
   }
   return searchCatalog(query);

@@ -5,7 +5,7 @@ const envSchema = z
     GEMINI_API_KEY: z.string().min(1).optional(),
     SERPAPI_KEY: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
-    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_SECRET_KEY: z.string().regex(/^sk_test_/, "Only Stripe test keys are allowed").optional(),
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
     ISSUER: z.enum(["mock", "stripe"]).default("mock"),
@@ -62,7 +62,7 @@ export function mockAiEnabled() {
 
 /** Demo laptop reset. Off unless this is exactly "1". */
 export function demoResetEnabled() {
-  return process.env.DEMO_RESET === "1";
+  return process.env.NODE_ENV !== "production" && process.env.DEMO_RESET === "1";
 }
 
 const firebaseWebConfigSchema = z.object({
@@ -116,4 +116,10 @@ export function getFirebaseAdminCredentials(): FirebaseAdminCredentials | null {
     privateKey,
   });
   return parsed.success ? parsed.data : null;
+}
+
+/** Server-only secret for the destructive local demo reset. */
+export function demoResetToken() {
+  const token = process.env.DEMO_RESET_TOKEN;
+  return token && token.length >= 32 ? token : null;
 }

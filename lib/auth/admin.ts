@@ -5,8 +5,8 @@ import type { VerifiedFirebaseUser } from "@/lib/auth/verify-token";
 import { getFirebaseAdminCredentials, getFirebaseWebConfig } from "@/lib/env";
 
 /**
- * Verifying an ID token only needs the project id: firebase-admin checks the signature against Google's public keys,
- * plus audience, issuer, and expiry. A service account is used when configured; otherwise the public project id is enough.
+ * Check signature, audience, issuer, expiry, revocation, and disabled accounts.
+ * Revocation checks require service-account credentials or Application Default Credentials.
  */
 function adminAuth() {
   const credentials = getFirebaseAdminCredentials();
@@ -25,7 +25,7 @@ function adminAuth() {
 
 export async function verifyFirebaseIdToken(token: string): Promise<VerifiedFirebaseUser> {
   try {
-    const decoded = await adminAuth().verifyIdToken(token);
+    const decoded = await adminAuth().verifyIdToken(token, true);
     return {
       uid: decoded.uid,
       email: typeof decoded.email === "string" ? decoded.email : null,

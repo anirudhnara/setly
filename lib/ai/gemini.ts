@@ -44,7 +44,7 @@ export async function generateMapFromPrompt(prompt: string, budgetCents?: number
   try {
     generated = applyQuestionnaire(await askGemini(buildMapPrompt(prompt, budget, { memberCount, doorWidthIn, ...items })), items);
   } catch (error) {
-    console.warn(`Gemini planning fell back to the starter structure: ${describe(error)}`);
+    console.warn("Gemini planning fell back to the starter structure");
     generated = applyQuestionnaire(starterStructure(prompt), items);
     planned = false;
   }
@@ -55,7 +55,7 @@ export async function generateMapFromPrompt(prompt: string, budgetCents?: number
     const vibes = parseVibeLine(prompt);
     return await buildMap({ generated, budgetCents: budget, memberCount: people, groupId, doorWidthIn, search: (query) => findProducts(query, vibes), rank });
   } catch (error) {
-    console.warn(`Map generation fell back to the starter map: ${describe(error)}`);
+    console.warn("Map generation fell back to the starter map");
     return fallback();
   }
 }
@@ -70,7 +70,7 @@ export async function generateMapFromPaste(text: string, groupId = ""): Promise<
     const generated = await askGemini(buildPastePrompt(text));
     return await buildMap({ generated, budgetCents: budget, memberCount, groupId, search: (query) => findProducts(query) });
   } catch (error) {
-    console.warn(`Paste parsing fell back to the line parser: ${describe(error)}`);
+    console.warn("Paste parsing fell back to the line parser");
     return fromLines();
   }
 }
