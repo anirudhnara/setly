@@ -98,9 +98,9 @@ describe("computeShares", () => {
 describe("computeRefunds", () => {
   const products = [{ id: "lamp", slotId: "lamp" }];
   const shares: MemberShare[] = [
-    { memberId: "a", totalCents: 60, lines: [{ slotId: "lamp", cents: 60 }] },
-    { memberId: "b", totalCents: 30, lines: [{ slotId: "lamp", cents: 30 }] },
-    { memberId: "c", totalCents: 10, lines: [{ slotId: "lamp", cents: 10 }] },
+    { memberId: "a", totalCents: 60, lines: [{ kind: "item", slotId: "lamp", store: "IKEA", cents: 60 }] },
+    { memberId: "b", totalCents: 30, lines: [{ kind: "item", slotId: "lamp", store: "IKEA", cents: 30 }] },
+    { memberId: "c", totalCents: 10, lines: [{ kind: "item", slotId: "lamp", store: "IKEA", cents: 10 }] },
   ];
   const contributions = [contribution("a", 60, "paid"), contribution("b", 30, "paid"), contribution("c", 10, "pending")];
 

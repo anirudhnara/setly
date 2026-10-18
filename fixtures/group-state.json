@@ -458,43 +458,63 @@
       "totalCents": 26192,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
+          "store": "Wayfair",
           "cents": 13725
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
+          "store": "Target",
           "cents": 2248
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
+          "store": "IKEA",
           "cents": 1248
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
+          "store": "Article",
           "cents": 3225
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1998
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 875
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 500
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 375
         }
       ]
@@ -504,43 +524,63 @@
       "totalCents": 26192,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
+          "store": "Wayfair",
           "cents": 13725
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
+          "store": "Target",
           "cents": 2248
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
+          "store": "IKEA",
           "cents": 1248
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
+          "store": "Article",
           "cents": 3225
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1998
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 875
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 500
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 375
         }
       ]
@@ -550,43 +590,63 @@
       "totalCents": 26189,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
+          "store": "Wayfair",
           "cents": 13725
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
+          "store": "Target",
           "cents": 2247
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
+          "store": "IKEA",
           "cents": 1247
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
+          "store": "Article",
           "cents": 3225
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1997
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 875
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 500
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 375
         }
       ]
@@ -596,43 +656,63 @@
       "totalCents": 26186,
       "lines": [
         {
+          "kind": "item",
           "slotId": "slot_sofa",
+          "store": "Wayfair",
           "cents": 13725
         },
         {
+          "kind": "item",
           "slotId": "slot_rug",
+          "store": "Target",
           "cents": 2247
         },
         {
+          "kind": "item",
           "slotId": "slot_lamp",
+          "store": "IKEA",
           "cents": 1247
         },
         {
+          "kind": "item",
           "slotId": "slot_table",
+          "store": "Article",
           "cents": 3225
         },
         {
+          "kind": "item",
           "slotId": "slot_pillows",
+          "store": "Target",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_microwave",
+          "store": "Best Buy",
           "cents": 1997
         },
         {
+          "kind": "item",
           "slotId": "slot_coffee",
+          "store": "Target",
           "cents": 874
         },
         {
+          "kind": "item",
           "slotId": "slot_mugs",
+          "store": "IKEA",
           "cents": 999
         },
         {
+          "kind": "item",
           "slotId": "slot_shoes",
+          "store": "IKEA",
           "cents": 499
         },
         {
+          "kind": "item",
           "slotId": "slot_hooks",
+          "store": "Target",
           "cents": 374
         }
       ]
@@ -676,6 +756,8 @@
   "storeLimits": [],
   "authorizations": [],
   "refunds": [],
+  "storeOrders": [],
+  "address": null,
   "fundedCents": 52384,
   "totalCents": 104759
 }

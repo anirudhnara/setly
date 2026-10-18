@@ -83,10 +83,20 @@ export interface Rule {
   message: string;
 }
 
+/** `item` lines pay for a slot. `buffer` and `zinc_fee` lines belong to a store, not a slot, so their `slotId` is null. */
+export type ShareLineKind = "item" | "buffer" | "zinc_fee";
+
+export interface ShareLine {
+  kind: ShareLineKind;
+  slotId: string | null;
+  store: string | null;
+  cents: number;
+}
+
 export interface MemberShare {
   memberId: string;
   totalCents: number;
-  lines: { slotId: string; cents: number }[];
+  lines: ShareLine[];
 }
 
 export interface Contribution {
@@ -123,13 +133,66 @@ export interface Authorization {
   createdAt: string;
 }
 
+export type RefundReason = "return" | "leftover_buffer" | "zinc_held" | "store_failed";
+
 export interface Refund {
   id: string;
   groupId: string;
-  productId: string;
+  /** Set for returns. Null for refunds of a store's unused buffer or a failed store order. */
+  productId: string | null;
+  /** Set for checkout refunds, so each one has a stable idempotency key. */
+  storeOrderId: string | null;
   memberId: string;
   amountCents: number;
+  reason: RefundReason;
   createdAt: string;
+}
+
+export type CheckoutLaneName = "protocol" | "zinc" | "guided";
+
+export type StoreOrderStatus = "pending" | "quoting" | "needs_approval" | "placing" | "placed" | "failed" | "canceled";
+
+export interface ShippingAddress {
+  firstName: string;
+  lastName: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  phone: string;
+}
+
+export interface TrackingInfo {
+  carrier: string;
+  number: string;
+  url: string | null;
+}
+
+/** One store's part of checkout. `capCents` = subtotal + buffer; the store may never charge more without approval. */
+export interface StoreOrder {
+  id: string;
+  groupId: string;
+  store: string;
+  lane: CheckoutLaneName;
+  status: StoreOrderStatus;
+  subtotalCents: number;
+  capCents: number;
+  quotedCents: number | null;
+  /** The lane's id for this order: a protocol session id, a Zinc order id, or the store URL for guided. */
+  externalId: string | null;
+  /** Bumped on every retry, so each attempt gets its own idempotency key. */
+  attempt: number;
+  error: string | null;
+  tracking: TrackingInfo[];
+  finalTotalCents: number | null;
+  updatedAt: string;
+}
+
+export interface StoreRegistryEntry {
+  name: string;
+  lane: CheckoutLaneName;
+  baseUrl?: string;
 }
 
 export interface MapData {
@@ -150,6 +213,8 @@ export interface GroupState {
   storeLimits: StoreLimit[];
   authorizations: Authorization[];
   refunds: Refund[];
+  storeOrders: StoreOrder[];
+  address: ShippingAddress | null;
   fundedCents: number;
   totalCents: number;
 }

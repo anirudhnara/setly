@@ -80,11 +80,11 @@ export function SplitView({ groupId }: { groupId: string }) {
                   <span className="share-bar" aria-hidden="true"><i style={{ width: `${Math.round((share.totalCents / largest) * 100)}%` }} /></span>
                   {expanded ? (
                     <ul className="share-lines">
-                      {share.lines.filter((line) => line.cents > 0).map((line) => {
-                        const slot = slotById.get(line.slotId);
+                      {share.lines.filter((line) => line.cents > 0).map((line, lineIndex) => {
+                        const slot = line.slotId ? slotById.get(line.slotId) : undefined;
                         const product = data.map.products.find((item) => item.id === slot?.chosenProductId) ?? null;
                         return (
-                          <li key={line.slotId}>
+                          <li key={line.slotId ?? `${line.kind}-${line.store}-${lineIndex}`}>
                             <ProductImage product={product} need={slot?.need ?? ""} className="line-image" />
                             <span>{slot?.need ?? "Item"}<small>{slot ? payLabel(slot.payType) : ""}</small></span>
                             <b>{formatCents(line.cents)}</b>

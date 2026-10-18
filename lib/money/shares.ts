@@ -1,4 +1,4 @@
-import type { MapData, Member, MemberShare, Slot } from "@/lib/types";
+import type { MapData, Member, MemberShare, ShareLine, Slot } from "@/lib/types";
 import { splitCents } from "@/lib/money/cents";
 
 /**
@@ -15,22 +15,24 @@ import { splitCents } from "@/lib/money/cents";
  */
 export function computeShares(map: MapData, members: Member[]): MemberShare[] {
   const ordered = [...members].sort(byJoin);
-  const lines = new Map<string, { slotId: string; cents: number }[]>();
+  const lines = new Map<string, ShareLine[]>();
   for (const member of ordered) lines.set(member.id, []);
 
   for (const slot of map.slots) {
-    const charged = chargedCents(map, slot);
-    if (charged === null || charged <= 0 || slot.payType === "already_owned") continue;
+    const product = chosenProduct(map, slot);
+    const charged = product ? product.priceCents * slot.quantity : null;
+    if (!product || charged === null || charged <= 0 || slot.payType === "already_owned") continue;
+    const store = product.store;
     if (slot.payType === "per_person") {
       for (const member of ordered) {
-        lines.get(member.id)?.push({ slotId: slot.id, cents: charged });
+        lines.get(member.id)?.push({ kind: "item", slotId: slot.id, store, cents: charged });
       }
       continue;
     }
     const parts = splitCents(charged, ordered.map(() => 1));
     ordered.forEach((member, index) => {
       const cents = parts[index] ?? 0;
-      if (cents > 0) lines.get(member.id)?.push({ slotId: slot.id, cents });
+      if (cents > 0) lines.get(member.id)?.push({ kind: "item", slotId: slot.id, store, cents });
     });
   }
 
@@ -44,11 +46,9 @@ export function computeShares(map: MapData, members: Member[]): MemberShare[] {
   });
 }
 
-function chargedCents(map: MapData, slot: Slot) {
+function chosenProduct(map: MapData, slot: Slot) {
   if (!slot.chosenProductId) return null;
-  const product = map.products.find((item) => item.id === slot.chosenProductId);
-  if (!product) return null;
-  return product.priceCents * slot.quantity;
+  return map.products.find((item) => item.id === slot.chosenProductId) ?? null;
 }
 
 function byJoin(left: Member, right: Member) {

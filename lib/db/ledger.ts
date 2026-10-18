@@ -67,6 +67,8 @@ export async function createGroup(input: { name: string; prompt: string; budgetC
     storeLimits: [],
     authorizations: [],
     refunds: [],
+    storeOrders: [],
+    address: null,
     fundedCents: 0,
     totalCents: 0,
   };

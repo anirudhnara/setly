@@ -13,6 +13,7 @@ import {
   rules,
   slots,
   storeLimits,
+  storeOrders,
   zones,
 } from "@/lib/db/schema";
 import type { GroupDraft, LedgerStore } from "@/lib/db/store";
@@ -33,8 +34,15 @@ import type {
   Rule,
   RuleStatus,
   RuleType,
+  ShareLine,
+  ShippingAddress,
   Slot,
   StoreLimit,
+  StoreOrder,
+  StoreOrderStatus,
+  CheckoutLaneName,
+  RefundReason,
+  TrackingInfo,
   Zone,
   GroupState,
 } from "@/lib/types";
@@ -107,7 +115,7 @@ export const drizzleLedger: LedgerStore = {
 
 async function readGroup(groupId: string, db: Database | Transaction = getDb()): Promise<GroupState | null> {
   // Independent reads run together: four round trips instead of thirteen against the remote database.
-  const [[group], memberRows, zoneRows, ruleRows, contributionRows, cardRows, refundRows] = await Promise.all([
+  const [[group], memberRows, zoneRows, ruleRows, contributionRows, cardRows, refundRows, orderRows] = await Promise.all([
     db.select().from(groups).where(eq(groups.id, groupId)).limit(1),
     db.select().from(members).where(eq(members.groupId, groupId)),
     db.select().from(zones).where(eq(zones.groupId, groupId)),
@@ -115,6 +123,7 @@ async function readGroup(groupId: string, db: Database | Transaction = getDb()):
     db.select().from(contributions).where(eq(contributions.groupId, groupId)),
     db.select().from(cards).where(eq(cards.groupId, groupId)),
     db.select().from(refunds).where(eq(refunds.groupId, groupId)),
+    db.select().from(storeOrders).where(eq(storeOrders.groupId, groupId)),
   ]);
   if (!group) return null;
   const zoneIds = zoneRows.map((zone) => zone.id);
@@ -146,6 +155,8 @@ async function readGroup(groupId: string, db: Database | Transaction = getDb()):
     storeLimits: limitRows.map(toStoreLimit),
     authorizations: authorizationRows.map(toAuthorization),
     refunds: refundRows.map(toRefund),
+    storeOrders: orderRows.map(toStoreOrder).sort((left, right) => left.store.localeCompare(right.store)),
+    address: asAddress(group.addressJson),
     fundedCents: 0,
     totalCents: 0,
   };
@@ -164,6 +175,7 @@ async function writeGroup(tx: Transaction, state: GroupState) {
       status: state.group.status,
       createdAt: new Date(state.group.createdAt),
       sharesJson: state.shares,
+      addressJson: state.address,
     })
     .onConflictDoUpdate({
       target: groups.id,
@@ -173,6 +185,7 @@ async function writeGroup(tx: Transaction, state: GroupState) {
         budgetCents: state.group.budgetCents,
         status: state.group.status,
         sharesJson: state.shares,
+        addressJson: state.address,
       },
     });
 
@@ -188,6 +201,7 @@ async function writeGroup(tx: Transaction, state: GroupState) {
     await tx.delete(storeLimits).where(inArray(storeLimits.cardId, cardIds));
   }
   await tx.delete(refunds).where(eq(refunds.groupId, groupId));
+  await tx.delete(storeOrders).where(eq(storeOrders.groupId, groupId));
   await tx.delete(cards).where(eq(cards.groupId, groupId));
   await tx.delete(contributions).where(eq(contributions.groupId, groupId));
   if (slotIds.length > 0) {
@@ -306,6 +320,14 @@ async function writeGroup(tx: Transaction, state: GroupState) {
       })),
     );
   }
+  if (state.storeOrders.length > 0) {
+    await tx.insert(storeOrders).values(
+      state.storeOrders.map((order) => ({
+        ...order,
+        updatedAt: new Date(order.updatedAt),
+      })),
+    );
+  }
 }
 
 function iso(value: Date | string) {
@@ -415,7 +437,87 @@ function toAuthorization(row: typeof authorizations.$inferSelect): Authorization
 }
 
 function toRefund(row: typeof refunds.$inferSelect): Refund {
-  return { id: row.id, groupId: row.groupId, productId: row.productId, memberId: row.memberId, amountCents: row.amountCents, createdAt: iso(row.createdAt) };
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    productId: row.productId,
+    storeOrderId: row.storeOrderId,
+    memberId: row.memberId,
+    amountCents: row.amountCents,
+    reason: asRefundReason(row.reason),
+    createdAt: iso(row.createdAt),
+  };
+}
+
+function toStoreOrder(row: typeof storeOrders.$inferSelect): StoreOrder {
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    store: row.store,
+    lane: asLane(row.lane),
+    status: asStoreOrderStatus(row.status),
+    subtotalCents: row.subtotalCents,
+    capCents: row.capCents,
+    quotedCents: row.quotedCents,
+    externalId: row.externalId,
+    attempt: row.attempt,
+    error: row.error,
+    tracking: asTracking(row.tracking),
+    finalTotalCents: row.finalTotalCents,
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+function asRefundReason(value: string): RefundReason {
+  if (value === "return" || value === "leftover_buffer" || value === "zinc_held" || value === "store_failed") return value;
+  return "return";
+}
+
+function asLane(value: string): CheckoutLaneName {
+  if (value === "protocol" || value === "zinc" || value === "guided") return value;
+  return "guided";
+}
+
+function asStoreOrderStatus(value: string): StoreOrderStatus {
+  if (
+    value === "pending" ||
+    value === "quoting" ||
+    value === "needs_approval" ||
+    value === "placing" ||
+    value === "placed" ||
+    value === "failed" ||
+    value === "canceled"
+  ) {
+    return value;
+  }
+  return "pending";
+}
+
+function asTracking(value: unknown): TrackingInfo[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    if (typeof record.carrier !== "string" || typeof record.number !== "string") return [];
+    return [{ carrier: record.carrier, number: record.number, url: typeof record.url === "string" ? record.url : null }];
+  });
+}
+
+function asAddress(value: unknown): ShippingAddress | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const text = (key: string) => (typeof record[key] === "string" ? (record[key] as string) : "");
+  const address: ShippingAddress = {
+    firstName: text("firstName"),
+    lastName: text("lastName"),
+    line1: text("line1"),
+    line2: typeof record.line2 === "string" ? record.line2 : null,
+    city: text("city"),
+    state: text("state"),
+    postalCode: text("postalCode"),
+    phone: text("phone"),
+  };
+  return address.line1 && address.postalCode ? address : null;
 }
 
 function asGroupStatus(value: string): GroupStatus {
@@ -475,11 +577,15 @@ function asShares(value: unknown): MemberShare[] {
     if (!item || typeof item !== "object") return [];
     const record = item as Record<string, unknown>;
     if (typeof record.memberId !== "string" || typeof record.totalCents !== "number" || !Array.isArray(record.lines)) return [];
-    const lines = record.lines.flatMap((line) => {
+    const lines = record.lines.flatMap((line): ShareLine[] => {
       if (!line || typeof line !== "object") return [];
       const entry = line as Record<string, unknown>;
-      if (typeof entry.slotId !== "string" || typeof entry.cents !== "number") return [];
-      return [{ slotId: entry.slotId, cents: entry.cents }];
+      if (typeof entry.cents !== "number") return [];
+      const slotId = typeof entry.slotId === "string" ? entry.slotId : null;
+      const kind = entry.kind === "buffer" || entry.kind === "zinc_fee" ? entry.kind : "item";
+      // Lines saved before buffers existed have no kind and are items, so they need a slot.
+      if (kind === "item" && !slotId) return [];
+      return [{ kind, slotId, store: typeof entry.store === "string" ? entry.store : null, cents: entry.cents }];
     });
     return [{ memberId: record.memberId, totalCents: record.totalCents, lines }];
   });
