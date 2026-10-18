@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, unique } from "drizzle-orm/pg-core";
 import type { GroupStatus, MemberShare, PayType, QuantityRule, RuleStatus, RuleType } from "@/lib/types";
+import type { ColorProfile } from "@/lib/search/color";
 
 export const groups = pgTable("groups", {
   id: text("id").primaryKey(),
@@ -149,3 +150,44 @@ export const searchCache = pgTable("search_cache", {
   resultsJson: jsonb("results_json").notNull(),
   fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
 });
+
+/**
+ * Standing product catalog for dorm and apartment sets, so maps can be built without spending SerpApi quota.
+ * Built from search results (scripts/seed-catalog.ts) plus secondhand listings people add themselves.
+ * Near-duplicates are kept on purpose and share a `variant_group`, so a set can swap within a group.
+ */
+export const catalogItems = pgTable(
+  "catalog_items",
+  {
+    id: text("id").primaryKey(),
+    category: text("category").notNull(),
+    title: text("title").notNull(),
+    store: text("store").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    url: text("url").notNull(),
+    imageUrl: text("image_url").notNull(),
+    condition: text("condition").$type<"new" | "used">().notNull(),
+    source: text("source").$type<"search" | "bestbuy" | "ebay" | "facebook_marketplace" | "craigslist" | "manual" | "other">().notNull(),
+    rating: real("rating"),
+    reviewCount: integer("review_count"),
+    /** Rating weighted by review count. Higher is better; used to rank within a category. */
+    qualityScore: real("quality_score").notNull(),
+    delivery: text("delivery"),
+    shippingDaysMax: integer("shipping_days_max"),
+    variantGroup: text("variant_group").notNull(),
+    /** "anchor" items set a look (themed or colorful); "neutral" items fit into many sets. */
+    role: text("role").$type<"anchor" | "neutral">().notNull(),
+    /** Keyword tags from the title; `color` and `styles` are added by Gemini (scripts/tag-catalog.ts). */
+    tags: jsonb("tags").$type<{ colors: string[]; themes: string[]; sizes: string[]; color?: ColorProfile; styles?: string[] }>().notNull(),
+    /** 1 to 5 each, plus popularity from 0 to 1. */
+    scores: jsonb("scores").$type<{ usability: number; practicality: number; health: number; popularity: number }>().notNull(),
+    attributes: jsonb("attributes").$type<Record<string, string | number>>().notNull(),
+    searchQuery: text("search_query"),
+    addedBy: text("added_by"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("catalog_items_category_idx").on(table.category, table.qualityScore),
+    index("catalog_items_variant_group_idx").on(table.variantGroup),
+  ],
+);

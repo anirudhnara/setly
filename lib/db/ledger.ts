@@ -461,6 +461,8 @@ export async function requireSlotMember(slotId: string, userId: string) {
 }
 
 export function resetLedgerForTests() {
+  // A test helper that happens to start with "use", not a React hook.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useMemoryLedgerForTests();
   memoryLedger.reset(true);
   resetUsersForTests();
