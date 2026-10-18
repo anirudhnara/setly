@@ -156,3 +156,14 @@
 .start-btn { min-height: 56px; margin-top: 18px; padding: 0 30px; font-size: 17px; }
 @keyframes vibe-drift { from { transform: rotate(calc(var(--k) * 51deg)) translateX(calc(38px + var(--k) * 6px)); } to { transform: rotate(calc(var(--k) * 51deg + 25deg)) translateX(calc(22px + var(--k) * 4px)); } }
 @media (max-width: 900px) { .flow { grid-template-columns: 1fr; } }
+
+/* Parent and insurance: which side of the money you're on. */
+.side-pick { display: grid; width: 100%; max-width: 720px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; animation: rise .4s var(--ease) both; }
+.side-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 12px; padding: 14px 16px; border: 0; border-radius: 18px; background: var(--paper-2); color: var(--ink); text-align: left; transition: background .2s, box-shadow .2s; }
+.side-card strong { font-size: 15px; }
+.side-card > span:last-child { grid-column: 2; color: var(--mute); font-size: 13px; }
+.side-card.on { background: var(--card); box-shadow: var(--shadow-sm), inset 0 0 0 2px var(--accent); }
+.side-dot { display: grid; grid-row: span 2; width: 22px; height: 22px; place-items: center; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line-2); }
+.side-card.on .side-dot { background: var(--accent); box-shadow: none; color: #fff; }
+.side-dot svg { width: 13px; height: 13px; stroke-width: 3; }
+@media (max-width: 640px) { .side-pick { grid-template-columns: minmax(0, 1fr); } }

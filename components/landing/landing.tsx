@@ -14,7 +14,19 @@ import type { CatalogItem } from "@/lib/catalog/source";
 
 const MODE_ICONS: Record<FundingMode, typeof User> = { solo: User, group: Users, parent: HeartHandshake, insurance: ShieldCheck };
 const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
-type Entry = "/home";
+type Entry = "/home" | "/family" | "/claims";
+
+/** Parent and insurance sets have two sides: the one funding (their dashboard) and the one shopping (a set). */
+const SIDES: Partial<Record<FundingMode, Array<{ entry: Entry; label: string; hint: string }>>> = {
+  parent: [
+    { entry: "/family", label: "I’m the parent", hint: "Send a card, set limits, watch spending" },
+    { entry: "/home", label: "I’m the one shopping", hint: "Build the set a parent is helping with" },
+  ],
+  insurance: [
+    { entry: "/claims", label: "I’m the insurer", hint: "Fund a claim card, cap each line, audit spending" },
+    { entry: "/home", label: "I’m the policyholder", hint: "Rebuild what was lost, like for like" },
+  ],
+};
 
 export function Landing({ showcase }: { showcase: CatalogItem[] }) {
   const router = useRouter();
@@ -22,6 +34,9 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
   const [mode, setMode] = useState<FundingMode>("group");
   const [pending, setPending] = useState<Entry | null>(null);
   const [error, setError] = useState("");
+  const [side, setSide] = useState<Entry>("/home");
+  const sides = SIDES[mode];
+  const entry: Entry = sides?.some((option) => option.entry === side) ? side : "/home";
 
   useEffect(() => {
     if (!firebaseConfigured()) {
@@ -41,6 +56,8 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
   function choose(next: FundingMode) {
     setMode(next);
     stageMode(next);
+    // The funding side is the reason to pick these modes, so it starts selected.
+    setSide(SIDES[next]?.[0]?.entry ?? "/home");
   }
 
   /** Signed in: go straight there. Signed out: Google first, then there (email lives on /sign-in). */
@@ -98,6 +115,18 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
           })}
         </div>
 
+        {sides ? (
+          <div className="side-pick" role="radiogroup" aria-label="Which side are you on?">
+            {sides.map((option) => (
+              <button key={option.entry} type="button" role="radio" aria-checked={entry === option.entry} className={`side-card${entry === option.entry ? " on" : ""}`} onClick={() => setSide(option.entry)}>
+                <span className="side-dot" aria-hidden="true">{entry === option.entry ? <Check /> : null}</span>
+                <strong>{option.label}</strong>
+                <span>{option.hint}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <span className="orbit-label step-2">Step 2</span>
         <h2>Three steps. About two minutes.</h2>
         <ol className="flow">
@@ -120,10 +149,10 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
             <span>Gemini grows a full set in branches. Tap to swap, add, or remove anything, then split and pay.</span>
           </li>
         </ol>
-        <button type="button" className="btn btn-accent start-btn" onClick={() => void start("/home")} disabled={pending !== null}>
-          {pending ? "Signing in…" : "Start a set"} <ArrowRight aria-hidden="true" />
+        <button type="button" className="btn btn-accent start-btn" onClick={() => void start(entry)} disabled={pending !== null}>
+          {pending ? "Signing in…" : entry === "/family" ? "Open the family dashboard" : entry === "/claims" ? "Open the claims dashboard" : "Start a set"} <ArrowRight aria-hidden="true" />
         </button>
-        {signedIn === false ? <p className="entry-note">You’ll sign in with Google first. Prefer email? <Link href={`/sign-in?next=${encodeURIComponent("/home")}`}>Use email</Link></p> : null}
+        {signedIn === false ? <p className="entry-note">You’ll sign in with Google first. Prefer email? <Link href={`/sign-in?next=${encodeURIComponent(entry)}`}>Use email</Link></p> : null}
         {error ? <p className="fault" role="alert">{error}</p> : null}
       </section>
 
