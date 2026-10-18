@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody, type GetGroupResponse } from "@/lib/contracts";
+import { type ApiErrorBody, type GetGroupResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { generateMapFromPrompt } from "@/lib/ai/gemini";
 import { stampChangedSlots } from "@/lib/ai/stamp";
 import { jsonError } from "@/lib/db/http";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     try {
       return jsonError(error);
     } catch {
-      console.error("Growing the set failed", error);
+      console.error("Growing the set failed");
       return NextResponse.json({ error: "Couldn't grow the set. Try again." } satisfies ApiErrorBody, { status: 500 });
     }
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { joinGroupRequestSchema, readRequest, type ApiErrorBody, type JoinGroupResponse } from "@/lib/contracts";
+import { joinGroupRequestSchema, type ApiErrorBody, type JoinGroupResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { jsonError } from "@/lib/db/http";
 import { joinGroup } from "@/lib/db/queries";
 

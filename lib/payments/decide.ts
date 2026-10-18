@@ -12,6 +12,9 @@ export function decideAuthorization(input: {
   merchant: string;
   amountCents: number;
 }): AuthorizationDecision {
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+    return { approved: false, reason: "Declined: amount must be positive integer cents.", store: null };
+  }
   if (!input.card || input.card.status !== "active") {
     return { approved: false, reason: "Declined: card was not found or is not active.", store: null };
   }
@@ -28,8 +31,6 @@ export function decideAuthorization(input: {
 }
 
 function matchStore(merchant: string, stores: string[]) {
-  const haystack = merchant.toLowerCase();
-  return stores
-    .filter((store) => haystack.includes(store.toLowerCase()))
-    .sort((left, right) => right.length - left.length)[0];
+  const normalized = merchant.trim().toLowerCase();
+  return stores.find((store) => store.trim().toLowerCase() === normalized);
 }

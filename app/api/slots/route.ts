@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { createSlotRequestSchema, readRequest, type ApiErrorBody, type CreateSlotResponse } from "@/lib/contracts";
+import { createSlotRequestSchema, type ApiErrorBody, type CreateSlotResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { jsonError } from "@/lib/db/http";
 import { createSlot, requireZoneMember } from "@/lib/db/queries";
 

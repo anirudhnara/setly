@@ -370,8 +370,7 @@ async function issueCardIfFunded(state: GroupState) {
   try {
     card = await issuer.createCard(state.group.id, limits);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Card issuer failed";
-    console.error(message);
+    console.error("Card issuer failed; attempting the demo fallback");
     const { mockIssuer } = await import("@/lib/payments/mock-issuer");
     if (issuer === mockIssuer) throw error;
     card = await mockIssuer.createCard(state.group.id, limits);
