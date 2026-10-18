@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type CSSProperties } from "react";
 import { ArrowRight, Ban, Check, HeartHandshake, RotateCcw, ShieldCheck, Store, User, Users } from "lucide-react";
 import { formatCents } from "@/components/shared/format";
+import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
 import { ProductImage } from "@/components/shared/product-image";
 import { readMode, stageMode, type FundingMode } from "@/components/shared/session";
@@ -67,6 +68,27 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
 
   return (
     <div className="landing">
+      <header className="lp-head">
+        <Link href="/" className="nav-brand" aria-label="Setly">
+          <JarvisMark size={30} />
+          <span>setly</span>
+        </Link>
+        <nav className="lp-links" aria-label="On this page">
+          <a href="#how">How it works</a>
+          <a href="#shield">Protection</a>
+        </nav>
+        <div className="lp-actions">
+          {signedIn ? (
+            <Link className="btn btn-accent" href="/home">Open Setly <ArrowRight aria-hidden="true" /></Link>
+          ) : (
+            <>
+              <Link className="btn btn-ghost" href={`/sign-in?next=${encodeURIComponent("/home")}`}>Sign in</Link>
+              <button type="button" className="btn btn-accent" onClick={() => void start("/home")} disabled={pending !== null}>Start a set</button>
+            </>
+          )}
+        </div>
+      </header>
+
       <section className="hero">
         <div className="hero-sky" aria-hidden="true"><i className="b1" /><i className="b2" /><i className="b3" /><i className="b4" /></div>
         <div className="hero-copy">
@@ -74,15 +96,15 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
           <h1>Shop together,<br /><em className="serif">as a set.</em></h1>
           <p>Tell Setly what you need. It grows a complete set from real stores, lets everyone pull what matters closer, and pays with one card that can only buy the plan.</p>
           <div className="hero-ctas">
-            <a className="btn btn-accent" href="#modes">Get started <ArrowRight aria-hidden="true" /></a>
-            <a className="btn btn-ghost" href="#shield"><ShieldCheck aria-hidden="true" /> How your money’s protected</a>
+            <button type="button" className="btn btn-accent" onClick={() => void start("/home")} disabled={pending !== null}>{pending ? "Signing in…" : signedIn ? "Start a set" : "Get started"} <ArrowRight aria-hidden="true" /></button>
+            <a className="btn btn-ghost" href="#how">See how it works</a>
           </div>
         </div>
         <Constellation items={showcase} />
       </section>
 
       <section className="modes" id="modes" aria-labelledby="modes-title">
-        <span className="orbit-label">Step 1</span>
+        <span className="orbit-label">Made for every way you pay</span>
         <h2 id="modes-title">Who’s paying?</h2>
         <div className="mode-grid" role="radiogroup" aria-label="Who’s paying">
           {MODES.map((key, index) => {
@@ -98,7 +120,7 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
           })}
         </div>
 
-        <span className="orbit-label step-2">Step 2</span>
+        <span className="orbit-label step-2" id="how">How it works</span>
         <h2>Three steps. About two minutes.</h2>
         <ol className="flow">
           <li style={{ "--i": 0 } as CSSProperties}>
@@ -123,7 +145,7 @@ export function Landing({ showcase }: { showcase: CatalogItem[] }) {
         <button type="button" className="btn btn-accent start-btn" onClick={() => void start("/home")} disabled={pending !== null}>
           {pending ? "Signing in…" : "Start a set"} <ArrowRight aria-hidden="true" />
         </button>
-        {signedIn === false ? <p className="entry-note">You’ll sign in with Google first. Prefer email? <Link href={`/sign-in?next=${encodeURIComponent("/home")}`}>Use email</Link></p> : null}
+        {signedIn === false ? <p className="entry-note">Sign in with Google and you’re straight into the chat. Prefer email? <Link href={`/sign-in?next=${encodeURIComponent("/home")}`}>Use email</Link></p> : null}
         {error ? <p className="fault" role="alert">{error}</p> : null}
       </section>
 

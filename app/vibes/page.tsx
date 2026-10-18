@@ -11,7 +11,7 @@ export default function VibesPage() {
   return (
     <div className="orbit space-shell">
       <Suspense fallback={<header className="setly-nav" aria-hidden="true" />}>
-        <SiteNav tone="dark" />
+        <SiteNav />
       </Suspense>
       <Suspense fallback={null}>
         <GroupAuthGate>

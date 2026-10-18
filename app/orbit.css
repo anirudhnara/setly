@@ -333,13 +333,6 @@
 .account-menu svg { width: 16px; height: 16px; color: var(--ink-2); }
 .nav-signin { min-height: 38px; padding: 0 16px; font-size: 13.5px; }
 
-.setly-nav.dark { position: relative; padding-bottom: 6px; background: #1b1640; }
-.setly-nav.dark .setly-nav-row { background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
-.setly-nav.dark .nav-brand, .setly-nav.dark .nav-links a.current, .setly-nav.dark .nav-links a:hover, .setly-nav.dark .account-btn { color: #fff; }
-.setly-nav.dark .nav-links a { color: #d9d2f5; }
-.setly-nav.dark .nav-pill { background: rgba(255, 255, 255, .14); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
-.setly-nav.dark .account-btn:hover, .setly-nav.dark .account-btn[aria-expanded="true"] { background: rgba(255, 255, 255, .12); }
-.setly-nav.dark .mode-chip { background: rgba(255, 176, 138, .2); color: #ffd2bd; }
 
 @keyframes nav-in { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
 @keyframes menu-in { from { opacity: 0; transform: scale(.92) translateY(-6px); } to { opacity: 1; transform: none; } }
@@ -351,7 +344,7 @@
   .setly-nav { padding: 8px 8px 0; }
   .nav-links { margin-left: 0; }
   .nav-links a { padding: 0 10px; }
-  .nav-links a span:not(.live-dot), .account-name, .nav-brand span { display: none; }
+  .nav-links a span:not(.live-dot), .account-name, .nav-brand > span:not(.setly-mark) { display: none; }
   .mode-chip { display: none; }
 }
 
@@ -424,6 +417,31 @@ a.set-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 .creation-steps li > span { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; font-size: 11.5px; font-weight: 700; }
 .creation-steps li svg { width: 12px; height: 12px; stroke-width: 3; }
 .new-steps { color: #c9c2b6; font-size: 13px; text-align: center; }
+
+/* Creation steps (chat and vibe pages): "Tell us what you need → Pick your vibe → Your set" */
+.creation-steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 4px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); list-style: none; }
+.creation-steps li { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 5px; border-radius: 999px; color: var(--mute); font-size: 13px; }
+.creation-steps li > span { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; font-size: 11.5px; font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--line-2); }
+.creation-steps li svg { width: 12px; height: 12px; stroke-width: 3; }
+.creation-steps li.current { background: var(--paper); color: var(--ink); font-weight: 600; }
+.creation-steps li.current > span { background: var(--accent); color: #fff; box-shadow: none; }
+.creation-steps li.done > span { background: var(--ink); color: #fff; box-shadow: none; }
+
+/* Who's-paying menu on the nav chip */
+button.mode-chip { border: 0; cursor: pointer; }
+.mode-chip svg:last-child { width: 13px; height: 13px; opacity: .7; }
+.mode-menu { min-width: 300px; }
+.mode-menu button { min-height: 0; padding: 9px 10px; align-items: flex-start; }
+.mode-option { display: grid; flex: 1; gap: 2px; }
+.mode-option b { font-size: 14px; font-weight: 600; }
+.mode-option small { color: var(--mute); font-size: 12.5px; line-height: 1.35; }
+.mode-menu button[aria-checked="true"] { background: var(--accent-soft); }
+.mode-menu button svg { margin-top: 2px; color: var(--accent); }
+@media (max-width: 560px) {
+  /* Phones: numbers only, except the step you're on. */
+  .creation-steps { flex-wrap: nowrap; }
+  .creation-steps li:not(.current) { gap: 0; padding: 5px; font-size: 0; }
+}
 
 /* Checkout, store by store */
 .store-orders { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }

@@ -1,4 +1,5 @@
 import { isCampingPrompt } from "@/lib/ai/fixture-map";
+import type { QuestionnaireItems } from "@/lib/ai/parse";
 import { generatedMapSchema, type GeneratedMap } from "@/lib/ai/schemas";
 import { loadCampingMap } from "@/lib/fixtures/sample";
 import type { MapData } from "@/lib/types";
@@ -89,7 +90,8 @@ export function branchesFromPrompt(prompt: string): GeneratedMap {
       slots: branch.slots.map(([need, searchQuery, budgetWeight, perPerson]) => ({
         need,
         quantityRule: perPerson && people > 1 ? ("per_person" as const) : ("per_group" as const),
-        quantity: perPerson && people > 1 ? people : 1,
+        // Per-person pay already multiplies by the number of members, so the quantity is one each.
+        quantity: 1,
         payType: perPerson && people > 1 ? ("per_person" as const) : ("shared" as const),
         searchQuery,
         budgetWeight,
@@ -97,6 +99,59 @@ export function branchesFromPrompt(prompt: string): GeneratedMap {
     };
   });
   return generatedMapSchema.parse({ zones, links: [], rules: [] });
+}
+
+/** Rough share of a set's budget by kind of thing, so a mattress gets more than hangers. */
+const WEIGHTS: Array<[RegExp, number]> = [
+  [/\b(sofa|couch|sectional|mattress(?! topper)|bed frame|dresser|tent)\b/i, 35],
+  [/\b(desk(?! (lamp|organizer|fan))|desk chair|office chair|armchair|accent chair|bookshelf|tv stand|dining table|mini[- ]?fridge|microwave)\b/i, 18],
+  [/\b(rug|coffee table|mattress topper|comforter|duvet|sleeping bag|cooler|camp stove|monitor|cookware|vacuum)\b/i, 10],
+  [/\b(lamp|sheet|towel|pillow|curtain|mirror|organizer|bins?|hamper|shelf|chair|lantern|knife|dinnerware)\b/i, 5],
+];
+/** Things each person in a dorm or on a trip gets their own of. */
+const OWN_EACH = /\b(sheets?|sheet set|comforter|duvet|pillows?|mattress topper|towels?|shower caddy|desk lamp|desk chair|sleeping (bag|pad)|headlamp|camp chair)\b/i;
+/** Sizes a scene implies, put in front of searches where size matters. */
+const SIZE_FOR: Array<[RegExp, RegExp, string]> = [
+  [/\b(dorm|college|campus)\b/i, /\b(sheets?|sheet set|comforter|duvet|mattress|topper|bed)\b/i, "twin xl"],
+  [/./, /\bmini[- ]?fridge\b/i, "3.1 cu ft"],
+];
+
+/**
+ * The person's ticked list as the plan, when Gemini can't plan: their sections become the branches and their
+ * wording the needs, searched with the size the scene implies. Nothing they didn't pick is added.
+ */
+export function picksStructure(prompt: string, items: QuestionnaireItems): GeneratedMap {
+  const brief = prompt.replace(/\b(Vibe|Avoid|Style)\b[^.]*\./gi, " ");
+  const people = Math.max(1, Number(brief.match(/\b(\d{1,2})\s*(?:people|roommates|friends|of us|students)/i)?.[1] ?? 1));
+  const eachOwn = people > 1 && /\b(dorm|college|campus|camp|camping|trip|hike|hiking)\b/i.test(brief);
+  const byGroup = new Map<string, string[]>();
+  for (const item of items.mustHaves) {
+    const group = items.groups?.[item.toLowerCase()] ?? "Your list";
+    byGroup.set(group, [...(byGroup.get(group) ?? []), item]);
+  }
+  const zones = [...byGroup.entries()].slice(0, 8).map(([name, needs], index) => ({
+    name: name.slice(0, 40),
+    sortOrder: index,
+    slots: needs.slice(0, 15).map((need) => {
+      const size = SIZE_FOR.find(([scene, thing]) => scene.test(brief) && thing.test(need) && !/twin|queen|king|full|cu ft/i.test(need))?.[2];
+      const own = eachOwn && OWN_EACH.test(need);
+      // A bare "pillow" in a sleep branch or bedroom is a bed pillow; the search would otherwise find throw pillows.
+      const plain = /^pillows?$/i.test(need.trim()) && (/sleep|bed/i.test(name) || /\b(dorm|bed ?room)\b/i.test(brief)) ? "bed pillows" : need.toLowerCase();
+      // Each person's own item costs its price times the headcount, so its share of the budget grows with it.
+      const weight = (WEIGHTS.find(([pattern]) => pattern.test(need))?.[1] ?? 4) * (own ? people : 1);
+      return {
+        need: need.slice(0, 60),
+        quantityRule: own ? ("per_person" as const) : ("per_group" as const),
+        quantity: 1,
+        payType: own ? ("per_person" as const) : ("shared" as const),
+        searchQuery: `${size ? `${size} ` : ""}${plain}`.slice(0, 120),
+        budgetWeight: Math.min(100, weight),
+      };
+    }),
+  }));
+  const base = generatedMapSchema.parse({ zones, links: [], rules: [] });
+  const style = styleWord(prompt);
+  return style ? withStyle(base, style) : base;
 }
 
 /**

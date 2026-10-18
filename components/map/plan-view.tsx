@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  AlertTriangle, ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Plus, Shuffle, Sparkles, ThumbsDown, Trash2, UserPlus, X,
+  ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Info, Plus, Shuffle, Sparkles, ThumbsDown, Trash2, UserPlus, X,
 } from "lucide-react";
 import { formatBudget, formatCents } from "@/components/shared/format";
 import { Avatar } from "@/components/shared/group-header";
@@ -13,7 +13,7 @@ import { ProductImage } from "@/components/shared/product-image";
 import { readTaste, stageMap, stageTaste, type Taste } from "@/components/shared/session";
 import { useMe } from "@/components/shared/use-me";
 import { usePlan } from "@/components/shared/use-plan";
-import { parseMemberCount } from "@/lib/ai/parse";
+import { needMatches, parseMemberCount, parseQuestionnaireItems } from "@/lib/ai/parse";
 import { addIdea, chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, refineMap, suggestIdeas } from "@/lib/client";
 import type { Idea } from "@/lib/ai/suggest";
 import { parseVibeLine, vibeSummary } from "@/lib/catalog/vibes";
@@ -139,7 +139,8 @@ export function PlanView({ groupId }: { groupId: string }) {
           .map((slot) => ({
             slot,
             product: map.products.find((item) => item.id === slot.chosenProductId) ?? map.products.find((item) => item.slotId === slot.id) ?? null,
-            issues: map.rules.filter((rule) => rule.slotIds.includes(slot.id) && (rule.status === "broken" || rule.status === "warning")),
+            // Size, timing, and fit notes belong on an item; "must include" ones don't (an empty item already says so).
+            issues: map.rules.filter((rule) => rule.type !== "required_or_banned" && rule.type !== "budget" && rule.slotIds.includes(slot.id) && (rule.status === "broken" || rule.status === "warning")),
             index: count++,
           })),
       }))
@@ -165,7 +166,10 @@ export function PlanView({ groupId }: { groupId: string }) {
   const total = planTotalCents(activeMap, people);
   const stores = new Set(activeMap.products.map((product) => product.store)).size;
   const editable = data.group.status === "editing";
-  const brokenRules = activeMap.rules.filter((rule) => rule.status === "broken");
+  // Budget shows in the meter; anything else that needs a look is a calm heads-up, not an error.
+  const headsUp = activeMap.rules.filter((rule) => rule.status === "broken" && rule.type !== "budget" && rule.type !== "required_or_banned");
+  // Things they ticked that didn't fit the budget when the set grew: offered back, one tap each.
+  const leftOut = parseQuestionnaireItems(prompt).mustHaves.filter((item) => !activeMap.slots.some((slot) => needMatches(slot.need, item)));
   const style = prompt.match(STYLE_HINT)?.[1];
   const loved = branches.flatMap((branch) => branch.leaves).filter((leaf) => taste.loved.includes(key(leaf.slot.need)));
 
@@ -209,8 +213,8 @@ export function PlanView({ groupId }: { groupId: string }) {
       }
       setAltFor(null);
       flash([key(slot.need)]);
-    } catch (error) {
-      setFault(error instanceof Error ? error.message : "Couldn't swap that item.");
+    } catch {
+      setFault("That swap didn’t go through. Give it another tap.");
     } finally {
       setBusySlot(null);
     }
@@ -233,8 +237,8 @@ export function PlanView({ groupId }: { groupId: string }) {
       }
       setSelectedId(null);
       setAltFor(null);
-    } catch (error) {
-      setFault(error instanceof Error ? error.message : "Couldn't remove that item.");
+    } catch {
+      setFault("That didn’t go through. Give it another tap.");
     } finally {
       setBusySlot(null);
     }
@@ -285,8 +289,8 @@ export function PlanView({ groupId }: { groupId: string }) {
       setOptions({});
       setGeneration((current) => current + 1);
       flash([...result.changes.added, ...result.changes.changed].map(key));
-    } catch (error) {
-      setFault(error instanceof Error ? error.message : "Couldn't regrow the set.");
+    } catch {
+      setFault("Still working on that one. Try saying it a little differently.");
     } finally {
       setRefining(false);
     }
@@ -306,8 +310,8 @@ export function PlanView({ groupId }: { groupId: string }) {
     try {
       const result = await suggestIdeas({ groupId, zoneId: zone.id });
       setIdeas((current) => ({ ...current, [zone.id]: result.ideas }));
-    } catch (error) {
-      setFault(error instanceof Error ? error.message : "Couldn't grow ideas for that branch.");
+    } catch {
+      setFault("Ideas are taking a moment. Tap the branch again.");
       setIdeas((current) => ({ ...current, [zone.id]: [] }));
     } finally {
       setLoadingIdeas(null);
@@ -322,8 +326,8 @@ export function PlanView({ groupId }: { groupId: string }) {
       await plan.mutate();
       setIdeas((current) => ({ ...current, [zone.id]: (current[zone.id] ?? []).filter((entry) => entry.product.id !== idea.product.id) }));
       flash([key(idea.need)]);
-    } catch (error) {
-      setFault(error instanceof Error ? error.message : "Couldn't add that.");
+    } catch {
+      setFault("That one didn’t add. Grow ideas again and pick another.");
     } finally {
       setAddingIdea(null);
     }
@@ -381,12 +385,23 @@ export function PlanView({ groupId }: { groupId: string }) {
         </div>
       </header>
 
-      {brokenRules.length > 0 ? (
-        <ul className="rule-alerts" aria-label="Checks that need attention">
-          {brokenRules.map((rule) => (
-            <li key={rule.id}><AlertTriangle aria-hidden="true" /> {rule.message || "A rule on this set is broken."}</li>
+      {headsUp.length > 0 ? (
+        <ul className="rule-alerts" aria-label="Worth a look">
+          {headsUp.map((rule) => (
+            <li key={rule.id}><Info aria-hidden="true" /> {rule.message || "Worth a quick look."}</li>
           ))}
         </ul>
+      ) : null}
+
+      {leftOut.length > 0 && editable ? (
+        <div className="left-out" aria-label="Saved for later">
+          <span><Sparkles aria-hidden="true" /> To stay within {formatBudget(data.group.budgetCents)}, I saved these for later:</span>
+          <div className="left-out-chips">
+            {leftOut.slice(0, 8).map((item) => (
+              <button key={item} type="button" className="chip" disabled={refining} onClick={() => void refine(`Add ${item}`)}><Plus aria-hidden="true" /> {item}</button>
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {editable ? (
@@ -500,8 +515,8 @@ export function PlanView({ groupId }: { groupId: string }) {
                 </button>
                 {editable ? <button type="button" className="leaf-remove" aria-label={`Remove ${leaf.slot.need}`} title="Remove" onClick={() => void remove(leaf.slot)}><X aria-hidden="true" /></button> : null}
                 {leaf.issues.length ? (
-                  <p className={`leaf-issue ${leaf.issues.some((rule) => rule.status === "broken") ? "broken" : "warning"}`}>
-                    <AlertTriangle aria-hidden="true" /> {leaf.issues[0].message || "Check this item"}
+                  <p className="leaf-issue warning">
+                    <Info aria-hidden="true" /> {leaf.issues[0].message || "Worth a quick look"}
                   </p>
                 ) : null}
                 {!owned ? (
@@ -727,11 +742,11 @@ function IconAction({ label, pressed, disabled, onClick, children }: { label: st
 function BudgetMeter({ total, budget }: { total: number; budget: number }) {
   const ratio = budget > 0 ? total / budget : 0;
   const state = ratio > 1 ? "over" : ratio >= 0.95 ? "near" : "ok";
-  const label = state === "over" ? `${formatCents(total - budget)} over budget` : `${formatCents(budget - total)} under budget`;
+  const label = state === "over" ? `${formatCents(total - budget)} above the ${formatCents(budget)} plan` : `${formatCents(budget - total)} under budget`;
   return (
     <span className={`budget-meter ${state}`}>
       <span className="budget-track" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.round(ratio * 100))}%` }} /></span>
-      <small>{state === "over" ? <AlertTriangle aria-hidden="true" /> : <CircleCheck aria-hidden="true" />} {label}</small>
+      <small>{state === "over" ? <Info aria-hidden="true" /> : <CircleCheck aria-hidden="true" />} {label}</small>
     </span>
   );
 }

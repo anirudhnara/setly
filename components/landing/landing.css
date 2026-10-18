@@ -1,5 +1,5 @@
 .landing-shell { overflow-x: hidden; }
-.landing { display: grid; }
+.landing { display: grid; grid-template-columns: minmax(0, 1fr); }
 
 /* Hero */
 .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center; gap: 24px; width: min(1320px, 100%); min-height: calc(100dvh - 80px); margin: 0 auto; padding: 24px clamp(18px, 4vw, 48px) 40px; }
@@ -156,3 +156,16 @@
 .start-btn { min-height: 56px; margin-top: 18px; padding: 0 30px; font-size: 17px; }
 @keyframes vibe-drift { from { transform: rotate(calc(var(--k) * 51deg)) translateX(calc(38px + var(--k) * 6px)); } to { transform: rotate(calc(var(--k) * 51deg + 25deg)) translateX(calc(22px + var(--k) * 4px)); } }
 @media (max-width: 900px) { .flow { grid-template-columns: 1fr; } }
+
+/* The landing page's own header: it's the front door, separate from the app's nav. */
+.lp-head { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 20px; width: min(1320px, 100%); margin: 0 auto; padding: 14px clamp(18px, 4vw, 48px); background: linear-gradient(var(--paper) 60%, rgba(246, 243, 238, 0)); }
+.lp-links { display: flex; gap: 4px; }
+.lp-links a { padding: 8px 12px; border-radius: 999px; color: var(--ink-2); font-size: 14px; text-decoration: none; transition: background .2s, color .2s; }
+.lp-links a:hover { background: var(--paper-2); color: var(--ink); }
+.lp-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.lp-actions .btn { min-height: 40px; padding: 0 16px; font-size: 14px; }
+@media (max-width: 640px) {
+  .lp-head .nav-brand > span:not(.setly-mark) { display: inline; }
+  .lp-links { display: none; }
+  .lp-actions .btn-ghost { display: none; }
+}

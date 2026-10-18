@@ -72,9 +72,11 @@ export interface AskJsonOptions<T> {
   repair?: (json: unknown) => unknown;
   /** Stops waiting early, for example when a parallel request already answered. */
   signal?: AbortSignal;
+  /** Reasoning tokens before answering. 0 (the default) for quick structured turns; more when quality matters most. */
+  thinkingBudget?: number;
 }
 
-export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temperature = 0.4, model = GEMINI_MODEL, repair, signal }: AskJsonOptions<T>): Promise<T> {
+export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temperature = 0.4, model = GEMINI_MODEL, repair, signal, thinkingBudget = 0 }: AskJsonOptions<T>): Promise<T> {
   if (!geminiConfigured()) throw new Error("Gemini is off (MOCK_AI=1 or no key)");
   if ((state.__setlyGeminiBlockedUntil ?? 0) > Date.now()) throw new Error("Gemini is paused after an access error");
   const apiKey = getEnv().GEMINI_API_KEY;
@@ -99,8 +101,8 @@ export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temp
           responseMimeType: "application/json",
           ...(useSchema ? { [vertex ? "responseSchema" : "responseJsonSchema"]: jsonSchemaFor(schema) } : {}),
           temperature,
-          // Structured answers don't need reasoning tokens, and skipping them keeps turns under a second.
-          thinkingConfig: { thinkingBudget: 0 },
+          // Most structured answers don't need reasoning tokens, and skipping them keeps turns under a second.
+          thinkingConfig: { thinkingBudget },
           abortSignal: signal ? AbortSignal.any([signal, AbortSignal.timeout(remaining)]) : AbortSignal.timeout(remaining),
         },
       });

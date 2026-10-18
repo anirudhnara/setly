@@ -2,20 +2,20 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { type ApiErrorBody } from "@/lib/contracts";
 import { readRequest } from "@/lib/security/request";
-import { interviewRequestSchema, runInterview, type InterviewResponse } from "@/lib/ai/interview";
+import { interviewRequestSchema, planInterview, type InterviewResponse } from "@/lib/ai/interview";
 import { warmGemini } from "@/lib/ai/llm";
 import { jsonError } from "@/lib/db/http";
 
-/** Next chat turn while building the brief. `turn: null` means use the scripted questions (MOCK_AI=1 or Gemini down). */
+/** The questionnaire for a new set, from the first message. Always answers: rules write it when Gemini is off. */
 export async function POST(request: Request) {
   try {
-    // Signed-in only: each turn spends Gemini quota.
+    // Signed-in only: planning spends Gemini quota.
     await requireUser(request);
     const parsed = await readRequest(request, interviewRequestSchema);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Send the chat as { messages: [{ role, text }] }." } satisfies ApiErrorBody, { status: 400 });
+      return NextResponse.json({ error: "Send { request: \"what you're shopping for\" }." } satisfies ApiErrorBody, { status: 400 });
     }
-    const body: InterviewResponse = { turn: await runInterview(parsed.data) };
+    const body: InterviewResponse = { plan: await planInterview(parsed.data) };
     return NextResponse.json(body);
   } catch (error) {
     return jsonError(error);

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph3D, { type ForceGraphMethods, type LinkObject, type NodeObject } from "react-force-graph-3d";
 import * as THREE from "three";
 import SpriteText from "three-spritetext";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import type { CatalogItem } from "@/lib/catalog/source";
 import { INNER, OUTER, weightForDistance } from "@/lib/catalog/space";
 
@@ -76,39 +75,40 @@ function money(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-/** Soft twilight nebula, painted once onto a canvas and used as the scene background. */
-function nebula() {
+/** Warm daylight sky in the site's cream, painted once onto a canvas and used as the scene background. */
+function backdrop() {
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
   canvas.height = 1024;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   const base = ctx.createLinearGradient(0, 0, 0, 1024);
-  base.addColorStop(0, "#1b1640");
-  base.addColorStop(0.55, "#241a4d");
-  base.addColorStop(1, "#3a1f45");
+  base.addColorStop(0, "#fbf8f3");
+  base.addColorStop(0.6, "#f6f3ee");
+  base.addColorStop(1, "#f1e9de");
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, 1024, 1024);
   const blob = (x: number, y: number, r: number, color: string) => {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, color);
-    g.addColorStop(1, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(246,243,238,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 1024, 1024);
   };
-  blob(780, 820, 520, "rgba(255, 128, 92, .35)");
-  blob(200, 220, 480, "rgba(110, 160, 255, .28)");
-  blob(560, 420, 380, "rgba(190, 130, 255, .22)");
+  blob(800, 800, 520, "rgba(255, 186, 150, .38)");
+  blob(190, 230, 470, "rgba(160, 205, 255, .26)");
+  blob(540, 470, 360, "rgba(255, 222, 150, .24)");
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
 
-function starfield() {
-  const count = 1400;
+/** Slow drifting specks, like dust in sunlight. */
+function pollen() {
+  const count = 900;
   const positions = new Float32Array(count * 3);
   for (let index = 0; index < count; index += 1) {
-    const r = 500 + Math.random() * 900;
+    const r = 380 + Math.random() * 900;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.acos(2 * Math.random() - 1);
     positions[index * 3] = r * Math.sin(phi) * Math.cos(theta);
@@ -117,8 +117,8 @@ function starfield() {
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const points = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xfff4e8, size: 1.6, transparent: true, opacity: 0.75, sizeAttenuation: true }));
-  points.name = "setly-stars";
+  const points = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xe9a27f, size: 2.4, transparent: true, opacity: 0.45, sizeAttenuation: true }));
+  points.name = "setly-pollen";
   return points;
 }
 
@@ -196,43 +196,50 @@ export function SpaceGraph({
     if (node.kind === "root") {
       geometry = new THREE.SphereGeometry(10, 48, 48);
     } else if (node.kind === "theme") {
-      geometry = new THREE.IcosahedronGeometry(6.5, 0);
+      geometry = new THREE.SphereGeometry(6, 32, 32);
     } else if (node.kind === "category") {
       geometry = new THREE.OctahedronGeometry(5, 0);
     } else {
       geometry = new THREE.BoxGeometry(3.6, 3.6, 3.6);
       base = 0.9;
     }
+    // Glossy, softly lit bubbles that keep their color on a light background (no glow wash).
     const material = new THREE.MeshStandardMaterial({
       color,
       emissive: color,
-      emissiveIntensity: node.kind === "root" ? 0.9 : 0.35,
-      roughness: 0.35,
-      metalness: 0.15,
-      flatShading: node.kind !== "root",
+      emissiveIntensity: node.kind === "root" ? 0.35 : 0.15,
+      roughness: 0.32,
+      metalness: 0.05,
+      flatShading: node.kind === "category" || node.kind === "item",
       transparent: true,
       opacity: 1,
     });
     const mesh = new THREE.Mesh(geometry, material);
     group.add(mesh);
+    if (node.kind === "root" || node.kind === "theme") {
+      // A soft halo in the node's own color, so each bubble reads as warm light rather than a hard ball.
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(node.kind === "root" ? 16 : 9.5, 32, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: node.kind === "root" ? 0.16 : 0.14, depthWrite: false }));
+      halo.name = "halo";
+      mesh.add(halo);
+    }
     if (node.kind === "root") {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(17, 0.45, 12, 96), new THREE.MeshBasicMaterial({ color: 0xffd2b8, transparent: true, opacity: 0.7 }));
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(19, 0.45, 12, 96), new THREE.MeshBasicMaterial({ color: 0xe2552d, transparent: true, opacity: 0.5 }));
       ring.rotation.x = Math.PI / 2.4;
       ring.name = "ring";
       group.add(ring);
-      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(23, 0.3, 12, 96), new THREE.MeshBasicMaterial({ color: 0xa8c7ff, transparent: true, opacity: 0.5 }));
+      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(25, 0.3, 12, 96), new THREE.MeshBasicMaterial({ color: 0x6f9fd8, transparent: true, opacity: 0.4 }));
       ring2.rotation.y = Math.PI / 3;
       ring2.name = "ring2";
       group.add(ring2);
     }
     if (node.kind !== "item") {
-      const label = new SpriteText(node.label, node.kind === "root" ? 5.2 : node.kind === "theme" ? 4.4 : 3.4, node.kind === "category" ? "#fff6ee" : node.color);
+      const label = new SpriteText(node.label, node.kind === "root" ? 5.2 : node.kind === "theme" ? 4.2 : 3.4, node.kind === "root" ? "#1c1a17" : "#3a362f");
       label.fontFace = "Geist, system-ui, sans-serif";
-      label.fontWeight = node.kind === "category" ? "500" : "700";
-      label.backgroundColor = node.kind === "root" ? "rgba(28, 22, 60, .55)" : "";
-      label.padding = node.kind === "root" ? 2 : 0;
+      label.fontWeight = node.kind === "category" ? "500" : "650";
+      label.backgroundColor = node.kind === "root" ? "rgba(255, 255, 255, .92)" : "rgba(255, 255, 255, .7)";
+      label.padding = node.kind === "root" ? [3, 1.6] : [1.6, 0.8];
       label.borderRadius = 3;
-      label.position.y = node.kind === "root" ? -30 : node.kind === "theme" ? 12 : 9;
+      label.position.y = node.kind === "root" ? -30 : node.kind === "theme" ? 13 : 9;
       group.add(label);
     }
     nodeStore.built.set(node.id, { group, mesh, material, base });
@@ -248,23 +255,24 @@ export function SpaceGraph({
       const dimmed = focusTheme !== null && node.kind === "item" && !node.item?.themes.includes(focusTheme);
       const scale = entry.base * (node.kind === "root" ? 1 : 0.75 + node.weight * 0.75) * (selected ? 1.25 : 1);
       entry.mesh.scale.setScalar(scale);
-      entry.material.emissiveIntensity = node.kind === "root" ? 0.9 : selected ? 0.7 : 0.18 + node.weight * 0.35;
+      entry.material.emissiveIntensity = node.kind === "root" ? 0.35 : selected ? 0.45 : 0.08 + node.weight * 0.22;
       entry.material.opacity = dimmed ? 0.18 : 1;
     }
   }, [data, selectedId, focusTheme]);
 
-  // One-time scene dressing: nebula, stars, bloom, forces, and a slow orbit until someone interacts.
+  // One-time scene dressing: sky, drifting specks, soft daylight, forces, and a slow orbit until someone interacts.
   useEffect(() => {
     const fg = graph.current;
     if (!fg || decorated.current || size.width === 0) return;
     decorated.current = true;
     const scene = fg.scene();
-    const background = nebula();
+    const background = backdrop();
     if (background) scene.background = background;
-    scene.add(starfield());
-    scene.add(new THREE.AmbientLight(0xfff1e6, 1.4));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(size.width, size.height), 0.7, 0.5, 0.42);
-    fg.postProcessingComposer().addPass(bloom);
+    scene.add(pollen());
+    scene.add(new THREE.AmbientLight(0xfff6ee, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+    sun.position.set(120, 220, 260);
+    scene.add(sun);
     fg.d3Force("radial", radialForce());
     fg.d3Force("charge")?.strength?.(-55);
     const link = fg.d3Force("link");
@@ -284,7 +292,7 @@ export function SpaceGraph({
         root.group.getObjectByName("ring")?.rotateZ(0.006);
         root.group.getObjectByName("ring2")?.rotateX(0.004);
       }
-      scene.getObjectByName("setly-stars")?.rotateY(0.00008);
+      scene.getObjectByName("setly-pollen")?.rotateY(0.00012);
       frame = requestAnimationFrame(spin);
     };
     frame = requestAnimationFrame(spin);
@@ -314,7 +322,7 @@ export function SpaceGraph({
           width={size.width}
           height={size.height}
           graphData={data}
-          backgroundColor="#1b1640"
+          backgroundColor="#f6f3ee"
           showNavInfo={false}
           controlType="orbit"
           nodeThreeObject={nodeObject}
@@ -326,7 +334,7 @@ export function SpaceGraph({
           }}
           linkColor={(raw) => {
             const link = raw as GLink;
-            return link.kind === "theme" ? "rgba(255, 214, 190, .55)" : link.kind === "category" ? "rgba(200, 210, 255, .35)" : link.kind === "fit" ? "rgba(255, 255, 255, .07)" : "rgba(255, 255, 255, .22)";
+            return link.kind === "theme" ? "rgba(176, 150, 124, .55)" : link.kind === "category" ? "rgba(150, 140, 125, .35)" : link.kind === "fit" ? "rgba(150, 130, 110, .12)" : "rgba(120, 110, 100, .25)";
           }}
           linkWidth={(raw) => ((raw as GLink).kind === "theme" ? 0.6 : 0)}
           linkOpacity={0.9}
@@ -337,7 +345,7 @@ export function SpaceGraph({
           }}
           linkDirectionalParticleSpeed={0.006}
           linkDirectionalParticleWidth={1.6}
-          linkDirectionalParticleColor={() => "#ffe3d1"}
+          linkDirectionalParticleColor={() => "#e2552d"}
           enableNodeDrag
           onNodeClick={(raw) => onSelect(raw as GNode & SpaceNode)}
           onBackgroundClick={() => onSelect(null)}
