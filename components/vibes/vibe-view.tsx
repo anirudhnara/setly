@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, Check, Minus, Move3d, Plus, Sparkles, X } from "
 import { CreationSteps } from "@/components/shared/creation-steps";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
-import { readDraft, readMode, stageMap, stageMember, type Draft, type FundingMode } from "@/components/shared/session";
+import { readDraft, readMode, stageMap, stageMember, watchMode, type Draft, type FundingMode } from "@/components/shared/session";
 import type { SpaceLink, SpaceNode } from "@/components/space/space-graph";
 import type { VibeNodeData } from "@/lib/ai/vibes";
 import { vibeLine, vibeSummary, type VibeGroup } from "@/lib/catalog/vibes";
@@ -30,7 +30,7 @@ const GROW_AT_MS = [0, 1500, 4000, 9000, 15000];
 export function VibeView() {
   const router = useRouter();
   const [draft] = useState<Draft | null>(() => readDraft());
-  const [mode] = useState<FundingMode>(() => readMode());
+  const [mode, setMode] = useState<FundingMode>(() => readMode());
   const [title, setTitle] = useState(draft?.name ?? "Your set");
   const [vibes, setVibes] = useState<VibeNodeData[]>([]);
   const [selected, setSelected] = useState<SpaceNode | null>(null);
@@ -61,6 +61,8 @@ export function VibeView() {
       window.clearTimeout(start);
     };
   }, [draft, mode, router]);
+
+  useEffect(() => watchMode(setMode), []);
 
   useEffect(() => {
     if (!growing) return;
@@ -99,7 +101,7 @@ export function VibeView() {
   }
 
   const { nodes, links } = useMemo(() => {
-    const nodeList: SpaceNode[] = [{ id: "root", kind: "root", label: title, color: "#fff1e6", weight: 1 }];
+    const nodeList: SpaceNode[] = [{ id: "root", kind: "root", label: title, color: "#f08a62", weight: 1 }];
     const linkList: SpaceLink[] = [];
     for (const group of GROUPS) {
       const members = vibes.filter((vibe) => vibe.group === group);
@@ -120,7 +122,7 @@ export function VibeView() {
       <SpaceGraph nodes={nodes} links={links} selectedId={selected?.id ?? null} focusTheme={null} onSelect={(node) => setSelected(node && node.kind !== "root" ? node : null)} onWeight={(node, weight) => setWeight(node.label, weight)} />
 
       <header className="space-hud top vibe-top">
-        <CreationSteps current={1} tone="dark" />
+        <CreationSteps current={1} />
         <div className="hud-title">
           <span className="hud-mode">{MODE_INFO[mode].label}</span>
           <h1>What’s the vibe?</h1>

@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { firebaseConfigured, signInWithEmail, signInWithGoogle, signUpWithEmail, watchAuth } from "@/lib/auth/client";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
+/** Where to go after signing in: the page that sent you here (a join link), otherwise straight to the chat. */
 function nextPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value === "/") return "/home";
   return value;
 }
 

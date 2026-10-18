@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import { Landing } from "@/components/landing/landing";
-import { SiteNav } from "@/components/shared/site-nav";
 import { cacheLife } from "next/cache";
 import { loadCatalog, type CatalogItem } from "@/lib/catalog/source";
 import { storedProducts } from "@/lib/search/find";
@@ -42,9 +40,6 @@ export default async function LandingPage() {
   const items = await showcase();
   return (
     <div className="orbit landing-shell">
-      <Suspense fallback={<header className="setly-nav" aria-hidden="true" />}>
-        <SiteNav />
-      </Suspense>
       <Landing showcase={items} />
     </div>
   );

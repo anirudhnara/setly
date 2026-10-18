@@ -1,7 +1,7 @@
 /**
  * The vibe vocabulary for step 2 (the 3D vibe space). Gemini chooses which vibes to show for a brief, but only from
- * this list, because code has to be able to measure how well a real product fits each one. Pure: shared by the
- * browser and the server.
+ * this list, because code has to be able to measure how well a real product fits each one. Colors are mid-tones
+ * so they read on the site's cream background. Pure: shared by the browser and the server.
  */
 export type VibeGroup = "Style" | "Color" | "Material" | "Priority";
 
@@ -16,27 +16,27 @@ export interface Vibe {
 }
 
 export const VIBES: Vibe[] = [
-  { label: "Minimal", group: "Style", color: "#8fd3ff", hint: "Clean lines, nothing extra", match: /minimal|simple|sleek|clean|low[- ]profile|streamlined/i },
-  { label: "Cozy", group: "Style", color: "#ff9f7a", hint: "Soft, warm, sink-in comfy", match: /cozy|plush|soft|sherpa|fleece|chunky|comfy|knit|cushioned/i },
-  { label: "Modern", group: "Style", color: "#9db4ff", hint: "Fresh, current shapes", match: /modern|contemporary|geometric|curved/i },
-  { label: "Vintage", group: "Style", color: "#e8b07a", hint: "Retro and mid-century charm", match: /vintage|retro|mid[- ]century|antique|classic|tufted/i },
-  { label: "Boho", group: "Style", color: "#f6a6c8", hint: "Layered, woven, relaxed", match: /boho|bohemian|macrame|fringe|tassel|moroccan|kilim/i },
-  { label: "Scandinavian", group: "Style", color: "#cfe8ff", hint: "Light woods, airy calm", match: /scandi|scandinavian|nordic|danish|hygge/i },
-  { label: "Industrial", group: "Style", color: "#b8b8c8", hint: "Metal, raw, loft-y", match: /industrial|iron|steel|pipe|loft|rustic metal/i },
-  { label: "Warm neutrals", group: "Color", color: "#f3d9b1", hint: "Cream, oat, beige, tan", match: /beige|cream|ivory|oat|tan|sand|natural|camel|taupe|khaki/i },
-  { label: "Cool tones", group: "Color", color: "#7fb7e8", hint: "Blues, greys, sage", match: /blue|navy|gr[ae]y|sage|slate|teal|silver/i },
-  { label: "Earthy", group: "Color", color: "#c98a5a", hint: "Terracotta, olive, rust", match: /terracotta|olive|rust|brown|clay|green|forest|ochre|mustard/i },
-  { label: "Bold color", group: "Color", color: "#ff6b8b", hint: "Bright, playful pops", match: /red|pink|yellow|orange|purple|colorful|multicolor|vibrant|bright/i },
-  { label: "Black & white", group: "Color", color: "#e9e9ef", hint: "Crisp contrast", match: /black|white|monochrome/i },
-  { label: "Wood", group: "Material", color: "#d9a066", hint: "Oak, walnut, natural grain", match: /wood|oak|walnut|acacia|pine|teak|bamboo|mango/i },
-  { label: "Metal", group: "Material", color: "#c7d0dc", hint: "Brass, steel, chrome", match: /metal|brass|gold|steel|chrome|iron|aluminum/i },
-  { label: "Rattan & woven", group: "Material", color: "#e2c48f", hint: "Cane, jute, wicker", match: /rattan|wicker|cane|jute|woven|seagrass|rope/i },
-  { label: "Velvet & plush", group: "Material", color: "#c39bff", hint: "Rich, touchable fabrics", match: /velvet|boucl|chenille|plush|faux fur|sherpa/i },
-  { label: "Linen & cotton", group: "Material", color: "#f1ead8", hint: "Breathable, washable", match: /linen|cotton|canvas|washable/i },
-  { label: "Budget-smart", group: "Priority", color: "#7ee0a8", hint: "Stretch every dollar", match: null },
-  { label: "Premium", group: "Priority", color: "#ffd166", hint: "Fewer, nicer things", match: null },
-  { label: "Durable", group: "Priority", color: "#9ff0c2", hint: "Built to last, easy care", match: /durable|heavy[- ]duty|solid|sturdy|stain[- ]resistant|performance|commercial/i },
-  { label: "Compact", group: "Priority", color: "#ffe08a", hint: "Small-space friendly", match: /compact|small|mini|narrow|apartment|space[- ]saving|folding|stackable/i },
+  { label: "Minimal", group: "Style", color: "#6f9fd8", hint: "Clean lines, nothing extra", match: /minimal|simple|sleek|clean|low[- ]profile|streamlined/i },
+  { label: "Cozy", group: "Style", color: "#f0845c", hint: "Soft, warm, sink-in comfy", match: /cozy|plush|soft|sherpa|fleece|chunky|comfy|knit|cushioned/i },
+  { label: "Modern", group: "Style", color: "#7c86e6", hint: "Fresh, current shapes", match: /modern|contemporary|geometric|curved/i },
+  { label: "Vintage", group: "Style", color: "#d0955a", hint: "Retro and mid-century charm", match: /vintage|retro|mid[- ]century|antique|classic|tufted/i },
+  { label: "Boho", group: "Style", color: "#e586ae", hint: "Layered, woven, relaxed", match: /boho|bohemian|macrame|fringe|tassel|moroccan|kilim/i },
+  { label: "Scandinavian", group: "Style", color: "#73b8d9", hint: "Light woods, airy calm", match: /scandi|scandinavian|nordic|danish|hygge/i },
+  { label: "Industrial", group: "Style", color: "#8a8f9e", hint: "Metal, raw, loft-y", match: /industrial|iron|steel|pipe|loft|rustic metal/i },
+  { label: "Warm neutrals", group: "Color", color: "#d6a978", hint: "Cream, oat, beige, tan", match: /beige|cream|ivory|oat|tan|sand|natural|camel|taupe|khaki/i },
+  { label: "Cool tones", group: "Color", color: "#4f95cc", hint: "Blues, greys, sage", match: /blue|navy|gr[ae]y|sage|slate|teal|silver/i },
+  { label: "Earthy", group: "Color", color: "#bd7246", hint: "Terracotta, olive, rust", match: /terracotta|olive|rust|brown|clay|green|forest|ochre|mustard/i },
+  { label: "Bold color", group: "Color", color: "#ec5577", hint: "Bright, playful pops", match: /red|pink|yellow|orange|purple|colorful|multicolor|vibrant|bright/i },
+  { label: "Black & white", group: "Color", color: "#4a463f", hint: "Crisp contrast", match: /black|white|monochrome/i },
+  { label: "Wood", group: "Material", color: "#b07a4a", hint: "Oak, walnut, natural grain", match: /wood|oak|walnut|acacia|pine|teak|bamboo|mango/i },
+  { label: "Metal", group: "Material", color: "#98a3b3", hint: "Brass, steel, chrome", match: /metal|brass|gold|steel|chrome|iron|aluminum/i },
+  { label: "Rattan & woven", group: "Material", color: "#c9a05c", hint: "Cane, jute, wicker", match: /rattan|wicker|cane|jute|woven|seagrass|rope/i },
+  { label: "Velvet & plush", group: "Material", color: "#9b78dd", hint: "Rich, touchable fabrics", match: /velvet|boucl|chenille|plush|faux fur|sherpa/i },
+  { label: "Linen & cotton", group: "Material", color: "#bfae8c", hint: "Breathable, washable", match: /linen|cotton|canvas|washable/i },
+  { label: "Budget-smart", group: "Priority", color: "#3fae7c", hint: "Stretch every dollar", match: null },
+  { label: "Premium", group: "Priority", color: "#d9a52c", hint: "Fewer, nicer things", match: null },
+  { label: "Durable", group: "Priority", color: "#4f9d86", hint: "Built to last, easy care", match: /durable|heavy[- ]duty|solid|sturdy|stain[- ]resistant|performance|commercial/i },
+  { label: "Compact", group: "Priority", color: "#e5a93c", hint: "Small-space friendly", match: /compact|small|mini|narrow|apartment|space[- ]saving|folding|stackable/i },
 ];
 
 export const VIBE_LABELS = VIBES.map((vibe) => vibe.label);

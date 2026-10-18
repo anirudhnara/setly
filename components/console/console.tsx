@@ -2,15 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, ArrowUp, Check, Mic, RotateCcw } from "lucide-react";
-import { Orb } from "@/components/console/orb";
+import { ArrowRight, ArrowUp, BedDouble, Check, Laptop, Mic, RotateCcw, Sofa, Tent } from "lucide-react";
 import { LiveSetPreview } from "@/components/console/live-set";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
 import { SiteNav } from "@/components/shared/site-nav";
 import { formatBudget } from "@/components/shared/format";
 import { CreationSteps } from "@/components/shared/creation-steps";
-import { readMode, readYou, stageDraft, stageYou, type FundingMode } from "@/components/shared/session";
+import { readMode, readYou, stageDraft, stageMode, stageYou, watchMode, type FundingMode } from "@/components/shared/session";
 import { firebaseConfigured, watchAuth } from "@/lib/auth/client";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 import { interviewTurn, warmInterview } from "@/lib/client";
@@ -49,6 +48,15 @@ interface SpeechRec {
 }
 
 const BUILD_STEPS = ["Reading your answers", "Lining up vibes for you"];
+const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
+
+/** Tap-to-start ideas on the welcome screen. Each sends its text as the first message. */
+const STARTERS = [
+  { icon: BedDouble, title: "Dorm move-in", text: "Dorm room for my roommates and me: bed, bath, and storage" },
+  { icon: Sofa, title: "First apartment", text: "First apartment living room and kitchen basics" },
+  { icon: Tent, title: "Weekend camping trip", text: "Weekend camping trip with friends" },
+  { icon: Laptop, title: "Home office", text: "A home office I can work in all day" },
+];
 const BUILD_STEP_AT_MS = [0, 700];
 const MAX_MODEL_QUESTIONS = 6;
 
@@ -71,6 +79,9 @@ export function Console() {
   const [modelMisses, setModelMisses] = useState(0);
   const [fundingMode, setFundingMode] = useState<FundingMode>("group");
   const scroller = useRef<HTMLDivElement>(null);
+
+  // The nav chip and the welcome screen both change who's paying; keep this screen in step.
+  useEffect(() => watchMode(setFundingMode), []);
   const input = useRef<HTMLTextAreaElement>(null);
   const seq = useRef(0);
 
@@ -279,7 +290,9 @@ export function Console() {
           <div className="chat-log" ref={scroller} aria-live="polite">
             {empty ? (
               <section className="chat-hero">
-                <Orb state={listening ? "listening" : thinking ? "thinking" : "idle"} size={380} />
+                <span className="hello-badge" aria-hidden="true"><JarvisMark size={46} live={thinking || listening} /></span>
+                <h1>Hi {you.split(" ")[0] || "there"}! <em>What are we shopping for?</em></h1>
+                <p>Tell me in your own words: a room, a trip, a move. I’ll ask a couple of quick questions, you’ll pick a vibe, and I’ll grow a full set from real stores.</p>
               </section>
             ) : null}
 
@@ -307,7 +320,7 @@ export function Console() {
             {thinking ? (
               <div className="msg assistant">
                 <span className="msg-avatar" aria-hidden="true"><JarvisMark size={28} live /></span>
-                <div className="msg-body"><span className="typing" aria-label="Setly is thinking"><i /><i /><i /></span></div>
+                <div className="msg-body"><span className="typing" role="status"><i /><i /><i /><span>Thinking</span></span></div>
               </div>
             ) : null}
 
@@ -350,7 +363,7 @@ export function Console() {
               value={draft}
               autoFocus
               disabled={phase === "building"}
-              placeholder={empty ? "What are we shopping for?" : "Reply to Setly…"}
+              placeholder={empty ? "e.g. Living room for 3 roommates, around $1,000" : "Type your answer…"}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -366,6 +379,27 @@ export function Console() {
               <ArrowUp aria-hidden="true" />
             </button>
           </form>
+
+          {empty ? (
+            <div className="hello-extras">
+              <div className="starter-grid" role="group" aria-label="Ideas to start with">
+                {STARTERS.map(({ icon: Icon, title, text }, index) => (
+                  <button key={title} type="button" className="starter" style={{ "--i": index } as CSSProperties} disabled={busy} onClick={() => void send(text)}>
+                    <span className="starter-icon" aria-hidden="true"><Icon /></span>
+                    <span className="starter-text"><strong>{title}</strong><span>{text}</span></span>
+                  </button>
+                ))}
+              </div>
+              <div className="who-pays" role="radiogroup" aria-label="Who’s paying?">
+                <span>Who’s paying?</span>
+                {MODES.map((key) => (
+                  <button key={key} type="button" role="radio" aria-checked={fundingMode === key} className={fundingMode === key ? "on" : ""} onClick={() => stageMode(key)}>
+                    {MODE_INFO[key].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </main>
 
         {!empty ? (

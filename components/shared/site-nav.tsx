@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, Receipt, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { Check, ChevronDown, Info, LogOut, Receipt, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { MODE_INFO } from "@/components/shared/modes";
-import { readLastGroup, readMode, type FundingMode } from "@/components/shared/session";
+import { readLastGroup, readMode, stageMode, watchMode, type FundingMode } from "@/components/shared/session";
 import { firebaseConfigured, signOut, watchAuth } from "@/lib/auth/client";
+
+const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
 
 const LINKS = [
   { href: "/home", label: "New set", icon: Sparkles },
@@ -16,9 +18,9 @@ const LINKS = [
 
 /**
  * The top bar on every app screen: slides in, a pill glides to whichever link you point at, it tightens on scroll,
- * and the account menu opens with a spring. `tone="dark"` sits over the 3D space.
+ * and the account menu opens with a spring.
  */
-export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
+export function SiteNav() {
   const pathname = usePathname();
   const router = useRouter();
   const groupId = pathname.match(/^\/g\/([^/]+)/)?.[1];
@@ -27,10 +29,12 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
   const [lastGroup, setLastGroup] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [modeMenu, setModeMenu] = useState(false);
   const [pill, setPill] = useState<{ left: number; width: number; visible: boolean }>({ left: 0, width: 0, visible: false });
   const [hovered, setHovered] = useState<string | null>(null);
   const linksRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const modeRef = useRef<HTMLDivElement>(null);
 
   const active = pathname === "/vibes" ? "/home" : (LINKS.find((link) => pathname === link.href || pathname.startsWith(`${link.href}/`))?.href ?? null);
 
@@ -43,6 +47,8 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
     });
   }, []);
 
+  useEffect(() => watchMode(setMode), []);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -50,10 +56,13 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Either menu closes on Escape or a click outside it.
   useEffect(() => {
-    if (!menu) return;
+    if (!menu && !modeMenu) return;
     const close = (event: MouseEvent | KeyboardEvent) => {
-      if (event instanceof KeyboardEvent ? event.key === "Escape" : !menuRef.current?.contains(event.target as Node)) setMenu(false);
+      const outside = (ref: { current: HTMLDivElement | null }) => !ref.current?.contains(event.target as Node);
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : outside(menuRef)) setMenu(false);
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : outside(modeRef)) setModeMenu(false);
     };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", close);
@@ -61,7 +70,7 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", close);
     };
-  }, [menu]);
+  }, [menu, modeMenu]);
 
   // The pill follows the hovered link, and rests on the current page's link.
   useLayoutEffect(() => {
@@ -84,9 +93,9 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
   }
 
   return (
-    <header className={`setly-nav ${tone}${scrolled ? " scrolled" : ""}`}>
+    <header className={`setly-nav${scrolled ? " scrolled" : ""}`}>
       <div className="setly-nav-row">
-        <Link href="/" className="nav-brand" aria-label="Setly home">
+        <Link href="/home" className="nav-brand" aria-label="Setly: start a new set">
           <JarvisMark size={30} />
           <span>setly</span>
         </Link>
@@ -108,10 +117,24 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
         </nav>
 
         <div className="nav-right">
-          <Link href="/#modes" className="mode-chip" title="Change who’s paying">
-            {mode === "insurance" ? <ShieldCheck aria-hidden="true" /> : null}
-            {MODE_INFO[mode].short}
-          </Link>
+          <div className="nav-account" ref={modeRef}>
+            <button type="button" className="mode-chip" aria-expanded={modeMenu} aria-haspopup="menu" aria-label={`Who’s paying: ${MODE_INFO[mode].label}. Change`} onClick={() => setModeMenu((open) => !open)}>
+              {mode === "insurance" ? <ShieldCheck aria-hidden="true" /> : null}
+              {MODE_INFO[mode].short}
+              <ChevronDown aria-hidden="true" />
+            </button>
+            {modeMenu ? (
+              <div className="account-menu mode-menu" role="menu" aria-label="Who’s paying">
+                <div className="menu-head"><strong>Who’s paying?</strong><span>Shapes the questions and how the set is split.</span></div>
+                {MODES.map((key) => (
+                  <button key={key} type="button" role="menuitemradio" aria-checked={mode === key} onClick={() => { stageMode(key); setModeMenu(false); }}>
+                    <span className="mode-option"><b>{MODE_INFO[key].label}</b><small>{MODE_INFO[key].blurb}</small></span>
+                    {mode === key ? <Check aria-hidden="true" /> : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           {you ? (
             <div className="nav-account" ref={menuRef}>
               <button type="button" className="account-btn" aria-expanded={menu} aria-haspopup="menu" onClick={() => setMenu((open) => !open)}>
@@ -128,6 +151,7 @@ export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
                   <Link role="menuitem" href="/account" onClick={() => setMenu(false)}><UserRound aria-hidden="true" /> Account</Link>
                   <Link role="menuitem" href="/account#purchases" onClick={() => setMenu(false)}><Receipt aria-hidden="true" /> Purchases</Link>
                   <Link role="menuitem" href="/account#protection" onClick={() => setMenu(false)}><ShieldCheck aria-hidden="true" /> Protection</Link>
+                  <Link role="menuitem" href="/" onClick={() => setMenu(false)}><Info aria-hidden="true" /> About Setly</Link>
                   <button type="button" role="menuitem" onClick={() => void leave()}><LogOut aria-hidden="true" /> Sign out</button>
                 </div>
               ) : null}
