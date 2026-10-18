@@ -64,7 +64,8 @@ export function GroupAuthGate({ children }: { children: ReactNode }) {
 
   if (user === null && !startError && typeof window !== "undefined" && !redirected) {
     redirected = true;
-    const next = `/sign-in?next=${encodeURIComponent(pathname)}`;
+    // Keep the query too: a card claim link carries its card in `?c=`.
+    const next = `/sign-in?next=${encodeURIComponent(`${pathname}${window.location.search}`)}`;
     if (!window.location.pathname.startsWith("/sign-in")) router.replace(next);
   }
 

@@ -1,0 +1,170 @@
+/* Sponsored cards: /family (warm, like the rest of Setly) and /claims (the same palette, stated plainly). */
+
+.sp-page { display: grid; width: 100%; max-width: 1180px; gap: 22px; margin: 0 auto; padding-bottom: 60px; }
+.sp-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 28px; animation: rise .5s var(--ease) both; }
+.sp-head h1 { margin: 4px 0 6px; font-size: clamp(38px, 5vw, 56px); }
+.sp-head p { max-width: 560px; margin: 0; }
+.sp-kpis { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.sp-kpis div { display: grid; min-width: 118px; gap: 2px; padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); }
+.sp-kpis dt { color: var(--mute); font-size: 12px; }
+.sp-kpis dd { margin: 0; font-family: var(--display); font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+.sp-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+.sp-card-tab { display: grid; gap: 1px; min-height: 52px; padding: 8px 16px; border: 0; border-radius: 16px; background: var(--paper-2); color: var(--ink); text-align: left; transition: background .2s, box-shadow .2s; }
+.sp-card-tab small { color: var(--mute); font-size: 12px; }
+.sp-card-tab.on { background: var(--card); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line-2); }
+.sp-card-tab.new { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; }
+.sp-card-tab svg { width: 16px; height: 16px; }
+
+.sp-panel { display: grid; gap: 16px; padding: clamp(18px, 2.4vw, 26px); border-radius: 24px; background: var(--card); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); animation: rise .5s var(--ease) both; }
+.sp-section-head { display: flex; align-items: center; gap: 12px; }
+.sp-section-head h2 { margin: 0; font-size: 22px; }
+.sp-section-head .icon-action, .sp-section-head .sp-export { margin-left: auto; }
+.sp-step:empty { display: none; }
+.sp-note { margin: 0; font-size: 14px; }
+
+.sp-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.sp-field { display: grid; align-content: start; gap: 5px; min-width: 0; }
+.sp-field > span { color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
+.sp-field small { color: var(--mute); font-size: 12px; }
+.sp-field.wide { grid-column: 1 / -1; }
+.sp-field input, .sp-field select { width: 100%; min-width: 0; }
+.orbit .sp-field select { min-height: 46px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--card); color: var(--ink); font-size: 15px; }
+
+.sp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+.sp-chips legend { width: 100%; margin-bottom: 8px; color: var(--ink-2); font-size: 12.5px; font-weight: 600; }
+.sp-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); font-size: 14px; transition: background .2s, color .2s; }
+.sp-chip svg { width: 14px; height: 14px; }
+.sp-chip.on { background: var(--ink); color: var(--paper); }
+.sp-chips:disabled .sp-chip { opacity: .5; }
+.sp-send { justify-self: start; min-width: 240px; }
+.sp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 14px; }
+
+.sp-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 18px; }
+.sp-card-panel { grid-row: span 2; }
+.sp-vcard { width: 100%; max-width: 420px; }
+.sp-facts { display: grid; gap: 0; margin: 0; }
+.sp-facts div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.sp-facts dt { color: var(--mute); }
+.sp-facts dd { margin: 0; overflow-wrap: anywhere; }
+.sp-share { display: grid; gap: 8px; }
+.sp-share-row { display: flex; gap: 8px; }
+.sp-share-row input { flex: 1; min-width: 0; font-size: 13px !important; }
+
+.sp-test { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .8fr) auto; align-items: end; gap: 10px; padding: 14px; border-radius: 18px; background: var(--paper); }
+.sp-test .orbit-label, .sp-test .fault { grid-column: 1 / -1; }
+.sp-feed, .sp-sweeps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.sp-feed li, .sp-sweeps li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); animation: rise .35s var(--ease) both; }
+.sp-sweeps li { grid-template-columns: auto minmax(0, 1fr) auto; }
+.sp-feed li > span:nth-child(2), .sp-sweeps li > span:nth-child(2) { display: grid; min-width: 0; gap: 1px; font-size: 14px; }
+.sp-feed small, .sp-sweeps small { color: var(--mute); font-size: 12.5px; }
+.sp-feed b, .sp-sweeps b { font-variant-numeric: tabular-nums; }
+.sp-feed li.ok .auth-icon, .sp-sweeps .auth-icon { background: var(--ok-soft); color: var(--ok); }
+.sp-feed li.no .auth-icon { background: var(--bad-soft); color: var(--bad); }
+.sp-feed li.no b { color: var(--mute); text-decoration: line-through; }
+.sp-sweeps b { color: var(--ok); }
+.sp-feed.compact li { grid-template-columns: auto minmax(0, 1fr) auto; }
+
+.sp-lines { overflow-x: auto; }
+.sp-lines table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sp-lines caption { padding-bottom: 8px; color: var(--mute); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
+.sp-lines th, .sp-lines td { padding: 9px 8px; border-top: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.sp-lines thead th { border-top: 0; color: var(--mute); font-size: 12px; font-weight: 600; }
+.sp-lines td small { display: block; color: var(--mute); font-size: 12px; }
+.sp-lines .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sp-lines td.num input { width: 110px; min-height: 36px !important; text-align: right; }
+.sp-lines tfoot th, .sp-lines tfoot td { border-top: 2px solid var(--ink); font-weight: 650; }
+.sp-bar { display: block; width: 100%; min-width: 80px; height: 6px; overflow: hidden; border-radius: 6px; background: var(--paper-2); }
+.sp-bar i { display: block; height: 100%; background: var(--ok); transition: width .6s var(--ease); }
+
+/* The "Sent!" moment: the card slides off, a check pops, then it fades. */
+.sp-sent { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(28, 26, 23, .38); backdrop-filter: blur(4px); animation: sp-fade 2.4s var(--ease) both; }
+.sp-sent-inner { position: relative; display: grid; justify-items: center; gap: 6px; padding: 34px 44px; border-radius: 28px; background: var(--card); box-shadow: var(--shadow-lg); animation: sp-pop .5s var(--ease-spring) both; }
+.sp-sent-inner strong { font-family: var(--display); font-size: 44px; font-weight: 400; line-height: 1; }
+.sp-sent-inner > span:last-child { color: var(--mute); font-size: 15px; }
+.sp-sent-card { display: grid; width: 64px; height: 42px; place-items: center; border-radius: 9px; background: linear-gradient(135deg, #ff8a5c, #e2552d); color: #fff; animation: sp-fly 1s .1s var(--ease) both; }
+.sp-sent-card svg { width: 22px; height: 22px; }
+.sp-sent-check { position: absolute; top: 34px; display: grid; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: var(--ok); color: #fff; animation: sp-check .5s .75s var(--ease-spring) both; }
+.sp-sent-check svg { width: 28px; height: 28px; stroke-width: 3; }
+@keyframes sp-fade { 0% { opacity: 0; } 10%, 82% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes sp-pop { from { opacity: 0; transform: scale(.88) translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes sp-fly { 0% { transform: none; opacity: 1; } 60% { transform: translate(90px, -40px) rotate(14deg) scale(.7); opacity: 0; } 100% { transform: translate(90px, -40px) scale(.7); opacity: 0; } }
+@keyframes sp-check { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* Recipient */
+.sp-received { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 18px; }
+.sp-received-card.fresh { box-shadow: 0 0 0 2px var(--accent), var(--shadow-md); }
+.sp-rules { display: grid; gap: 10px; }
+.sp-from { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; }
+.sp-from svg { width: 18px; height: 18px; color: var(--accent); }
+.sp-rules ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.sp-rules li { display: flex; align-items: flex-start; gap: 8px; color: var(--ink-2); }
+.sp-rules li svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--ok); }
+.sp-rules .btn { justify-self: start; }
+
+/*
+ * /claims — corporate and stated plainly. Same paper, ink and type as the app; square corners, 1px ink rules,
+ * numbered sections, uppercase labels, tabular figures, no shadows or gradients. Not neo-brutalist: no thick
+ * outlines, offset shadows, or loud fills.
+ */
+.sp-claims { gap: 0; }
+.sp-claims .sp-head { align-items: stretch; margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--ink); animation: none; }
+.sp-claims .sp-head h1 { font-family: var(--font-sans), system-ui, sans-serif; font-size: clamp(32px, 4vw, 46px); font-weight: 650; letter-spacing: -.035em; }
+.sp-claims .orbit-label { color: var(--ink); }
+.sp-claims .sp-kpis { gap: 0; border: 1px solid var(--ink); }
+.sp-claims .sp-kpis div { min-width: 132px; padding: 12px 16px; border-radius: 0; background: transparent; box-shadow: none; }
+.sp-claims .sp-kpis div + div { border-left: 1px solid var(--ink); }
+.sp-claims .sp-kpis dt { color: var(--ink-2); font-size: 10.5px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+.sp-claims .sp-kpis dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; letter-spacing: -.02em; }
+.sp-claims .sp-cards { gap: 0; margin-bottom: 22px; border-bottom: 1px solid var(--line-2); }
+.sp-claims .sp-card-tab { min-height: 56px; margin-bottom: -1px; border-radius: 0; background: transparent; border-bottom: 2px solid transparent; }
+.sp-claims .sp-card-tab strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 600; }
+.sp-claims .sp-card-tab.on { box-shadow: none; border-bottom-color: var(--ink); }
+.sp-claims .sp-card-tab.new { color: var(--ink); }
+.sp-claims .sp-panel { gap: 18px; padding: 22px 0 26px; border-radius: 0; background: transparent; box-shadow: none; border-top: 1px solid var(--ink); animation: none; }
+.sp-claims .sp-detail { gap: 0 36px; }
+.sp-claims .sp-section-head h2 { font-family: var(--font-sans), system-ui, sans-serif; font-size: 15px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; }
+.sp-claims .sp-step { display: inline-grid; min-width: 34px; height: 22px; place-items: center; background: var(--ink); color: var(--paper); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; font-weight: 600; }
+.sp-claims input:not([type="checkbox"]):not([type="radio"]), .orbit .sp-claims .sp-field select { border-radius: 0 !important; border-color: var(--ink) !important; }
+.sp-claims .btn { border-radius: 0; }
+.sp-claims .btn-accent { background: var(--ink); }
+.sp-claims .btn-accent:hover:not(:disabled) { background: #000; }
+.sp-claims .btn-ghost { box-shadow: inset 0 0 0 1px var(--ink); }
+.sp-claims .sp-test { border-radius: 0; background: transparent; border: 1px solid var(--line-2); }
+.sp-claims .vcard { border-radius: 10px; background: #1c1a17; box-shadow: none; }
+.sp-claims .vcard.live { background: #1c1a17; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.sp-claims .vcard::after { display: none; }
+.sp-claims .sp-facts dt { font-size: 11px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.sp-claims .sp-facts dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.sp-claims .sp-lines th, .sp-claims .sp-lines td { border-top-color: var(--line-2); }
+.sp-claims .sp-lines thead th { border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; }
+.sp-claims .sp-lines .num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.sp-claims .sp-bar { border-radius: 0; background: var(--line); }
+.sp-claims .sp-bar i { background: var(--ink); }
+.sp-claims .sp-feed b, .sp-claims .sp-sweeps b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+.sp-claims .auth-icon { border-radius: 0; }
+.sp-claims .pill { border-radius: 0; }
+.sp-claims .sp-chip { border-radius: 0; }
+.sp-claims .sp-sent-inner { border-radius: 0; box-shadow: none; outline: 1px solid var(--ink); }
+.sp-claims .sp-sent-inner strong { font-family: var(--font-sans), system-ui, sans-serif; font-weight: 650; letter-spacing: -.03em; }
+.sp-claims .sp-sent-card { border-radius: 3px; background: #1c1a17; }
+
+@media (max-width: 900px) {
+  .sp-detail { grid-template-columns: minmax(0, 1fr); }
+  .sp-card-panel { grid-row: auto; }
+  .sp-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .sp-fields, .sp-test { grid-template-columns: minmax(0, 1fr); }
+  .sp-feed li { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .sp-feed li > :last-child:not(b) { grid-column: 2 / -1; justify-self: start; }
+  .sp-claims .sp-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sp-claims .sp-kpis div + div { border-left: 0; }
+  .sp-claims .sp-kpis div:nth-child(even) { border-left: 1px solid var(--ink); }
+  .sp-claims .sp-kpis div:nth-child(n + 3) { border-top: 1px solid var(--ink); }
+  .sp-share-row { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-sent, .sp-sent-inner, .sp-sent-card, .sp-sent-check { animation-duration: .01s; }
+  .sp-sent { animation: sp-fade 2.4s steps(1) both; }
+}
