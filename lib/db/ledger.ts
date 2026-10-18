@@ -429,7 +429,8 @@ function applyAuthorization(state: GroupState | null, cardId: string, merchant: 
   return authorization;
 }
 
-async function editGroup<T>(groupId: string, fn: (state: GroupState) => Promise<T> | T): Promise<T> {
+/** Runs `fn` on the group inside its lock (reusing an open one). Keep `fn` short: no lanes or network inside. */
+export async function editGroup<T>(groupId: string, fn: (state: GroupState) => Promise<T> | T): Promise<T> {
   const open = openMutation.getStore();
   if (open?.groupId === groupId) {
     if (!open.draft.state) throw new LedgerError("Group not found", 404);
