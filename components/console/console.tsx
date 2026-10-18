@@ -9,7 +9,8 @@ import { LiveSetPreview } from "@/components/console/live-set";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { formatBudget } from "@/components/shared/format";
 import { readYou, stageMap, stageMember, stageYou } from "@/components/shared/session";
-import { watchAuth } from "@/lib/auth/client";
+import { firebaseConfigured, signOut, watchAuth } from "@/lib/auth/client";
+import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 import { createGroup, growMap, interviewTurn, warmInterview } from "@/lib/client";
 import {
   QUESTIONS,
@@ -51,6 +52,7 @@ const MAX_MODEL_QUESTIONS = 6;
 export function Console() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [blocked, setBlocked] = useState<string | null>(null);
   const [you, setYou] = useState("");
   const [brief, setBrief] = useState<Brief>(emptyBrief);
   const [lines, setLines] = useState<Line[]>([]);
@@ -73,23 +75,20 @@ export function Console() {
       setBrief((current) => ({ ...current, name }));
       setReady(true);
     }
-    try {
-      return watchAuth((user) => {
-        if (!user) {
-          router.replace(`/sign-in?next=${encodeURIComponent("/home")}`);
-          return;
-        }
-        const name = user.displayName?.trim() || readYou() || prettyName(user.email ?? "") || "Friend";
-        stageYou(name);
-        enter(name);
-        void warmInterview();
-      });
-    } catch {
-      // Firebase isn't configured on this machine: fall back to the name from the welcome screen.
-      const name = readYou();
-      if (!name) router.replace("/");
-      else enter(name);
+    if (!firebaseConfigured()) {
+      setBlocked(FIREBASE_SETUP_MESSAGE);
+      return;
     }
+    return watchAuth((user) => {
+      if (!user) {
+        router.replace(`/sign-in?next=${encodeURIComponent("/home")}`);
+        return;
+      }
+      const name = user.displayName?.trim() || prettyName(user.email ?? "") || "Friend";
+      stageYou(name);
+      enter(name);
+      void warmInterview();
+    });
   }, [router]);
 
   useEffect(() => {
@@ -250,6 +249,14 @@ export function Console() {
     rec.start();
   }
 
+  if (blocked) {
+    return (
+      <main className="sign-in-shell">
+        <p className="sign-in-error" role="alert">{blocked}</p>
+      </main>
+    );
+  }
+
   if (!ready) return <div className="orbit chat-page" />;
 
   const empty = lines.length === 0;
@@ -275,6 +282,13 @@ export function Console() {
             <span className="avatar" aria-hidden="true">{you.slice(0, 1).toUpperCase()}</span>
             {you}
           </span>
+          <button
+            type="button"
+            className="btn btn-ghost chat-restart"
+            onClick={() => void signOut().then(() => router.push("/"))}
+          >
+            Sign out
+          </button>
         </div>
       </header>
 

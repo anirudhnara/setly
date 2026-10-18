@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import {
   browserLocalPersistence,
+  browserPopupRedirectResolver,
   createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
@@ -8,11 +9,16 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
 
 export type FirebaseAuthUser = User;
-import { getFirebaseWebConfig } from "@/lib/env";
+import { getFirebaseWebConfig, readFirebaseWebConfig } from "@/lib/env";
+
+export function firebaseConfigured() {
+  return readFirebaseWebConfig() !== null;
+}
 
 function browserAuth() {
   if (typeof window === "undefined") {
@@ -21,7 +27,12 @@ function browserAuth() {
   const config = getFirebaseWebConfig();
   const app = getApps()[0] ?? initializeApp(config);
   try {
-    return initializeAuth(app, { persistence: browserLocalPersistence });
+    // initializeAuth does not include the popup resolver unless it is passed here.
+    // Without it, signInWithPopup fails with auth/argument-error.
+    return initializeAuth(app, {
+      persistence: browserLocalPersistence,
+      popupRedirectResolver: browserPopupRedirectResolver,
+    });
   } catch {
     return getAuth(app);
   }
@@ -47,4 +58,8 @@ export function signInWithEmail(email: string, password: string) {
 
 export function signUpWithEmail(email: string, password: string) {
   return createUserWithEmailAndPassword(browserAuth(), email, password);
+}
+
+export function signOut() {
+  return firebaseSignOut(browserAuth());
 }

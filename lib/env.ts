@@ -68,14 +68,29 @@ const firebaseWebConfigSchema = z.object({
 
 export type FirebaseWebConfig = z.infer<typeof firebaseWebConfigSchema>;
 
+export const FIREBASE_SETUP_MESSAGE =
+  "Add NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and NEXT_PUBLIC_FIREBASE_APP_ID to .env.local, then restart the dev server.";
+
+function firebaseWebEnv() {
+  return {
+    apiKey: present(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+    authDomain: present(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+    projectId: present(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+    appId: present(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
+  };
+}
+
+/** Public web config, or null when any of the four values is missing. */
+export function readFirebaseWebConfig(): FirebaseWebConfig | null {
+  const parsed = firebaseWebConfigSchema.safeParse(firebaseWebEnv());
+  return parsed.success ? parsed.data : null;
+}
+
 /** Public web config for Firebase Auth. Required when the sign-in screen initializes. */
 export function getFirebaseWebConfig(): FirebaseWebConfig {
-  return firebaseWebConfigSchema.parse({
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  });
+  const config = readFirebaseWebConfig();
+  if (!config) throw new Error(FIREBASE_SETUP_MESSAGE);
+  return config;
 }
 
 const firebaseAdminCredentialsSchema = z.object({

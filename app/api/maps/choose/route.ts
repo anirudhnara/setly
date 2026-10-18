@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
 import { readRequest, type ApiErrorBody } from "@/lib/contracts";
 import { chooseRequestSchema, type ChooseResponse } from "@/lib/ai/refine";
+import { stampChangedSlots } from "@/lib/ai/stamp";
 import { jsonError } from "@/lib/db/http";
 import { requireMember, saveMap } from "@/lib/db/queries";
 import { checkRules } from "@/lib/rules/check";
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Send { groupId, slotId, productId }." } satisfies ApiErrorBody, { status: 400 });
     }
     const { groupId, slotId, productId } = parsed.data;
-    const { state } = await requireMember(groupId, user.id);
+    const { state, member } = await requireMember(groupId, user.id);
     if (state.group.status !== "editing") {
       return NextResponse.json({ error: "This set is locked for payment, so it can't change now." } satisfies ApiErrorBody, { status: 409 });
     }
@@ -27,11 +28,11 @@ export async function POST(request: Request) {
     if (!slot) return NextResponse.json({ error: "That item isn't on this set anymore." } satisfies ApiErrorBody, { status: 404 });
     const product = await findSlotOption(slotId, productId);
     if (!product) return NextResponse.json({ error: "That option is no longer available. Open the options again." } satisfies ApiErrorBody, { status: 404 });
-    const map = {
+    const map = stampChangedSlots(state.map, {
       ...state.map,
-      slots: state.map.slots.map((item) => (item.id === slotId ? { ...item, chosenProductId: product.id, updatedAt: new Date().toISOString() } : item)),
+      slots: state.map.slots.map((item) => (item.id === slotId ? { ...item, chosenProductId: product.id } : item)),
       products: [...state.map.products.filter((item) => item.slotId !== slotId), { ...product, slotId }],
-    };
+    }, member.id);
     if (state.members.length > 0) map.rules = checkRules(map, state.members);
     const saved = await saveMap(groupId, map);
     const body: ChooseResponse = saved.map;

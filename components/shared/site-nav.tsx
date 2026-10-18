@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
-import { SAMPLE_GROUP_ID, readLastGroup, readYou } from "@/components/shared/session";
+import { firebaseConfigured, signOut, watchAuth } from "@/lib/auth/client";
+import { SAMPLE_GROUP_ID, readLastGroup } from "@/components/shared/session";
 
 const LINKS = [{ href: "/home", label: "New set" }];
 
 export function SiteNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const groupId = pathname.match(/^\/g\/([^/]+)/)?.[1];
   const [planId, setPlanId] = useState(groupId ?? SAMPLE_GROUP_ID);
   const [you, setYou] = useState("");
@@ -23,7 +25,10 @@ export function SiteNav() {
   }, [groupId]);
 
   useEffect(() => {
-    setYou(readYou() ?? "");
+    if (!firebaseConfigured()) return;
+    return watchAuth((user) => {
+      setYou(user?.displayName?.trim() || user?.email?.split("@")[0] || "");
+    });
   }, []);
 
   return (
@@ -43,7 +48,19 @@ export function SiteNav() {
             My set
           </Link>
         </nav>
-        <span className="orbit-kicker">{you ? <><span className="avatar" aria-hidden="true">{you.slice(0, 1).toUpperCase()}</span> {you}</> : "Shop together"}</span>
+        <span className="orbit-kicker">
+          {you ? (
+            <>
+              <span className="avatar" aria-hidden="true">{you.slice(0, 1).toUpperCase()}</span>
+              {you}
+              <button type="button" className="nav-sign-out" onClick={() => void signOut().then(() => router.push("/"))}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            "Shop together"
+          )}
+        </span>
       </div>
       {groupId && pathname === `/g/${groupId}` ? (
         <nav className="orbit-subnav" aria-label="Group">

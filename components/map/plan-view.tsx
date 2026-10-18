@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlertTriangle, ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Shuffle, ThumbsDown, Trash2, UserPlus, X,
 } from "lucide-react";
 import { formatBudget, formatCents } from "@/components/shared/format";
+import { Avatar } from "@/components/shared/group-header";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { ProductImage } from "@/components/shared/product-image";
 import { readTaste, stageMap, stageTaste, type Taste } from "@/components/shared/session";
+import { useMe } from "@/components/shared/use-me";
 import { usePlan } from "@/components/shared/use-plan";
 import { parseMemberCount } from "@/lib/ai/parse";
 import { chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, refineMap } from "@/lib/client";
@@ -44,7 +47,9 @@ const zoneDelay = (index: number) => 0.15 + index * 0.12;
 const leafDelay = (zoneIndex: number, leafIndex: number) => zoneDelay(zoneIndex) + 0.45 + leafIndex * 0.07;
 
 export function PlanView({ groupId }: { groupId: string }) {
+  const router = useRouter();
   const plan = usePlan(groupId);
+  const me = useMe(plan.data);
   const [local, setLocal] = useState<MapData | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [altFor, setAltFor] = useState<string | null>(null);
@@ -60,8 +65,29 @@ export function PlanView({ groupId }: { groupId: string }) {
   const [generation, setGeneration] = useState(0);
   const [fault, setFault] = useState("");
   const started = useRef(false);
+  const seenSlots = useRef<Map<string, string> | null>(null);
 
   const map = plan.live ? plan.map : (local ?? plan.map);
+
+  // A poll that changes a slot this browser did not just edit flashes that slot for everyone else watching.
+  useEffect(() => {
+    if (!plan.live || !map) return;
+    const next = new Map(map.slots.map((slot) => [slot.id, slotSignature(slot)]));
+    const previous = seenSlots.current;
+    seenSlots.current = next;
+    if (!previous) return;
+    const mine = me.member?.id;
+    const remote = map.slots
+      .filter((slot) => previous.get(slot.id) !== next.get(slot.id) && !(mine && slot.updatedBy === mine))
+      .map((slot) => key(slot.need));
+    if (remote.length === 0) return;
+    setFresh(remote);
+    window.setTimeout(() => setFresh((current) => (current === remote ? [] : current)), 4200);
+  }, [plan.live, map, me.member?.id]);
+
+  useEffect(() => {
+    if (plan.data && me.user && !me.member) router.replace(`/g/${groupId}/join`);
+  }, [plan.data, me.user, me.member, groupId, router]);
 
   // A group without a saved set grows one on the server (shared with every member). If that fails, a preview
   // is generated in the browser so the page still shows something; that preview can't be refined or saved.
@@ -114,7 +140,8 @@ export function PlanView({ groupId }: { groupId: string }) {
       .map((branch, index) => ({ ...branch, index }));
   }, [map]);
 
-  if (!plan.mounted || (plan.isLoading && !data)) return <SkeletonTree label="Finding your set…" />;
+  if (!plan.mounted || (plan.isLoading && !data) || (data && me.loading)) return <SkeletonTree label="Finding your set…" />;
+  if (data && me.user && !me.member) return <SkeletonTree label="Sending you to join…" />;
   if (plan.error || !data) {
     return (
       <div className="set-missing">
@@ -282,6 +309,14 @@ export function PlanView({ groupId }: { groupId: string }) {
             {loved.length ? <span className="taste loved"><Heart aria-hidden="true" /> {loved.length} loved</span> : null}
             {taste.history.slice(-2).map((said) => <span key={said} className="taste said">“{said}”</span>)}
           </div>
+          <ul className="set-people" aria-label="People in this set">
+            {data.members.map((person, index) => (
+              <li key={person.id} className={person.id === me.member?.id ? "you" : undefined}>
+                <Avatar name={person.name} tone={index} size={28} />
+                <span>{person.name}{person.id === me.member?.id ? " (you)" : ""}{person.isOrganizer ? " · organizer" : ""}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         <div className="set-summary">
           <div className="set-total">
@@ -331,6 +366,8 @@ export function PlanView({ groupId }: { groupId: string }) {
           const isPassed = taste.passed.includes(need);
           const selected = selectedId === leaf.slot.id;
           const alts = (options[leaf.slot.id] ?? []).filter((product) => product.id !== leaf.product?.id);
+          const editor = data.members.find((person) => person.id === leaf.slot.updatedBy);
+          const editorLabel = editor ? (editor.id === me.member?.id ? "Edited by you" : `Edited by ${editor.name}`) : null;
           return (
             <div className="leaf-row" key={leaf.slot.id}>
               <article
@@ -360,6 +397,7 @@ export function PlanView({ groupId }: { groupId: string }) {
                     ) : (
                       <span className="leaf-meta">Open alternatives to pick one</span>
                     )}
+                    {editorLabel ? <span className="leaf-editor">{editorLabel}</span> : null}
                   </span>
                   {isLoved ? <Heart className="leaf-badge" aria-label="Loved" fill="currentColor" /> : null}
                 </button>
@@ -646,4 +684,8 @@ function SkeletonTree({ label, title }: { label: string; title?: string }) {
 
 function key(need: string) {
   return need.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function slotSignature(slot: Slot) {
+  return [slot.need, slot.chosenProductId ?? "", String(slot.quantity), slot.payType, slot.updatedAt].join("\0");
 }

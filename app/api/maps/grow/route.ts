@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import { readRequest, type ApiErrorBody, type GetGroupResponse } from "@/lib/contracts";
 import { generateMapFromPrompt } from "@/lib/ai/gemini";
+import { stampChangedSlots } from "@/lib/ai/stamp";
 import { jsonError } from "@/lib/db/http";
 import { requireMember, saveMap } from "@/lib/db/queries";
 import { checkRules } from "@/lib/rules/check";
@@ -18,13 +19,14 @@ export async function POST(request: Request) {
     const user = await requireUser(request);
     const parsed = await readRequest(request, growRequestSchema);
     if (!parsed.success) return NextResponse.json({ error: "Send { groupId }." } satisfies ApiErrorBody, { status: 400 });
-    const { state } = await requireMember(parsed.data.groupId, user.id);
+    const { state, member } = await requireMember(parsed.data.groupId, user.id);
     if (state.map.slots.length > 0 || state.group.status !== "editing") {
       const body: GetGroupResponse = state;
       return NextResponse.json(body);
     }
-    const map = await generateMapFromPrompt(state.group.prompt, state.group.budgetCents || undefined, state.group.id);
-    if (state.members.length > 0) map.rules = checkRules(map, state.members);
+    const grown = await generateMapFromPrompt(state.group.prompt, state.group.budgetCents || undefined, state.group.id);
+    if (state.members.length > 0) grown.rules = checkRules(grown, state.members);
+    const map = stampChangedSlots(state.map, grown, member.id);
     const body: GetGroupResponse = await saveMap(state.group.id, map);
     return NextResponse.json(body);
   } catch (error) {
