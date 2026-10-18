@@ -59,6 +59,20 @@ export const QUESTIONS: Record<Step, { ask: string; chips: string[] }> = {
   },
 };
 
+/** Example answers that fit the scene, so a dorm isn't offered "a sofa and a lamp". */
+const SCENE_CHIPS: Array<[RegExp, Partial<Record<Step, string[]>>]> = [
+  [/dorm|college|campus/i, { must: ["Bedding", "Storage bins", "Desk lamp", "Skip"], owned: ["Mini fridge", "Desk and chair", "Skip"] }],
+  [/camp|trip|hike|tent|outdoor/i, { must: ["Tent", "Sleeping bags", "Camp stove", "Skip"], owned: ["Cooler", "Headlamps", "Skip"] }],
+  [/kitchen|cook/i, { must: ["Cookware", "Knife set", "Dishes", "Skip"], owned: ["Microwave", "Toaster", "Skip"] }],
+  [/bed ?room/i, { must: ["Bed frame", "Dresser", "Skip"], owned: ["Mattress", "Lamp", "Skip"] }],
+  [/office|study|desk|work/i, { must: ["Desk", "Chair", "Monitor stand", "Skip"], owned: ["Laptop stand", "Lamp", "Skip"] }],
+];
+
+export function chipsFor(step: Step, brief: Brief): string[] {
+  const scene = `${brief.scene} ${brief.notes}`;
+  return SCENE_CHIPS.find(([cue]) => cue.test(scene))?.[1][step] ?? QUESTIONS[step].chips;
+}
+
 export const RETRY: Record<Step, string> = {
   scene: "I need a real scene. Try “living room for 4 roommates, cozy.”",
   people: "Give me a headcount. “4 roommates” is enough.",
@@ -96,7 +110,7 @@ export function nextStep(brief: Brief): Step | null {
   if (!sceneOk(brief.scene)) return "scene";
   if (!brief.people) return "people";
   if (!brief.budgetCents) return "budget";
-  if (!brief.vibe) return "vibe";
+  // Style is picked visually in the vibe step, so the script doesn't ask for it.
   if (!brief.asked.includes("must")) return "must";
   if (!brief.asked.includes("owned")) return "owned";
   if (wantsDoor(brief) && brief.doorIn == null && !brief.asked.includes("door")) return "door";

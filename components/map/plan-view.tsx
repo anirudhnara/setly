@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  AlertTriangle, ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Shuffle, ThumbsDown, Trash2, UserPlus, X,
+  AlertTriangle, ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Plus, Shuffle, Sparkles, ThumbsDown, Trash2, UserPlus, X,
 } from "lucide-react";
 import { formatBudget, formatCents } from "@/components/shared/format";
 import { Avatar } from "@/components/shared/group-header";
@@ -14,7 +14,9 @@ import { readTaste, stageMap, stageTaste, type Taste } from "@/components/shared
 import { useMe } from "@/components/shared/use-me";
 import { usePlan } from "@/components/shared/use-plan";
 import { parseMemberCount } from "@/lib/ai/parse";
-import { chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, refineMap } from "@/lib/client";
+import { addIdea, chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, refineMap, suggestIdeas } from "@/lib/client";
+import type { Idea } from "@/lib/ai/suggest";
+import { parseVibeLine, vibeSummary } from "@/lib/catalog/vibes";
 import { chargedCentsForSlot, planTotalCents } from "@/lib/rules/check";
 import type { MapData, Product, Rule, Slot, Zone } from "@/lib/types";
 
@@ -34,7 +36,7 @@ interface Edge {
   from: string;
   to: string;
   delay: number;
-  kind: "trunk" | "branch" | "alt";
+  kind: "trunk" | "branch" | "alt" | "idea";
 }
 interface DrawnEdge extends Edge {
   d: string;
@@ -53,6 +55,11 @@ export function PlanView({ groupId }: { groupId: string }) {
   const [local, setLocal] = useState<MapData | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [altFor, setAltFor] = useState<string | null>(null);
+  const [ideasFor, setIdeasFor] = useState<string | null>(null);
+  const [ideas, setIdeas] = useState<Record<string, Idea[]>>({});
+  const [loadingIdeas, setLoadingIdeas] = useState<string | null>(null);
+  const [addingIdea, setAddingIdea] = useState<string | null>(null);
+  const refineInput = useRef<HTMLInputElement>(null);
   const [options, setOptions] = useState<Record<string, Product[]>>({});
   const [loadingAlt, setLoadingAlt] = useState<string | null>(null);
   const [busySlot, setBusySlot] = useState<string | null>(null);
@@ -285,6 +292,49 @@ export function PlanView({ groupId }: { groupId: string }) {
     }
   }
 
+  /** Tap a branch: Gemini proposes what it's missing, each with a real product, shown as ghost leaves. */
+  async function toggleIdeas(zone: Zone) {
+    if (!editable) return;
+    if (ideasFor === zone.id) {
+      setIdeasFor(null);
+      return;
+    }
+    setIdeasFor(zone.id);
+    setAltFor(null);
+    if (!plan.live || ideas[zone.id]) return;
+    setLoadingIdeas(zone.id);
+    try {
+      const result = await suggestIdeas({ groupId, zoneId: zone.id });
+      setIdeas((current) => ({ ...current, [zone.id]: result.ideas }));
+    } catch (error) {
+      setFault(error instanceof Error ? error.message : "Couldn't grow ideas for that branch.");
+      setIdeas((current) => ({ ...current, [zone.id]: [] }));
+    } finally {
+      setLoadingIdeas(null);
+    }
+  }
+
+  async function addFromIdea(zone: Zone, idea: Idea) {
+    setAddingIdea(idea.product.id);
+    setFault("");
+    try {
+      await addIdea({ groupId, zoneId: zone.id, need: idea.need, searchQuery: idea.searchQuery, productId: idea.product.id });
+      await plan.mutate();
+      setIdeas((current) => ({ ...current, [zone.id]: (current[zone.id] ?? []).filter((entry) => entry.product.id !== idea.product.id) }));
+      flash([key(idea.need)]);
+    } catch (error) {
+      setFault(error instanceof Error ? error.message : "Couldn't add that.");
+    } finally {
+      setAddingIdea(null);
+    }
+  }
+
+  function startBranch() {
+    setDraft("Add a branch for ");
+    window.setTimeout(() => refineInput.current?.focus(), 0);
+  }
+
+  const vibeLoves = vibeSummary(parseVibeLine(prompt)).loves;
   const passedCount = activeMap.slots.filter((slot) => taste.passed.includes(key(slot.need))).length;
   const firstLeaf = branches[0]?.leaves.find((leaf) => leaf.product)?.slot.need;
   const suggestions = [
@@ -305,7 +355,7 @@ export function PlanView({ groupId }: { groupId: string }) {
             <span className="taste-label">Tuned to</span>
             <span className="taste">{people} {people === 1 ? "person" : "people"}</span>
             {budgetCents ? <span className="taste">{formatBudget(budgetCents)} budget</span> : null}
-            {style ? <span className="taste">{style.toLowerCase()}</span> : null}
+            {vibeLoves.length ? vibeLoves.slice(0, 4).map((label) => <span key={label} className="taste vibe">{label}</span>) : style ? <span className="taste">{style.toLowerCase()}</span> : null}
             {loved.length ? <span className="taste loved"><Heart aria-hidden="true" /> {loved.length} loved</span> : null}
             {taste.history.slice(-2).map((said) => <span key={said} className="taste said">“{said}”</span>)}
           </div>
@@ -339,11 +389,21 @@ export function PlanView({ groupId }: { groupId: string }) {
         </ul>
       ) : null}
 
+      {editable ? (
+        <ul className="tree-tips" aria-label="How to shape your set">
+          <li><span>1</span> Tap an item to see other options</li>
+          <li><span>2</span> Tap a branch name to grow more ideas</li>
+          <li><span>3</span> Type below to change anything</li>
+        </ul>
+      ) : null}
+
       <TreeCanvas
         key={generation}
         branches={branches}
         altFor={altFor}
         altCount={altFor ? (options[altFor]?.length ?? 0) : 0}
+        ideasFor={ideasFor}
+        ideaCount={ideasFor ? (loadingIdeas === ideasFor ? 3 : (ideas[ideasFor]?.length ?? 0)) : 0}
         className={refining ? "is-regrowing" : ""}
         root={
           <div className="tree-root" data-node="root">
@@ -351,14 +411,46 @@ export function PlanView({ groupId }: { groupId: string }) {
             <span className="orbit-label">The set</span>
             <strong>{formatCents(total)}</strong>
             <small>{people} {people === 1 ? "person" : "people"} · {formatCents(Math.ceil(total / people))} each</small>
+            {editable ? <button type="button" className="root-add" onClick={startBranch}><Plus aria-hidden="true" /> Add a branch</button> : null}
           </div>
         }
         renderZone={(branch) => (
-          <div className="zone-node" data-node={`zone:${branch.zone.id}`} style={{ "--d": `${zoneDelay(branch.index) + 0.3}s` } as CSSProperties}>
+          <button
+            type="button"
+            className={`zone-node${ideasFor === branch.zone.id ? " open" : ""}`}
+            data-node={`zone:${branch.zone.id}`}
+            style={{ "--d": `${zoneDelay(branch.index) + 0.3}s` } as CSSProperties}
+            aria-expanded={ideasFor === branch.zone.id}
+            disabled={!editable}
+            onClick={() => void toggleIdeas(branch.zone)}
+          >
             <strong>{branch.zone.name}</strong>
             <span>{branch.leaves.length} {branch.leaves.length === 1 ? "item" : "items"} · {formatCents(branch.leaves.reduce((sum, leaf) => sum + chargedCentsForSlot(leaf.slot, leaf.product, people), 0))}</span>
-          </div>
+            {editable ? <em className="zone-grow"><Sparkles aria-hidden="true" /> {ideasFor === branch.zone.id ? "Hide ideas" : "More ideas"}</em> : null}
+          </button>
         )}
+        renderIdeas={(branch) =>
+          ideasFor === branch.zone.id ? (
+            <div className="ideas" aria-label={`Ideas for ${branch.zone.name}`}>
+              {loadingIdeas === branch.zone.id ? [0, 1, 2].map((index) => <div key={index} className="idea skeleton" data-node={`idea:${branch.zone.id}:${index}`} />) : null}
+              {loadingIdeas !== branch.zone.id && (ideas[branch.zone.id]?.length ?? 0) === 0 ? <p className="alts-empty">{plan.live ? "This branch looks complete. Type below to add something specific." : "Ideas need a saved set."}</p> : null}
+              {(loadingIdeas === branch.zone.id ? [] : (ideas[branch.zone.id] ?? [])).map((idea, index) => (
+                <div key={idea.product.id} className="idea" data-node={`idea:${branch.zone.id}:${index}`} style={{ "--d": `${0.15 + index * 0.08}s` } as CSSProperties}>
+                  <ProductImage product={idea.product} need={idea.need} className="alt-image" />
+                  <span className="alt-text">
+                    <span className="leaf-need">{idea.need}</span>
+                    <strong>{idea.product.title}</strong>
+                    <span><b>{formatCents(idea.product.priceCents)}</b> {idea.product.store}</span>
+                    <small className="idea-why">{idea.why}</small>
+                  </span>
+                  <button type="button" className="alt-use add" disabled={addingIdea !== null} onClick={() => void addFromIdea(branch.zone, idea)} aria-label={`Add ${idea.need} to the set`}>
+                    <Plus aria-hidden="true" /> {addingIdea === idea.product.id ? "Adding" : "Add"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null
+        }
         renderLeaf={(branch, leaf, leafIndex) => {
           const need = key(leaf.slot.need);
           const owned = leaf.slot.payType === "already_owned";
@@ -380,8 +472,13 @@ export function PlanView({ groupId }: { groupId: string }) {
                   type="button"
                   className="leaf-main"
                   aria-pressed={selected}
-                  aria-label={`${leaf.slot.need}: ${leaf.product ? `${leaf.product.title}, ${formatCents(leaf.product.priceCents)} at ${leaf.product.store}` : owned ? "already owned" : "no pick yet"}. Show actions.`}
-                  onClick={() => setSelectedId(selected ? null : leaf.slot.id)}
+                  aria-label={`${leaf.slot.need}: ${leaf.product ? `${leaf.product.title}, ${formatCents(leaf.product.priceCents)} at ${leaf.product.store}` : owned ? "already owned" : "no pick yet"}. Show other options.`}
+                  aria-expanded={altFor === leaf.slot.id}
+                  onClick={() => {
+                    setSelectedId(leaf.slot.id);
+                    setIdeasFor(null);
+                    if (!owned && editable) void openAlternatives(leaf.slot);
+                  }}
                 >
                   <ProductImage product={leaf.product} need={leaf.slot.need} className="leaf-image" />
                   <span className="leaf-text">
@@ -401,6 +498,7 @@ export function PlanView({ groupId }: { groupId: string }) {
                   </span>
                   {isLoved ? <Heart className="leaf-badge" aria-label="Loved" fill="currentColor" /> : null}
                 </button>
+                {editable ? <button type="button" className="leaf-remove" aria-label={`Remove ${leaf.slot.need}`} title="Remove" onClick={() => void remove(leaf.slot)}><X aria-hidden="true" /></button> : null}
                 {leaf.issues.length ? (
                   <p className={`leaf-issue ${leaf.issues.some((rule) => rule.status === "broken") ? "broken" : "warning"}`}>
                     <AlertTriangle aria-hidden="true" /> {leaf.issues[0].message || "Check this item"}
@@ -475,7 +573,7 @@ export function PlanView({ groupId }: { groupId: string }) {
             </div>
             <form className="refine-bar" onSubmit={(event) => { event.preventDefault(); void refine(draft); }}>
               <label className="sr-only" htmlFor="refine-input">Tell Setly what to change</label>
-              <input id="refine-input" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Tell Setly what to change — “add a TV”, “no rug”, “under $900”…" disabled={refining} autoComplete="off" />
+              <input id="refine-input" ref={refineInput} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Tell Setly what to change — “add a TV”, “no rug”, “under $900”…" disabled={refining} autoComplete="off" />
               <button type="submit" className="icon-btn send-btn" aria-label="Regrow the set" disabled={refining || (!draft.trim() && passedCount === 0)}>
                 <ArrowUp aria-hidden="true" />
               </button>
@@ -494,17 +592,23 @@ function TreeCanvas({
   branches,
   altFor,
   altCount,
+  ideasFor = null,
+  ideaCount = 0,
   root,
   renderZone,
   renderLeaf,
+  renderIdeas,
   className,
 }: {
   branches: Branch[];
   altFor: string | null;
   altCount: number;
+  ideasFor?: string | null;
+  ideaCount?: number;
   root: ReactNode;
   renderZone: (branch: Branch) => ReactNode;
   renderLeaf: (branch: Branch, leaf: Leaf, leafIndex: number) => ReactNode;
+  renderIdeas?: (branch: Branch) => ReactNode;
   className: string;
 }) {
   const canvas = useRef<HTMLDivElement>(null);
@@ -524,8 +628,13 @@ function TreeCanvas({
         list.push({ id: `a:${altFor}:${index}`, from: altFor, to: `alt:${altFor}:${index}`, delay: index * 0.07, kind: "alt" });
       }
     }
+    if (ideasFor) {
+      for (let index = 0; index < ideaCount; index += 1) {
+        list.push({ id: `i:${ideasFor}:${index}`, from: `zone:${ideasFor}`, to: `idea:${ideasFor}:${index}`, delay: index * 0.08, kind: "idea" });
+      }
+    }
     return list;
-  }, [branches, altFor, altCount]);
+  }, [branches, altFor, altCount, ideasFor, ideaCount]);
 
   const measure = useCallback(() => {
     const host = canvas.current;
@@ -591,11 +700,14 @@ function TreeCanvas({
           ))}
         </svg>
         {root}
-        <div className="tree-branches">
+        <div className="tree-branches" style={{ "--cols": Math.max(1, branches.length) } as CSSProperties}>
           {branches.map((branch) => (
             <div className="branch-row" key={branch.zone.id}>
               {renderZone(branch)}
-              <div className="leaves">{branch.leaves.map((leaf, leafIndex) => renderLeaf(branch, leaf, leafIndex))}</div>
+              <div className="leaves">
+                {branch.leaves.map((leaf, leafIndex) => renderLeaf(branch, leaf, leafIndex))}
+                {renderIdeas?.(branch)}
+              </div>
             </div>
           ))}
         </div>

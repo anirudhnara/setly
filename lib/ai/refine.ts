@@ -7,7 +7,8 @@ import { rankWithGemini } from "@/lib/ai/rank";
 import { generatedMapSchema, type GeneratedMap } from "@/lib/ai/schemas";
 import { structureFromMap, styleWord, withStyle } from "@/lib/ai/structure";
 import { planTotalCents } from "@/lib/rules/check";
-import { searchProducts } from "@/lib/search/serpapi";
+import { parseVibeLine } from "@/lib/catalog/vibes";
+import { findProducts } from "@/lib/search/find";
 import type { MapData, Product } from "@/lib/types";
 
 /**
@@ -120,7 +121,7 @@ export async function refineMap(input: RefineInput): Promise<RefineResponse> {
     budgetCents,
     memberCount: input.memberCount,
     groupId: input.groupId,
-    search: searchProducts,
+    search: (query) => findProducts(query, parseVibeLine(input.prompt)),
     rank: usedModel ? (slots) => rankWithGemini(request, slots) : undefined,
     keep,
     avoid,

@@ -10,7 +10,8 @@ export function getDb() {
     if (!url) {
       throw new Error("DATABASE_URL is not set");
     }
-    const client = postgres(url, { max: 1 });
+    // A few connections so a group read's parallel queries actually run in parallel.
+    const client = postgres(url, { max: 6, prepare: false });
     database = drizzle(client, { schema });
   }
   return database;

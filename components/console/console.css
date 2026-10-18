@@ -7,7 +7,8 @@
 
 .chat-layout { display: grid; flex: 1; width: min(1180px, 100%); margin: 0 auto; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; padding: 0 clamp(16px, 3vw, 32px); }
 .chat-layout.is-empty { grid-template-columns: minmax(0, 1fr); width: min(860px, 100%); }
-.chat-main { display: flex; min-width: 0; height: calc(100dvh - 62px); flex-direction: column; }
+.chat-main { display: flex; min-width: 0; height: calc(100dvh - 122px); flex-direction: column; }
+.restart-btn { width: 100%; min-height: 38px; font-size: 13px; }
 .chat-log { display: flex; flex: 1; flex-direction: column; gap: 18px; overflow-y: auto; padding: 18px 2px 24px; scrollbar-width: thin; scroll-behavior: smooth; }
 .chat-layout.is-empty .chat-log { justify-content: center; }
 
@@ -53,7 +54,7 @@
 .send-btn:disabled { background: var(--paper-2); color: var(--mute); opacity: 1; }
 
 /* Brief card */
-.brief-card { position: sticky; top: 76px; align-self: start; display: grid; gap: 14px; margin-top: 18px; padding: 22px; border: 1px solid var(--line); border-radius: 24px; background: var(--card); box-shadow: var(--shadow-sm); animation: rise .6s var(--ease) both; }
+.brief-card { position: sticky; top: 92px; align-self: start; display: grid; gap: 14px; margin-top: 18px; padding: 22px; border: 1px solid var(--line); border-radius: 24px; background: var(--card); box-shadow: var(--shadow-sm); animation: rise .6s var(--ease) both; }
 .brief-head { display: flex; align-items: center; justify-content: space-between; }
 .brief-progress { display: inline-flex; gap: 4px; }
 .brief-progress i { width: 18px; height: 4px; border-radius: 4px; background: var(--paper-2); transition: background .4s var(--ease); }
@@ -126,24 +127,25 @@
 /* Orb: Setly's floating presence on the empty chat */
 .orb { position: relative; width: var(--orb); height: var(--orb); flex: 0 0 auto; }
 .orb-float { position: absolute; inset: 0; animation: orb-float 7s ease-in-out infinite; }
-.orb-halo { position: absolute; inset: -18%; border-radius: 50%; background: radial-gradient(circle, rgba(226, 85, 45, .22), rgba(226, 85, 45, .06) 42%, transparent 66%); filter: blur(6px); animation: orb-breathe 5s ease-in-out infinite; }
+.orb-halo { position: absolute; inset: -22%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 186, 140, .55), rgba(255, 214, 120, .22) 40%, rgba(170, 200, 255, .12) 58%, transparent 70%); filter: blur(6px); animation: orb-breathe 5s ease-in-out infinite; }
 .orb-stage { position: absolute; inset: 0; perspective: 900px; transform-style: preserve-3d; }
 .orb-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; transform-style: preserve-3d; }
 .orb-ring circle { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.orb-ring.r1 circle { stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 2 8; opacity: .7; }
+.orb-ring.r1 circle { stroke: #ffb347; stroke-width: 1.6; stroke-dasharray: 2 8; opacity: .9; }
 .orb-ring.r2 circle { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 220 380; }
-.orb-ring.r3 circle { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 60 20 4 20; opacity: .5; }
-.orb-ring.r4 circle { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 1 6; opacity: .6; }
+.orb-ring.r3 circle { stroke: #7cc6ff; stroke-width: 1.6; stroke-dasharray: 60 20 4 20; opacity: .8; }
+.orb-ring.r4 circle { stroke: #c3a6ff; stroke-width: 1.4; stroke-dasharray: 1 6; opacity: .8; }
 .orb-ring.r1 { animation: orb-spin-a 26s linear infinite; }
 .orb-ring.r2 { inset: 8%; width: 84%; height: 84%; animation: orb-spin-b 11s linear infinite; }
 .orb-ring.r3 { inset: 16%; width: 68%; height: 68%; animation: orb-spin-c 17s linear infinite reverse; }
 .orb-ring.r4 { inset: -6%; width: 112%; height: 112%; animation: orb-spin-a 40s linear infinite reverse; }
-.orb-core { position: absolute; inset: 31%; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #5b524a 0%, #2a2621 34%, #14120f 70%); box-shadow: 0 30px 60px -18px rgba(28, 26, 23, .55), inset 0 0 0 1px rgba(255, 255, 255, .06), 0 0 0 10px rgba(226, 85, 45, .05); animation: orb-core 5s ease-in-out infinite; }
-.orb-shine { position: absolute; top: 12%; left: 18%; width: 34%; height: 22%; border-radius: 50%; background: radial-gradient(rgba(255, 255, 255, .35), transparent 70%); filter: blur(2px); }
-.orb-pulse { position: absolute; inset: 30%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 140, 100, .9), rgba(226, 85, 45, .55) 45%, transparent 72%); filter: blur(4px); animation: orb-pulse 3.2s ease-in-out infinite; }
+.orb-core { position: absolute; inset: 31%; overflow: hidden; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #ffffff 0%, #ffe4cf 26%, #ffab80 60%, #f2764a 100%); box-shadow: 0 30px 70px -18px rgba(242, 118, 74, .55), 0 0 60px 10px rgba(255, 190, 140, .45), inset 0 -10px 30px rgba(226, 85, 45, .35); animation: orb-core 5s ease-in-out infinite; }
+.orb-shine { position: absolute; top: 10%; left: 16%; width: 40%; height: 26%; border-radius: 50%; background: radial-gradient(rgba(255, 255, 255, .9), transparent 70%); filter: blur(3px); }
+.orb-pulse { position: absolute; inset: 22%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 246, 220, .95), rgba(255, 200, 120, .55) 45%, transparent 72%); filter: blur(6px); animation: orb-pulse 3.2s ease-in-out infinite; }
 .orb-orbit { position: absolute; inset: 0; transform: rotate(var(--tilt)); }
 .orb-orbit i { position: absolute; top: 50%; left: 50%; width: var(--s); height: var(--s); margin: calc(var(--s) / -2); border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px rgba(226, 85, 45, .7); offset-path: none; transform: rotate(0deg) translateX(calc(var(--orb) * var(--r) / 100)) ; animation: orb-particle var(--t) linear var(--dl) infinite; }
-.orb-orbit:nth-child(3n) i { background: var(--ink); box-shadow: none; opacity: .5; }
+.orb-orbit:nth-child(3n) i { background: #7cc6ff; box-shadow: 0 0 8px rgba(124, 198, 255, .8); }
+.orb-orbit:nth-child(3n + 1) i { background: #ffc94d; box-shadow: 0 0 8px rgba(255, 201, 77, .8); }
 
 .orb-thinking .orb-ring.r2, .orb-building .orb-ring.r2 { animation-duration: 2.4s; }
 .orb-thinking .orb-ring.r3, .orb-building .orb-ring.r3 { animation-duration: 4s; }
@@ -199,3 +201,11 @@
 
 /* Empty chat: just the orb */
 .chat-layout.is-empty .chat-hero { justify-items: center; align-self: center; }
+
+.chat-steps { display: flex; justify-content: center; padding: 6px 16px 0; }
+.chat-steps .creation-steps { background: var(--card); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); }
+.chat-steps .creation-steps li { color: var(--mute); }
+.chat-steps .creation-steps li > span { box-shadow: inset 0 0 0 1.5px var(--line-2); }
+.chat-steps .creation-steps li.current { background: var(--paper); color: var(--ink); font-weight: 600; }
+.chat-steps .creation-steps li.current > span { background: var(--accent); color: #fff; box-shadow: none; }
+.chat-steps .creation-steps li.done > span { background: var(--ink); color: #fff; box-shadow: none; }

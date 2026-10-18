@@ -7,6 +7,8 @@ import { getEnv, mockAiEnabled } from "@/lib/env";
  * A rejected key or a disabled API (401/403) pauses Gemini for a minute instead of failing slowly on every request.
  */
 export const GEMINI_MODEL = "gemini-2.5-flash";
+/** For turns that must feel instant (chat questions, ranking, live tuning). */
+export const GEMINI_FAST_MODEL = "gemini-2.5-flash-lite";
 const BLOCKED_PAUSE_MS = 60_000;
 
 export class ValidationError extends Error {}
@@ -46,13 +48,14 @@ function jsonSchemaFor(schema: z.ZodType) {
 }
 
 /** Strips a fenced block, parses, and validates. Throws ValidationError on either failure. */
-export function parseJsonAs<T>(text: string, schema: z.ZodType<T>, label = "Gemini"): T {
+export function parseJsonAs<T>(text: string, schema: z.ZodType<T>, label = "Gemini", repair?: (json: unknown) => unknown): T {
   let json: unknown;
   try {
     json = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g, ""));
   } catch {
     throw new ValidationError(`${label} returned text that isn't JSON`);
   }
+  if (repair) json = repair(json);
   const parsed = schema.safeParse(json);
   if (!parsed.success) throw new ValidationError(`${label} output failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`);
   return parsed.data;
@@ -64,9 +67,14 @@ export interface AskJsonOptions<T> {
   schema: z.ZodType<T>;
   timeoutMs: number;
   temperature?: number;
+  model?: string;
+  /** Fixes small slips (a 0 weight, an empty query) before validation, so one bad field doesn't sink a good answer. */
+  repair?: (json: unknown) => unknown;
+  /** Stops waiting early, for example when a parallel request already answered. */
+  signal?: AbortSignal;
 }
 
-export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temperature = 0.4 }: AskJsonOptions<T>): Promise<T> {
+export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temperature = 0.4, model = GEMINI_MODEL, repair, signal }: AskJsonOptions<T>): Promise<T> {
   if (!geminiConfigured()) throw new Error("Gemini is off (MOCK_AI=1 or no key)");
   if ((state.__setlyGeminiBlockedUntil ?? 0) > Date.now()) throw new Error("Gemini is paused after an access error");
   const apiKey = getEnv().GEMINI_API_KEY;
@@ -80,11 +88,11 @@ export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temp
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const remaining = timeoutMs - (Date.now() - started);
-    if (remaining < 1500) break;
+    if (remaining < 1500 || signal?.aborted) break;
     let text: string;
     try {
       const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
+        model,
         contents: prompt,
         config: {
           systemInstruction: system,
@@ -93,7 +101,7 @@ export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temp
           temperature,
           // Structured answers don't need reasoning tokens, and skipping them keeps turns under a second.
           thinkingConfig: { thinkingBudget: 0 },
-          abortSignal: AbortSignal.timeout(remaining),
+          abortSignal: signal ? AbortSignal.any([signal, AbortSignal.timeout(remaining)]) : AbortSignal.timeout(remaining),
         },
       });
       text = response.text ?? "";
@@ -108,10 +116,15 @@ export async function askGeminiJson<T>({ prompt, system, schema, timeoutMs, temp
         useSchema = false;
         continue;
       }
+      // Rate limited (429): wait a moment and try once more if there's time left.
+      if (attempt === 0 && /\b429\b|RESOURCE_EXHAUSTED/i.test(message) && timeoutMs - (Date.now() - started) > 4000) {
+        await new Promise((resolve) => setTimeout(resolve, 1200 + Math.random() * 800));
+        continue;
+      }
       throw error;
     }
     try {
-      return parseJsonAs(text, schema);
+      return parseJsonAs(text, schema, "Gemini", repair);
     } catch (error) {
       if (!(error instanceof ValidationError) || attempt === 1) throw error;
     }
@@ -139,7 +152,7 @@ export async function warmGemini() {
   if (!geminiConfigured() || (state.__setlyGeminiWarmAt ?? 0) > Date.now() - 5 * 60_000) return;
   state.__setlyGeminiWarmAt = Date.now();
   try {
-    await askGeminiJson({ prompt: "Reply {\"ok\":true}", system: "Reply with JSON only.", schema: z.object({ ok: z.boolean() }), timeoutMs: 15_000, temperature: 0 });
+    await askGeminiJson({ prompt: "Reply {\"ok\":true}", system: "Reply with JSON only.", schema: z.object({ ok: z.boolean() }), timeoutMs: 15_000, temperature: 0, model: GEMINI_FAST_MODEL });
   } catch {
     // Warming is best effort.
   }

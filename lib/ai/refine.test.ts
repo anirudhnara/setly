@@ -4,7 +4,8 @@ import { buildMap, productKey } from "@/lib/ai/build-map";
 import { labelsToIds } from "@/lib/ai/rank";
 import { applyFeedback, diffMaps, nextBudget } from "@/lib/ai/refine";
 import type { GeneratedMap } from "@/lib/ai/schemas";
-import { starterStructure, structureFromMap, styleWord, withStyle } from "@/lib/ai/structure";
+import { branchesFromPrompt, starterStructure, structureFromMap, styleWord, withStyle } from "@/lib/ai/structure";
+import { repairGeneratedMap, generatedMapSchema } from "@/lib/ai/schemas";
 import { searchCatalog } from "@/lib/search/serpapi";
 import type { Product } from "@/lib/types";
 
@@ -115,10 +116,39 @@ describe("buildMap taste hooks", () => {
 describe("starter structure", () => {
   it("styles furniture searches but not appliances", () => {
     expect(styleWord("Living room, cozy vibes")).toBe("cozy");
-    const styled = withStyle(starterStructure("living room for 4"), "minimal");
+    const styled = withStyle(starterStructure("living room and kitchen for 4"), "minimal");
     const query = (need: string) => styled.zones.flatMap((zone) => zone.slots).find((slot) => slot.need === need)?.searchQuery;
     expect(query("Sofa")).toMatch(/^minimal /);
     expect(query("Microwave")).not.toMatch(/minimal/);
+  });
+
+  it("grows several branches from what the brief mentions, not one room", () => {
+    const dorm = branchesFromPrompt("I am shopping for a dorm. I need to do bed and bathroom and storage and closet things, 3 roommates. Budget $1200. Vibe: Minimal 84%, Cool tones 70%.");
+    expect(dorm.zones.map((zone) => zone.name)).toEqual(expect.arrayContaining(["Sleep", "Bath", "Storage"]));
+    expect(dorm.zones.length).toBeGreaterThanOrEqual(3);
+    const sheets = dorm.zones.flatMap((zone) => zone.slots).find((slot) => slot.need === "Sheet set");
+    expect(sheets).toMatchObject({ payType: "per_person", quantity: 3 });
+    // A thin brief is topped up with the scene's usual branches.
+    expect(branchesFromPrompt("dorm").zones.length).toBeGreaterThanOrEqual(3);
+    // The vibe line alone doesn't add branches ("Cool tones" isn't a request for decor).
+    expect(branchesFromPrompt("kitchen. Vibe: Cool tones 70%.").zones.map((zone) => zone.name)).not.toContain("Decor");
+  });
+
+  it("repairs small model slips instead of rejecting a good plan", () => {
+    const raw = {
+      zones: [
+        { name: "Sleep", sortOrder: 0, slots: [{ need: "Lamp", quantityRule: "per_group", quantity: 1, payType: "already_owned", searchQuery: "", budgetWeight: 0 }, { need: "Sheets", quantityRule: "per_person", quantity: 3, payType: "per_person", searchQuery: "twin xl sheets", budgetWeight: 8 }] },
+        { name: "Empty", sortOrder: 1, slots: [] },
+      ],
+      links: [{ fromNeed: "Sheets", toNeed: "Lamp", label: "x".repeat(200) }],
+      rules: [{ type: "vibes", needs: [], params: {} }, { type: "budget", needs: [], params: {} }],
+    };
+    expect(generatedMapSchema.safeParse(raw).success).toBe(false);
+    const fixed = generatedMapSchema.parse(repairGeneratedMap(raw));
+    expect(fixed.zones).toHaveLength(1);
+    expect(fixed.zones[0].slots[0]).toMatchObject({ searchQuery: "Lamp", budgetWeight: 1 });
+    expect(fixed.links[0].label).toHaveLength(80);
+    expect(fixed.rules.map((rule) => rule.type)).toEqual(["budget"]);
   });
 
   it("round-trips a built map back to searchable structure", async () => {

@@ -47,6 +47,43 @@ export function readLastGroup() {
   return read("setly.lastGroup");
 }
 
+/** Who's paying, picked on the landing page. Display and prompt hint only; money logic doesn't read it. */
+export type FundingMode = "solo" | "group" | "parent" | "insurance";
+const MODES: FundingMode[] = ["solo", "group", "parent", "insurance"];
+
+export function stageMode(mode: FundingMode) {
+  write("setly.mode", mode);
+}
+
+export function readMode(): FundingMode {
+  const value = read("setly.mode");
+  return MODES.includes(value as FundingMode) ? (value as FundingMode) : "group";
+}
+
+/** The brief from step 1, handed to the vibe step (2) and used to create the set (3). */
+export interface Draft {
+  name: string;
+  prompt: string;
+  budgetCents: number;
+  people: number | null;
+}
+
+export function stageDraft(draft: Draft) {
+  write("setly.draft", JSON.stringify(draft));
+}
+
+export function readDraft(): Draft | null {
+  const raw = read("setly.draft");
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<Draft>;
+    if (typeof value.name !== "string" || typeof value.prompt !== "string" || typeof value.budgetCents !== "number") return null;
+    return { name: value.name, prompt: value.prompt, budgetCents: value.budgetCents, people: typeof value.people === "number" ? value.people : null };
+  } catch {
+    return null;
+  }
+}
+
 export function stageYou(name: string) {
   write("setly.you", name);
 }
@@ -89,6 +126,7 @@ function isMap(value: unknown): value is MapData {
 
 function write(key: string, value: string) {
   try {
+    if (key === "setly.mode") localStorage.setItem(key, value);
     sessionStorage.setItem(key, value);
   } catch {
     /* private mode */
@@ -97,7 +135,7 @@ function write(key: string, value: string) {
 
 function read(key: string) {
   try {
-    return sessionStorage.getItem(key);
+    return sessionStorage.getItem(key) ?? (key === "setly.mode" ? localStorage.getItem(key) : null);
   } catch {
     return null;
   }
