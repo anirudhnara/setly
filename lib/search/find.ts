@@ -5,6 +5,7 @@ import { mockAiEnabled } from "@/lib/env";
 import { databaseConfigured } from "@/lib/search/cache";
 import { catalogItemToProduct, categorize as storedCategory, type CatalogItem as StoredItem } from "@/lib/search/catalog";
 import { JUNK_TITLE, searchProducts } from "@/lib/search/serpapi";
+import { demoStoreProducts } from "@/lib/stores/catalog";
 import type { Product } from "@/lib/types";
 
 /**
@@ -23,7 +24,8 @@ const categoryCache = new Map<string, { at: number; rows: Promise<StoredItem[]> 
 
 export async function findProducts(query: string, vibes: VibeWeights = {}): Promise<Product[]> {
   const useStore = !mockAiEnabled() && databaseConfigured();
-  const fromCatalog = useStore ? await storedProducts(query) : await catalogProducts(query);
+  // The demo stores lead either source, so a generated plan has protocol-lane stores to check out from.
+  const fromCatalog = useStore ? withDemoStores(query, await storedProducts(query)) : await catalogProducts(query);
   const live = fromCatalog.length >= MIN_CATALOG ? [] : await searchProducts(query);
   // A slow or empty live search still gets the closest catalog items rather than an empty slot.
   const results = live.length ? live : fromCatalog;
@@ -142,17 +144,27 @@ function storedToProduct(item: StoredItem): Product {
   return { ...product, attributes: { ...product.attributes, themes: tagWords(item.tags) } };
 }
 
-/** Placeholder JSON catalog items in the query's category, most query words in the title first. Exported for tests. */
+/** Demo-store matches first (at most half the results), then the rest. */
+function withDemoStores(query: string, products: Product[]): Product[] {
+  const demo = demoStoreProducts(query).slice(0, MAX_RESULTS / 2);
+  return [...demo, ...products].slice(0, MAX_RESULTS);
+}
+
+/**
+ * Demo-store items, then placeholder JSON catalog items in the query's category, most query words in the
+ * title first. Exported for tests.
+ */
 export async function catalogProducts(query: string): Promise<Product[]> {
   const category = categorize(query);
   if (!category) return [];
   const words = query.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 2);
   const items = (await loadCatalog()).filter((item) => item.category === category.label);
-  return items
+  const fromCatalog = items
     .map((item, index) => ({ item, index, hits: words.filter((word) => item.title.toLowerCase().includes(word)).length }))
     .sort((a, b) => b.hits - a.hits || (b.item.rating ?? 0) - (a.item.rating ?? 0) || a.index - b.index)
     .slice(0, MAX_RESULTS)
     .map(({ item }) => toProduct(item));
+  return withDemoStores(query, fromCatalog);
 }
 
 function toProduct(item: CatalogItem): Product {

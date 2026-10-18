@@ -1,0 +1,97 @@
+{
+  "_note": "Sample data: a fictional demo store hosted by Setly. Every product and price here is made up.",
+  "slug": "tallpine-outfitters",
+  "name": "Tallpine Outfitters",
+  "taxBasisPoints": 600,
+  "shippingSurprise": false,
+  "items": [
+    {
+      "id": "demo_tallpine_table_trail",
+      "title": "Trail Folding Aluminum Camp Table",
+      "store": "Tallpine Outfitters",
+      "priceCents": 6900,
+      "url": "/api/stores/tallpine-outfitters",
+      "imageUrl": "",
+      "category": "Camp table",
+      "room": "Outdoors",
+      "themes": [
+        "Outdoorsy",
+        "Compact"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_tallpine_table_ridge",
+      "title": "Ridge Roll-Top Bamboo Camp Table",
+      "store": "Tallpine Outfitters",
+      "priceCents": 8900,
+      "url": "/api/stores/tallpine-outfitters",
+      "imageUrl": "",
+      "category": "Camp table",
+      "room": "Outdoors",
+      "themes": [
+        "Outdoorsy",
+        "Natural"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_tallpine_utensils_titan",
+      "title": "Titan Camp Utensil Set, 4 People",
+      "store": "Tallpine Outfitters",
+      "priceCents": 2900,
+      "url": "/api/stores/tallpine-outfitters",
+      "imageUrl": "",
+      "category": "Camp utensils",
+      "room": "Outdoors",
+      "themes": [
+        "Outdoorsy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_tallpine_utensils_spork",
+      "title": "Spork Pack, Set of 6",
+      "store": "Tallpine Outfitters",
+      "priceCents": 1400,
+      "url": "/api/stores/tallpine-outfitters",
+      "imageUrl": "",
+      "category": "Camp utensils",
+      "room": "Outdoors",
+      "themes": [
+        "Outdoorsy",
+        "Compact"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_tallpine_blanket_wool",
+      "title": "Wool Camp Blanket, Plaid",
+      "store": "Tallpine Outfitters",
+      "priceCents": 7900,
+      "url": "/api/stores/tallpine-outfitters",
+      "imageUrl": "",
+      "category": "Throw blanket",
+      "room": "Outdoors",
+      "themes": [
+        "Cozy",
+        "Outdoorsy"
+      ],
+      "rating": 4.6
+    },
+    {
+      "id": "demo_tallpine_table_live_edge",
+      "title": "Live-Edge Pine Coffee Table",
+      "store": "Tallpine Outfitters",
+      "priceCents": 13900,
+      "url": "/api/stores/tallpine-outfitters",
+      "imageUrl": "",
+      "category": "Coffee table",
+      "room": "Living room",
+      "themes": [
+        "Natural"
+      ],
+      "rating": 4.6
+    }
+  ]
+}

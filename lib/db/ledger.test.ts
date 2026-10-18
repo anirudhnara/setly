@@ -35,8 +35,8 @@ beforeEach(() => {
 describe("ledger", () => {
   it("keeps the seeded apartment totals", async () => {
     const state = await getGroupState("grp_apartment");
-    expect(state?.fundedCents).toBe(52384);
-    expect(state?.totalCents).toBe(104759);
+    expect(state?.fundedCents).toBe(58726);
+    expect(state?.totalCents).toBe(117438);
   });
 
   it("funds a plan, checks the card, and refunds to the cent", async () => {

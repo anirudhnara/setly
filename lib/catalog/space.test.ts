@@ -50,9 +50,17 @@ describe("catalog-first search", () => {
   it("serves catalog items for known categories, query words first", async () => {
     const results = await catalogProducts("white oak coffee table");
     expect(results.length).toBeGreaterThan(2);
-    expect(results.every((product) => product.attributes.source === "catalog")).toBe(true);
+    expect(results.every((product) => product.attributes.source === "catalog" || product.attributes.source === "demo_store")).toBe(true);
     expect(results[0].title.toLowerCase()).toMatch(/white|oak/);
     expect(await catalogProducts("4 person dome tent")).toEqual([]);
+  });
+
+  it("leads with the demo stores so a plan has protocol-lane stores", async () => {
+    expect((await catalogProducts("cozy sofa"))[0]?.store).toBe("Fernwood Home");
+    expect((await catalogProducts("floor lamp"))[0]?.store).toBe("Quillby Lighting");
+    expect((await catalogProducts("camp table"))[0]?.store).toBe("Tallpine Outfitters");
+    const sofas = await catalogProducts("sofa");
+    expect(sofas.some((product) => product.store !== "Fernwood Home")).toBe(true);
   });
 
   it("orders catalog results by vibe", async () => {

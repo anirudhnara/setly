@@ -25,7 +25,7 @@ describe("POST /api/demo/reset", () => {
     expect(reset.status).toBe(200);
     expect(await reset.json()).toEqual({ reseeded: true });
     const state = await getGroupState("grp_apartment");
-    expect(state?.fundedCents).toBe(52384);
-    expect(state?.totalCents).toBe(104759);
+    expect(state?.fundedCents).toBe(58726);
+    expect(state?.totalCents).toBe(117438);
   });
 });
