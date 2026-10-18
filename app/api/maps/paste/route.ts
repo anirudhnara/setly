@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { pasteMapRequestSchema, readRequest, type ApiErrorBody, type PasteMapResponse } from "@/lib/contracts";
 import { generateMapFromPaste } from "@/lib/ai/gemini";
 import { jsonError } from "@/lib/db/http";
-import { requireMember } from "@/lib/db/queries";
+import { requireMember, saveMap } from "@/lib/db/queries";
 
 export async function POST(request: Request) {
   try {
@@ -12,9 +12,11 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
     }
-    if (parsed.data.groupId) await requireMember(parsed.data.groupId, user.id);
-    // TODO(Backend 2 (Maps)): parse the pasted list into slots, then price them from search.
-    const body: PasteMapResponse = await generateMapFromPaste(parsed.data.text);
+    const groupId = parsed.data.groupId;
+    if (groupId) await requireMember(groupId, user.id);
+    const map = await generateMapFromPaste(parsed.data.text, groupId);
+    // With a group, the pasted list becomes that group's map; without one it's a preview.
+    const body: PasteMapResponse = groupId ? (await saveMap(groupId, map)).map : map;
     return NextResponse.json(body);
   } catch (error) {
     return jsonError(error);

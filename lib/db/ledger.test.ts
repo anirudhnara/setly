@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LedgerError,
   createGroup,
@@ -17,6 +17,13 @@ import {
 import { setIssuerForTests } from "@/lib/payments";
 import { mockIssuer } from "@/lib/payments/mock-issuer";
 import type { MapData, Rule } from "@/lib/types";
+
+vi.mock("@/lib/search/options", () => ({
+  findSlotOption: async (slotId: string, productId: string) =>
+    productId === "lamp_big"
+      ? { id: productId, slotId, title: "Big lamp", store: "Fernwood Home", priceCents: 900_00, url: "https://example.com/big", imageUrl: "https://example.com/big.png", attributes: {} }
+      : null,
+}));
 
 beforeEach(() => {
   process.env.ISSUER = "mock";
@@ -187,6 +194,16 @@ describe("ledger", () => {
     await updateSlot("lamp", { quantity: 1 });
     const restored = await getGroupState(created.group.id);
     expect(restored?.map.rules[0]?.status).toBe("ok");
+  });
+
+  it("saves a swapped-in option so the shares charge its price", async () => {
+    const created = await createGroup({ name: "Room", prompt: "swap", budgetCents: 0 }, { id: "usr_org", name: "Org" });
+    const before = await saveMap(created.group.id, lampMap(created.group.id, 100));
+    await updateSlot("lamp", { chosenProductId: "lamp_big" });
+    const after = await getGroupState(created.group.id);
+    expect(after?.map.products.map((product) => product.id)).toEqual(["lamp_big"]);
+    expect((after?.totalCents ?? 0) - before.totalCents).toBe(900_00 - 100);
+    await expect(updateSlot("lamp", { chosenProductId: "made_up" })).rejects.toMatchObject({ status: 400 });
   });
 
   it("rejects a lock while a budget rule is broken", async () => {

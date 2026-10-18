@@ -10,7 +10,7 @@ import { decideAuthorization } from "@/lib/payments/decide";
 import type { DemoCheckoutResult, StoreLimitInput } from "@/lib/payments/issuer";
 import { storeLimitInputs } from "@/lib/payments/limits";
 import { checkRules } from "@/lib/rules/check";
-import type { Authorization, Contribution, GroupState, MapData, Member, Refund, Slot, User } from "@/lib/types";
+import type { Authorization, Contribution, GroupState, MapData, Member, Product, Refund, Slot, User } from "@/lib/types";
 
 type Actor = Pick<User, "id" | "name">;
 
@@ -151,10 +151,21 @@ export async function createSlot(input: {
 export async function updateSlot(slotId: string, patch: Partial<Omit<Slot, "id" | "zoneId">>) {
   const located = await (await getLedgerStore()).findBySlotId(slotId);
   if (!located) throw new LedgerError("Slot not found", 404);
+  const chosenId = patch.chosenProductId;
+  // A swapped-in option isn't saved yet: look it up before the lock, so no search runs inside it.
+  let swapped: Product | null = null;
+  if (chosenId && !located.map.products.some((product) => product.id === chosenId)) {
+    const { findSlotOption } = await import("@/lib/search/options");
+    swapped = await findSlotOption(slotId, chosenId);
+    if (!swapped) throw new LedgerError("That option is not available for this slot", 400);
+  }
   return editGroup(located.group.id, async (state) => {
     requireEditing(state);
     const slot = state.map.slots.find((item) => item.id === slotId);
     if (!slot) throw new LedgerError("Slot not found", 404);
+    if (swapped && !state.map.products.some((product) => product.id === swapped.id)) {
+      state.map.products = [...state.map.products.filter((product) => product.slotId !== slotId), { ...swapped, slotId }];
+    }
     Object.assign(slot, patch, { id: slotId, zoneId: slot.zoneId, updatedAt: new Date().toISOString() });
     recomputeShares(state);
     return slot;
