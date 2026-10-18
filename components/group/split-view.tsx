@@ -73,7 +73,7 @@ export function SplitView({ groupId }: { groupId: string }) {
                 <li key={share.memberId} className={`share-card${mine ? " mine" : ""}`} style={{ "--i": index } as CSSProperties}>
                   <button type="button" className="share-head" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : share.memberId)}>
                     <Avatar name={person?.name ?? "?"} tone={index} />
-                    <span className="share-name">{person?.name ?? "Member"}{mine ? <em> (you)</em> : null}<small>{share.lines.length} items</small></span>
+                    <span className="share-name">{person?.name ?? "Member"}{mine ? <em> (you)</em> : null}<small>{share.lines.filter((line) => line.kind === "item").length} items</small></span>
                     <strong>{formatCents(share.totalCents)}</strong>
                     <ChevronDown className="chev" aria-hidden="true" />
                   </button>
@@ -86,7 +86,10 @@ export function SplitView({ groupId }: { groupId: string }) {
                         return (
                           <li key={line.slotId ?? `${line.kind}-${line.store}-${lineIndex}`}>
                             <ProductImage product={product} need={slot?.need ?? ""} className="line-image" />
-                            <span>{slot?.need ?? "Item"}<small>{slot ? payLabel(slot.payType) : ""}</small></span>
+                            <span>
+                              {line.kind === "buffer" ? `Buffer · ${line.store ?? "store"}` : line.kind === "zinc_fee" ? `Order fee · ${line.store ?? "store"}` : (slot?.need ?? "Item")}
+                              <small>{line.kind === "buffer" ? "Covers tax and shipping, refunded if unused" : line.kind === "zinc_fee" ? "Zinc’s $1 per order, split evenly" : slot ? payLabel(slot.payType) : ""}</small>
+                            </span>
                             <b>{formatCents(line.cents)}</b>
                           </li>
                         );

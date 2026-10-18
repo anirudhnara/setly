@@ -9,6 +9,7 @@ import { GroupLoading, GroupMissing } from "@/components/group/group-states";
 import { ProductImage } from "@/components/shared/product-image";
 import { usePlan } from "@/components/shared/use-plan";
 import { returnItem } from "@/lib/client";
+import type { Refund } from "@/lib/types";
 
 export function SettleView({ groupId }: { groupId: string }) {
   const plan = usePlan(groupId);
@@ -94,7 +95,7 @@ export function SettleView({ groupId }: { groupId: string }) {
                 return (
                   <li key={item.id} style={{ "--i": index } as CSSProperties}>
                     <Avatar name={person?.name ?? "?"} tone={index} />
-                    <span>{person?.name ?? "Member"}<small>{product?.title ?? "Item"}</small></span>
+                    <span>{person?.name ?? "Member"}<small>{product?.title ?? refundLabel(item.reason, data.storeOrders.find((order) => order.id === item.storeOrderId)?.store)}</small></span>
                     <b>+{formatCents(item.amountCents)}</b>
                   </li>
                 );
@@ -107,4 +108,13 @@ export function SettleView({ groupId }: { groupId: string }) {
       </div>
     </div>
   );
+}
+
+/** What a refund without a product was for. */
+function refundLabel(reason: Refund["reason"], store: string | undefined) {
+  const at = store ? ` at ${store}` : "";
+  if (reason === "leftover_buffer") return `Unused buffer${at}`;
+  if (reason === "zinc_held") return `Unused hold${at}`;
+  if (reason === "store_failed") return `Order canceled${at}`;
+  return "Item";
 }
