@@ -29,7 +29,7 @@
     "cn": "^0.5.0",
     "drizzle-orm": "^0.45.4",
     "firebase": "^13.0.0",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^1.59.0",
     "nanoid": "^6.0.2",
     "next": "16.4.2",
@@ -39,7 +39,6 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-force-graph-3d": "^1.29.2",
-    "shadcn": "^4.22.0",
     "sonner": "^2.0.8",
     "stripe": "^23.0.0",
     "swr": "^2.5.1",
@@ -61,6 +60,10 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vite": "^6.4.4",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.12",
+    "shadcn": "^4.22.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

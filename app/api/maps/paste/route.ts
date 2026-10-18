@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { pasteMapRequestSchema, readRequest, type ApiErrorBody, type PasteMapResponse } from "@/lib/contracts";
+import { pasteMapRequestSchema, type ApiErrorBody, type PasteMapResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { generateMapFromPaste } from "@/lib/ai/gemini";
 import { jsonError } from "@/lib/db/http";
 import { requireMember } from "@/lib/db/queries";

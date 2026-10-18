@@ -10,6 +10,7 @@ let testVerifier: TokenVerifier | null = null;
 
 /** Tests replace Firebase verification. Production calls firebase-admin only when this is unset. */
 export function setTokenVerifierForTests(verifier: TokenVerifier | null) {
+  if (process.env.NODE_ENV !== "test") throw new Error("Test verifier is only available in tests");
   testVerifier = verifier;
 }
 

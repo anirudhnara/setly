@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody } from "@/lib/contracts";
+import { type ApiErrorBody } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { suggestForZone, suggestRequestSchema, type SuggestResponse } from "@/lib/ai/suggest";
 import { jsonError } from "@/lib/db/http";
 import { requireMember } from "@/lib/db/queries";
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     try {
       return jsonError(error);
     } catch {
-      console.error("Branch ideas failed", error);
+      console.error("Branch ideas failed");
       return NextResponse.json({ error: "Couldn’t grow ideas for that branch. Try again." } satisfies ApiErrorBody, { status: 500 });
     }
   }

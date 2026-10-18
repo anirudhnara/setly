@@ -51,7 +51,21 @@ export function JoinView({ groupId }: { groupId: string }) {
 
   if (!plan.mounted || (plan.isLoading && !plan.data)) return <GroupLoading />;
   const data = plan.data;
-  if (!data) return <GroupMissing />;
+  if (!data) {
+    if (!(plan.error instanceof Error) || plan.error.message !== "You are not in this group") return <GroupMissing />;
+    return (
+      <section className="g-card join-form">
+        <h1>Join this set</h1>
+        <p>Join to see the group’s items and payment details.</p>
+        <form onSubmit={(event) => { event.preventDefault(); void join(); }}>
+          <label htmlFor="join-name">Display name (optional)</label>
+          <input id="join-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="nickname" />
+          <button type="submit" className="btn btn-accent" disabled={pending}>{pending ? "Joining…" : "Join the set"}</button>
+        </form>
+        {fault ? <p className="fault" role="alert">{fault}</p> : null}
+      </section>
+    );
+  }
 
   const map = data.map;
   const photos = map.products.slice(0, 6);

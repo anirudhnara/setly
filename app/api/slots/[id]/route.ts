@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, updateSlotRequestSchema, type ApiErrorBody, type DeleteSlotResponse, type UpdateSlotResponse } from "@/lib/contracts";
+import { updateSlotRequestSchema, type ApiErrorBody, type DeleteSlotResponse, type UpdateSlotResponse } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { jsonError } from "@/lib/db/http";
 import { deleteSlot, requireSlotMember, updateSlot } from "@/lib/db/queries";
 import type { Slot } from "@/lib/types";

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/session";
-import { readRequest, type ApiErrorBody } from "@/lib/contracts";
+import { type ApiErrorBody } from "@/lib/contracts";
+import { readRequest } from "@/lib/security/request";
 import { parseBudgetCents, parseMemberCount } from "@/lib/ai/parse";
 import { refineMap, refineRequestSchema, type RefineResponse } from "@/lib/ai/refine";
 import { stampChangedSlots } from "@/lib/ai/stamp";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     try {
       return jsonError(error);
     } catch {
-      console.error("Refine failed", error);
+      console.error("Refine failed");
       return NextResponse.json({ error: "Couldn't regrow the set. Try saying it another way." } satisfies ApiErrorBody, { status: 500 });
     }
   }

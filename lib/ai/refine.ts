@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { buildMap, needKey, productKey } from "@/lib/ai/build-map";
-import { askGeminiJson, describe, geminiConfigured } from "@/lib/ai/llm";
+import { askGeminiJson, geminiConfigured } from "@/lib/ai/llm";
 import { needMatches, parseBudgetCents } from "@/lib/ai/parse";
 import { MAP_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { rankWithGemini } from "@/lib/ai/rank";
@@ -90,7 +90,7 @@ export async function refineMap(input: RefineInput): Promise<RefineResponse> {
       reply = modelReply;
       usedModel = true;
     } catch (error) {
-      console.warn(`Refine fell back to the rule-based editor: ${describe(error)}`);
+      console.warn("Refine fell back to the rule-based editor");
       generated = ruleEdit.generated;
     }
   } else {
