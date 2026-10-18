@@ -16,7 +16,7 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 type Source = "serp" | "bestbuy" | "ebay";
 
-/** SerpApi covers dorm basics. Best Buy covers electronics so SerpApi quota isn't spent there. */
+/** SerpApi covers everything for now; Best Buy and eBay are optional extras when their keys are set. */
 const QUERIES: Record<Source, string[]> = {
   serp: [
     "velvet clothes hangers", "wooden clothes hangers", "space saving hangers",
@@ -27,6 +27,9 @@ const QUERIES: Record<Source, string[]> = {
     "dorm trash can", "trash can with lid", "portable cooler", "soft cooler bag", "mini fridge with freezer", "compact microwave",
     "wall shelves", "bookshelf for dorm", "ergonomic desk chair",
     "mushroom lamp", "sunset projection lamp", "neon sign light", "led strip lights", "lava lamp",
+    // Best Buy's developer sign-up wasn't available, so SerpApi covers computers and electronics too.
+    "laptop", "computer monitor", "wireless keyboard and mouse", "webcam", "laptop stand",
+    "bluetooth speaker", "noise cancelling headphones", "desk fan", "surge protector power strip", "alarm clock",
   ],
   bestbuy: [
     "laptop", "computer monitor", "keyboard", "mouse", "webcam", "tablet",
