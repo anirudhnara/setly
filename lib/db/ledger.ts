@@ -1,6 +1,7 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { nanoid } from "nanoid";
 import { getLedgerStore, memoryLedger, useMemoryLedgerForTests } from "@/lib/db/memory-store";
-import { LedgerError } from "@/lib/db/store";
+import { LedgerError, type GroupDraft } from "@/lib/db/store";
 import { resetUsersForTests } from "@/lib/db/users";
 import { loadGroupState } from "@/lib/fixtures/sample";
 import { computeRefunds } from "@/lib/money/refunds";
@@ -8,6 +9,7 @@ import { computeShares } from "@/lib/money/shares";
 import { decideAuthorization } from "@/lib/payments/decide";
 import type { DemoCheckoutResult, StoreLimitInput } from "@/lib/payments/issuer";
 import { storeLimitInputs } from "@/lib/payments/limits";
+import { checkRules } from "@/lib/rules/check";
 import type { Authorization, Contribution, GroupState, MapData, Member, Refund, Slot, User } from "@/lib/types";
 
 type Actor = Pick<User, "id" | "name">;
@@ -16,18 +18,24 @@ export { LedgerError, useMemoryLedgerForTests };
 
 const offPlanMerchant = "GiftCardz";
 
+const openMutation = new AsyncLocalStorage<{ groupId: string; draft: GroupDraft }>();
+
 export async function getGroupState(groupId: string) {
   const state = await (await getLedgerStore()).get(groupId);
   return state ? refreshTotals(state) : null;
 }
 
 export async function saveMap(groupId: string, map: MapData) {
-  const state = await requireGroup(groupId);
-  requireEditing(state);
-  state.map = map;
-  recomputeShares(state);
-  await save(state);
-  return state;
+  return editGroup(groupId, async (state) => {
+    requireEditing(state);
+    state.map = {
+      ...map,
+      zones: map.zones.map((zone) => ({ ...zone, groupId })),
+      rules: map.rules.map((rule) => ({ ...rule, groupId })),
+    };
+    recomputeShares(state);
+    return state;
+  });
 }
 
 export async function createGroup(input: { name: string; prompt: string; budgetCents: number }, user: Actor) {
@@ -62,48 +70,50 @@ export async function createGroup(input: { name: string; prompt: string; budgetC
     fundedCents: 0,
     totalCents: 0,
   };
-  await save(state);
-  return state;
+  return (await getLedgerStore()).mutate(groupId, async (draft) => {
+    draft.state = state;
+    return state;
+  });
 }
 
 export async function joinGroup(groupId: string, user: Actor, displayName?: string) {
-  const state = await requireGroup(groupId);
-  const trimmed = displayName?.trim();
-  const existing = state.members.find((member) => member.userId === user.id);
-  if (existing) {
-    if (trimmed && existing.name !== trimmed) {
-      existing.name = trimmed;
-      await save(state);
+  return editGroup(groupId, async (state) => {
+    const trimmed = displayName?.trim();
+    const existing = state.members.find((member) => member.userId === user.id);
+    if (existing) {
+      if (trimmed && existing.name !== trimmed) existing.name = trimmed;
+      return { member: existing, state };
     }
-    return { member: existing, state };
-  }
-  requireEditing(state);
-  const member: Member = {
-    id: `mem_${nanoid(8)}`,
-    groupId,
-    userId: user.id,
-    name: trimmed ? trimmed : user.name,
-    isOrganizer: state.members.length === 0,
-    joinedAt: new Date().toISOString(),
-  };
-  state.members.push(member);
-  recomputeShares(state);
-  await save(state);
-  return { member, state };
+    requireEditing(state);
+    const member: Member = {
+      id: `mem_${nanoid(8)}`,
+      groupId,
+      userId: user.id,
+      name: trimmed ? trimmed : user.name,
+      isOrganizer: state.members.length === 0,
+      joinedAt: new Date().toISOString(),
+    };
+    state.members.push(member);
+    recomputeShares(state);
+    return { member, state };
+  });
 }
 
 export async function lockGroup(groupId: string, userId: string) {
-  const state = await requireGroup(groupId);
-  if (state.group.status !== "editing") throw new LedgerError("Map is already locked", 409);
-  const member = state.members.find((item) => item.userId === userId);
-  if (!member) throw new LedgerError("You are not in this group", 403);
-  if (!member.isOrganizer) throw new LedgerError("Only the organizer can lock the map", 403);
-  state.shares = computeShares(state.map, state.members);
-  state.group.status = "funding";
-  refreshTotals(state);
-  await issueCardIfFunded(state);
-  await save(state);
-  return state;
+  return editGroup(groupId, async (state) => {
+    if (state.group.status !== "editing") throw new LedgerError("Map is already locked", 409);
+    const member = state.members.find((item) => item.userId === userId);
+    if (!member) throw new LedgerError("You are not in this group", 403);
+    if (!member.isOrganizer) throw new LedgerError("Only the organizer can lock the map", 403);
+    recomputeShares(state);
+    const blocking = state.map.rules.find(
+      (rule) => (rule.type === "budget" || rule.type === "required_or_banned") && rule.status === "broken",
+    );
+    if (blocking) throw new LedgerError(blocking.message, 409);
+    state.group.status = "funding";
+    await issueCardIfFunded(state);
+    return state;
+  });
 }
 
 export async function createSlot(input: {
@@ -115,49 +125,52 @@ export async function createSlot(input: {
   payType: Slot["payType"];
   ownerMemberId?: string | null;
 }) {
-  const state = await (await getLedgerStore()).findByZoneId(input.zoneId);
-  if (!state) throw new LedgerError("Zone not found", 404);
-  requireEditing(state);
-  const slot: Slot = {
-    id: `slot_${nanoid(8)}`,
-    zoneId: input.zoneId,
-    need: input.need,
-    quantityRule: input.quantityRule,
-    quantity: input.quantity,
-    budgetCents: input.budgetCents,
-    payType: input.payType,
-    ownerMemberId: input.ownerMemberId ?? null,
-    chosenProductId: null,
-    updatedBy: null,
-    updatedAt: new Date().toISOString(),
-  };
-  state.map.slots.push(slot);
-  recomputeShares(state);
-  await save(state);
-  return slot;
+  const located = await (await getLedgerStore()).findByZoneId(input.zoneId);
+  if (!located) throw new LedgerError("Zone not found", 404);
+  return editGroup(located.group.id, async (state) => {
+    requireEditing(state);
+    const slot: Slot = {
+      id: `slot_${nanoid(8)}`,
+      zoneId: input.zoneId,
+      need: input.need,
+      quantityRule: input.quantityRule,
+      quantity: input.quantity,
+      budgetCents: input.budgetCents,
+      payType: input.payType,
+      ownerMemberId: input.ownerMemberId ?? null,
+      chosenProductId: null,
+      updatedBy: null,
+      updatedAt: new Date().toISOString(),
+    };
+    state.map.slots.push(slot);
+    recomputeShares(state);
+    return slot;
+  });
 }
 
 export async function updateSlot(slotId: string, patch: Partial<Omit<Slot, "id" | "zoneId">>) {
-  const state = await (await getLedgerStore()).findBySlotId(slotId);
-  if (!state) throw new LedgerError("Slot not found", 404);
-  requireEditing(state);
-  const slot = state.map.slots.find((item) => item.id === slotId);
-  if (!slot) throw new LedgerError("Slot not found", 404);
-  Object.assign(slot, patch, { id: slotId, zoneId: slot.zoneId, updatedAt: new Date().toISOString() });
-  recomputeShares(state);
-  await save(state);
-  return slot;
+  const located = await (await getLedgerStore()).findBySlotId(slotId);
+  if (!located) throw new LedgerError("Slot not found", 404);
+  return editGroup(located.group.id, async (state) => {
+    requireEditing(state);
+    const slot = state.map.slots.find((item) => item.id === slotId);
+    if (!slot) throw new LedgerError("Slot not found", 404);
+    Object.assign(slot, patch, { id: slotId, zoneId: slot.zoneId, updatedAt: new Date().toISOString() });
+    recomputeShares(state);
+    return slot;
+  });
 }
 
 export async function deleteSlot(slotId: string) {
-  const state = await (await getLedgerStore()).findBySlotId(slotId);
-  if (!state) throw new LedgerError("Slot not found", 404);
-  requireEditing(state);
-  state.map.slots = state.map.slots.filter((slot) => slot.id !== slotId);
-  state.map.products = state.map.products.filter((product) => product.slotId !== slotId);
-  state.map.links = state.map.links.filter((link) => link.fromSlotId !== slotId && link.toSlotId !== slotId);
-  recomputeShares(state);
-  await save(state);
+  const located = await (await getLedgerStore()).findBySlotId(slotId);
+  if (!located) throw new LedgerError("Slot not found", 404);
+  await editGroup(located.group.id, async (state) => {
+    requireEditing(state);
+    state.map.slots = state.map.slots.filter((slot) => slot.id !== slotId);
+    state.map.products = state.map.products.filter((product) => product.slotId !== slotId);
+    state.map.links = state.map.links.filter((link) => link.fromSlotId !== slotId && link.toSlotId !== slotId);
+    recomputeShares(state);
+  });
 }
 
 export async function quoteShare(groupId: string, memberId: string) {
@@ -180,54 +193,160 @@ export async function recordContribution(input: {
   status: "pending" | "paid";
   stripePaymentIntentId: string | null;
 }) {
-  const state = await requireGroup(input.groupId);
-  const existing = state.contributions.find((contribution) => contribution.memberId === input.memberId);
-  if (existing && (existing.status !== "pending" || existing.stripePaymentIntentId)) {
-    return { contribution: existing, state: refreshTotals(state), created: false };
-  }
-  const expected = state.shares.find((share) => share.memberId === input.memberId)?.totalCents ?? 0;
-  if (input.amountCents !== expected) throw new LedgerError(`Share is ${expected} cents`, 400);
-  const contribution: Contribution = existing ?? {
-    id: `con_${nanoid(8)}`,
-    groupId: input.groupId,
-    memberId: input.memberId,
-    amountCents: input.amountCents,
-    stripePaymentIntentId: input.stripePaymentIntentId,
-    status: input.status,
-  };
-  contribution.amountCents = input.amountCents;
-  contribution.status = input.status;
-  contribution.stripePaymentIntentId = input.stripePaymentIntentId;
-  if (!existing) state.contributions.push(contribution);
-  refreshTotals(state);
-  await save(state);
-  if (input.status !== "paid") return { contribution, state, created: true };
-  const funded = await ensureFundedCard(input.groupId);
-  const saved = funded.contributions.find((item) => item.id === contribution.id) ?? contribution;
-  return { contribution: saved, state: funded, created: true };
+  return editGroup(input.groupId, async (state) => {
+    const existing = state.contributions.find((contribution) => contribution.memberId === input.memberId);
+    if (existing && (existing.status !== "pending" || existing.stripePaymentIntentId)) {
+      return { contribution: existing, state: refreshTotals(state), created: false };
+    }
+    const expected = state.shares.find((share) => share.memberId === input.memberId)?.totalCents ?? 0;
+    if (input.amountCents !== expected) throw new LedgerError(`Share is ${expected} cents`, 400);
+    const contribution: Contribution = existing ?? {
+      id: `con_${nanoid(8)}`,
+      groupId: input.groupId,
+      memberId: input.memberId,
+      amountCents: input.amountCents,
+      stripePaymentIntentId: input.stripePaymentIntentId,
+      status: input.status,
+    };
+    contribution.amountCents = input.amountCents;
+    contribution.status = input.status;
+    contribution.stripePaymentIntentId = input.stripePaymentIntentId;
+    if (!existing) state.contributions.push(contribution);
+    refreshTotals(state);
+    if (input.status !== "paid") return { contribution, state, created: true };
+    await issueCardIfFunded(state);
+    const saved = state.contributions.find((item) => item.id === contribution.id) ?? contribution;
+    return { contribution: saved, state, created: true };
+  });
 }
 
 export async function ensureFundedCard(groupId: string) {
-  const state = await requireGroup(groupId);
-  await issueCardIfFunded(state);
-  await save(state);
-  return state;
+  return editGroup(groupId, async (state) => {
+    await issueCardIfFunded(state);
+    return state;
+  });
 }
 
 export async function markPaidByPaymentIntent(paymentIntentId: string) {
-  const state = await (await getLedgerStore()).findByPaymentIntentId(paymentIntentId);
-  if (!state) return null;
-  const contribution = state.contributions.find((item) => item.stripePaymentIntentId === paymentIntentId);
-  if (!contribution) return null;
-  if (contribution.status === "pending") contribution.status = "paid";
-  refreshTotals(state);
-  await issueCardIfFunded(state);
-  await save(state);
-  return refreshTotals(state);
+  const located = await (await getLedgerStore()).findByPaymentIntentId(paymentIntentId);
+  if (!located) return null;
+  return editGroup(located.group.id, async (state) => {
+    const contribution = state.contributions.find((item) => item.stripePaymentIntentId === paymentIntentId);
+    if (!contribution) return null;
+    if (contribution.status === "pending") contribution.status = "paid";
+    refreshTotals(state);
+    await issueCardIfFunded(state);
+    return refreshTotals(state);
+  });
 }
 
 export async function authorizeCharge(cardId: string, merchant: string, amountCents: number): Promise<Authorization> {
-  const state = await (await getLedgerStore()).findByCardId(cardId);
+  const open = openMutation.getStore();
+  if (open?.draft.state?.card?.id === cardId) return applyAuthorization(open.draft.state, cardId, merchant, amountCents);
+  const located = await (await getLedgerStore()).findByCardId(cardId);
+  if (!located) return applyAuthorization(null, cardId, merchant, amountCents);
+  return editGroup(located.group.id, (state) => applyAuthorization(state, cardId, merchant, amountCents));
+}
+
+export async function runCheckout(groupId: string): Promise<DemoCheckoutResult> {
+  return editGroup(groupId, async (state) => {
+    if (!state.card) throw new LedgerError("Group is not fully funded", 409);
+    if (state.group.status === "purchased" || state.group.status === "settled") {
+      return { card: state.card, authorizations: state.authorizations };
+    }
+    if (state.group.status !== "active") throw new LedgerError("Group is not fully funded", 409);
+    const authorizations: Authorization[] = [];
+    for (const limit of state.storeLimits) {
+      authorizations.push(await authorizeCharge(state.card.id, limit.store, limit.limitCents));
+    }
+    authorizations.push(await authorizeCharge(state.card.id, offPlanMerchant, 100));
+    state.group.status = "purchased";
+    if (!state.card) throw new LedgerError("Group is not fully funded", 409);
+    return { card: state.card, authorizations };
+  });
+}
+
+export async function returnItem(groupId: string, productId: string) {
+  return editGroup(groupId, async (state) => {
+    const existing = state.refunds.filter((refund) => refund.productId === productId);
+    if (existing.length > 0) return { refunds: existing, created: false, contributions: state.contributions };
+    if (state.group.status !== "purchased" && state.group.status !== "settled") {
+      throw new LedgerError("Checkout has not run", 409);
+    }
+    if (!state.map.products.some((product) => product.id === productId)) throw new LedgerError("Product not found", 404);
+    const refunds = computeRefunds(productId, state.contributions, state.shares, state.map.products);
+    state.refunds.push(...refunds);
+    for (const refund of refunds) {
+      const contribution = state.contributions.find((item) => item.memberId === refund.memberId && item.status === "paid");
+      if (contribution) contribution.status = "refunded_partial";
+    }
+    if (state.group.status === "purchased") state.group.status = "settled";
+    refreshTotals(state);
+    return { refunds, created: true, contributions: state.contributions };
+  });
+}
+
+export async function returnItemByProductId(productId: string): Promise<Refund[]> {
+  const located = await (await getLedgerStore()).findByProductId(productId);
+  if (!located) return [];
+  const result = await returnItem(located.group.id, productId);
+  return result.refunds;
+}
+
+export async function seedDemoGroup() {
+  const state = structuredClone(loadGroupState());
+  refreshTotals(state);
+  await (await getLedgerStore()).mutate(state.group.id, async (draft) => {
+    draft.state = state;
+  });
+  return process.env.DATABASE_URL ? "postgres" : "memory";
+}
+
+async function issueCardIfFunded(state: GroupState) {
+  refreshTotals(state);
+  if (state.group.status !== "funding" || state.fundedCents !== state.totalCents || state.card) return;
+  const limits: StoreLimitInput[] = storeLimitInputs(state.map, state.members);
+  const { getIssuer } = await import("@/lib/payments");
+  const issuer = getIssuer();
+  let card;
+  try {
+    card = await issuer.createCard(state.group.id, limits);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Card issuer failed";
+    console.error(message);
+    const { mockIssuer } = await import("@/lib/payments/mock-issuer");
+    if (issuer === mockIssuer) throw error;
+    card = await mockIssuer.createCard(state.group.id, limits);
+  }
+  state.card = card;
+  state.storeLimits = limits.map((limit) => ({
+    cardId: card.id,
+    store: limit.store,
+    limitCents: limit.limitCents,
+    spentCents: 0,
+  }));
+  state.group.status = "active";
+}
+
+function recomputeShares(state: GroupState) {
+  state.shares = computeShares(state.map, state.members);
+  refreshTotals(state);
+  state.map.rules = checkRules(state.map, state.members);
+}
+
+function refreshTotals(state: GroupState) {
+  state.totalCents = state.shares.reduce((sum, share) => sum + share.totalCents, 0);
+  state.fundedCents = state.contributions
+    .filter((contribution) => contribution.status === "paid" || contribution.status === "refunded_partial")
+    .reduce((sum, contribution) => sum + contribution.amountCents, 0);
+  return state;
+}
+
+function requireEditing(state: GroupState) {
+  if (state.group.status !== "editing") throw new LedgerError("Map is locked", 409);
+}
+
+function applyAuthorization(state: GroupState | null, cardId: string, merchant: string, amountCents: number): Authorization {
   const decision = decideAuthorization({
     card: state?.card ?? null,
     storeLimits: state?.storeLimits ?? [],
@@ -249,105 +368,25 @@ export async function authorizeCharge(cardId: string, merchant: string, amountCe
     if (limit) limit.spentCents += amountCents;
   }
   state.authorizations.push(authorization);
-  await save(state);
   return authorization;
 }
 
-export async function runCheckout(groupId: string): Promise<DemoCheckoutResult> {
-  const state = await requireGroup(groupId);
-  if (!state.card) throw new LedgerError("Group is not fully funded", 409);
-  if (state.group.status === "purchased" || state.group.status === "settled") {
-    return { card: state.card, authorizations: state.authorizations };
+async function editGroup<T>(groupId: string, fn: (state: GroupState) => Promise<T> | T): Promise<T> {
+  const open = openMutation.getStore();
+  if (open?.groupId === groupId) {
+    if (!open.draft.state) throw new LedgerError("Group not found", 404);
+    return fn(open.draft.state);
   }
-  if (state.group.status !== "active") throw new LedgerError("Group is not fully funded", 409);
-  const authorizations: Authorization[] = [];
-  for (const limit of state.storeLimits) {
-    authorizations.push(await authorizeCharge(state.card.id, limit.store, limit.limitCents));
-  }
-  authorizations.push(await authorizeCharge(state.card.id, offPlanMerchant, 100));
-  const next = await requireGroup(groupId);
-  next.group.status = "purchased";
-  await save(next);
-  if (!next.card) throw new LedgerError("Group is not fully funded", 409);
-  return { card: next.card, authorizations };
-}
-
-export async function returnItem(groupId: string, productId: string) {
-  const state = await requireGroup(groupId);
-  const existing = state.refunds.filter((refund) => refund.productId === productId);
-  if (existing.length > 0) return { refunds: existing, created: false, contributions: state.contributions };
-  if (state.group.status !== "purchased" && state.group.status !== "settled") {
-    throw new LedgerError("Checkout has not run", 409);
-  }
-  if (!state.map.products.some((product) => product.id === productId)) throw new LedgerError("Product not found", 404);
-  const refunds = computeRefunds(productId, state.contributions, state.shares, state.map.products);
-  state.refunds.push(...refunds);
-  for (const refund of refunds) {
-    const contribution = state.contributions.find((item) => item.memberId === refund.memberId && item.status === "paid");
-    if (contribution) contribution.status = "refunded_partial";
-  }
-  if (state.group.status === "purchased") state.group.status = "settled";
-  refreshTotals(state);
-  await save(state);
-  return { refunds, created: true, contributions: state.contributions };
-}
-
-export async function returnItemByProductId(productId: string): Promise<Refund[]> {
-  const state = await (await getLedgerStore()).findByProductId(productId);
-  if (!state) return [];
-  const result = await returnItem(state.group.id, productId);
-  return result.refunds;
-}
-
-export async function seedDemoGroup() {
-  const state = structuredClone(loadGroupState());
-  refreshTotals(state);
-  await save(state);
-  return process.env.DATABASE_URL ? "postgres" : "memory";
-}
-
-async function issueCardIfFunded(state: GroupState) {
-  refreshTotals(state);
-  if (state.group.status !== "funding" || state.fundedCents !== state.totalCents || state.card) return;
-  const limits: StoreLimitInput[] = storeLimitInputs(state.map, state.members);
-  const { getIssuer } = await import("@/lib/payments");
-  const card = await getIssuer().createCard(state.group.id, limits);
-  state.card = card;
-  state.storeLimits = limits.map((limit) => ({
-    cardId: card.id,
-    store: limit.store,
-    limitCents: limit.limitCents,
-    spentCents: 0,
-  }));
-  state.group.status = "active";
-}
-
-function recomputeShares(state: GroupState) {
-  state.shares = computeShares(state.map, state.members);
-  refreshTotals(state);
-}
-
-function refreshTotals(state: GroupState) {
-  state.totalCents = state.shares.reduce((sum, share) => sum + share.totalCents, 0);
-  state.fundedCents = state.contributions
-    .filter((contribution) => contribution.status === "paid" || contribution.status === "refunded_partial")
-    .reduce((sum, contribution) => sum + contribution.amountCents, 0);
-  return state;
-}
-
-function requireEditing(state: GroupState) {
-  if (state.group.status !== "editing") throw new LedgerError("Map is locked", 409);
+  return (await getLedgerStore()).mutate(groupId, async (draft) => {
+    if (!draft.state) throw new LedgerError("Group not found", 404);
+    return openMutation.run({ groupId, draft }, () => fn(draft.state as GroupState));
+  });
 }
 
 async function requireGroup(groupId: string) {
   const state = await getGroupState(groupId);
   if (!state) throw new LedgerError("Group not found", 404);
   return state;
-}
-
-async function save(state: GroupState) {
-  refreshTotals(state);
-  await (await getLedgerStore()).put(state);
 }
 
 export async function listGroupsForUser(userId: string) {

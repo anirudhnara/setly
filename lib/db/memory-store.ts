@@ -1,13 +1,15 @@
 import { loadGroupState } from "@/lib/fixtures/sample";
 import type { Group, GroupState } from "@/lib/types";
-import type { LedgerStore } from "@/lib/db/store";
+import type { GroupDraft, LedgerStore } from "@/lib/db/store";
 
 class MemoryLedger implements LedgerStore {
   private groups = new Map<string, GroupState>();
   private seeded = false;
+  private tails = new Map<string, Promise<unknown>>();
 
   reset(seedFixture: boolean) {
     this.groups.clear();
+    this.tails.clear();
     this.seeded = true;
     if (seedFixture) this.seedFixture();
   }
@@ -20,6 +22,16 @@ class MemoryLedger implements LedgerStore {
   async put(state: GroupState) {
     this.ensureSeed();
     this.groups.set(state.group.id, structuredClone(state));
+  }
+
+  async mutate<T>(groupId: string, fn: (draft: GroupDraft) => Promise<T>): Promise<T> {
+    const previous = this.tails.get(groupId) ?? Promise.resolve();
+    const run = previous.then(
+      () => this.applyMutation(groupId, fn),
+      () => this.applyMutation(groupId, fn),
+    );
+    this.tails.set(groupId, run);
+    return run;
   }
 
   async findByCardId(cardId: string) {
@@ -50,6 +62,15 @@ class MemoryLedger implements LedgerStore {
     }
     matches.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
     return matches;
+  }
+
+  private async applyMutation<T>(groupId: string, fn: (draft: GroupDraft) => Promise<T>) {
+    this.ensureSeed();
+    const current = this.groups.get(groupId);
+    const draft: GroupDraft = { state: current ? structuredClone(current) : null };
+    const result = await fn(draft);
+    if (draft.state) this.groups.set(groupId, structuredClone(draft.state));
+    return result;
   }
 
   private find(predicate: (state: GroupState) => boolean) {
@@ -83,6 +104,10 @@ let forceMemory = false;
 export function useMemoryLedgerForTests() {
   forceMemory = true;
   memoryLedger.reset(true);
+}
+
+export function useDatabaseLedgerForTests() {
+  forceMemory = false;
 }
 
 export function ledgerUsesMemory() {

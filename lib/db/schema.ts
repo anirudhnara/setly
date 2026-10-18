@@ -137,7 +137,7 @@ export const refunds = pgTable("refunds", {
 export const pricePoints = pgTable(
   "price_points",
   {
-    productId: text("product_id").notNull().references(() => products.id),
+    productId: text("product_id").notNull(),
     priceCents: integer("price_cents").notNull(),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
   },

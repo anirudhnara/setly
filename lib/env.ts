@@ -54,6 +54,11 @@ export function mockAiEnabled() {
   return (process.env.MOCK_AI ?? "1") !== "0";
 }
 
+/** Demo laptop reset. Off unless this is exactly "1". */
+export function demoResetEnabled() {
+  return process.env.DEMO_RESET === "1";
+}
+
 const firebaseWebConfigSchema = z.object({
   apiKey: z.string().min(1),
   authDomain: z.string().min(1),

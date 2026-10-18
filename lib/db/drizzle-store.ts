@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
   authorizations,
@@ -7,7 +7,6 @@ import {
   groups,
   links,
   members,
-  pricePoints,
   users,
   products,
   refunds,
@@ -16,7 +15,7 @@ import {
   storeLimits,
   zones,
 } from "@/lib/db/schema";
-import type { LedgerStore } from "@/lib/db/store";
+import type { GroupDraft, LedgerStore } from "@/lib/db/store";
 import type {
   Authorization,
   Card,
@@ -49,6 +48,16 @@ export const drizzleLedger: LedgerStore = {
     const db = getDb();
     await db.transaction(async (tx) => {
       await writeGroup(tx, state);
+    });
+  },
+  async mutate(groupId, fn) {
+    const db = getDb();
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select ${groups.id} from ${groups} where ${groups.id} = ${groupId} for update`);
+      const draft: GroupDraft = { state: await readGroup(groupId, tx) };
+      const result = await fn(draft);
+      if (draft.state) await writeGroup(tx, draft.state);
+      return result;
     });
   },
   async findByCardId(cardId) {
@@ -96,8 +105,7 @@ export const drizzleLedger: LedgerStore = {
   },
 };
 
-async function readGroup(groupId: string): Promise<GroupState | null> {
-  const db = getDb();
+async function readGroup(groupId: string, db: Database | Transaction = getDb()): Promise<GroupState | null> {
   const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
   if (!group) return null;
   const memberRows = await db.select().from(members).where(eq(members.groupId, groupId));
@@ -165,12 +173,9 @@ async function writeGroup(tx: Transaction, state: GroupState) {
   const zoneIds = existingZones.map((zone) => zone.id);
   const existingSlots = zoneIds.length === 0 ? [] : await tx.select({ id: slots.id }).from(slots).where(inArray(slots.zoneId, zoneIds));
   const slotIds = existingSlots.map((slot) => slot.id);
-  const existingProducts = slotIds.length === 0 ? [] : await tx.select({ id: products.id }).from(products).where(inArray(products.slotId, slotIds));
-  const productIds = existingProducts.map((product) => product.id);
   const existingCards = await tx.select({ id: cards.id }).from(cards).where(eq(cards.groupId, groupId));
   const cardIds = existingCards.map((card) => card.id);
 
-  if (productIds.length > 0) await tx.delete(pricePoints).where(inArray(pricePoints.productId, productIds));
   if (cardIds.length > 0) {
     await tx.delete(authorizations).where(inArray(authorizations.cardId, cardIds));
     await tx.delete(storeLimits).where(inArray(storeLimits.cardId, cardIds));

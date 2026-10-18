@@ -124,6 +124,9 @@ export const returnItemRequestSchema = z.object({
 export type ReturnItemRequest = z.infer<typeof returnItemRequestSchema>;
 export type ReturnItemResponse = { refunds: Refund[] };
 
+export const demoResetRequestSchema = z.object({});
+export type DemoResetResponse = { reseeded: true };
+
 export type ApiErrorBody = { error: string | { formErrors: string[]; fieldErrors: Record<string, string[]> } };
 
 export async function readRequest<T>(request: Request, schema: z.ZodType<T>) {
