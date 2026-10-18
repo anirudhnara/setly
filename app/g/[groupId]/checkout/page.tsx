@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Pay — Setly" };
 
 export default function GroupCheckoutPage({ params }: { params: Promise<{ groupId: string }> }) {
   return (
-    <Shell>
+    <Shell wide>
       <GroupSlot params={params}>{(groupId) => <CheckoutView groupId={groupId} />}</GroupSlot>
     </Shell>
   );

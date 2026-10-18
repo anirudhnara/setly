@@ -14,7 +14,7 @@ Instructions for every AI coding agent working in this repo (Claude Code, Codex,
 
 ## What we're building
 
-Setly is group checkout for shared purchases, built at DubHacks '26 (Visa title track). A group types a prompt ("living room for 4 roommates, cozy, under $1,200") or pastes a list. Setly generates a base **map**: zones (living room, kitchen) containing slots (sofa, rug, lamp), each slot filled with a real product from a real store, plus links between slots and rules the plan must meet. Members join by link (name only, no login) and edit the map together. Each slot is paid as shared, per person, or already owned. The group locks the map, each member pays their share in Stripe test mode, and when the plan is fully funded a virtual card is issued that only works at the plan's stores, up to each store's subtotal. Returning an item refunds each payer automatically.
+Setly is group checkout for shared purchases, built at DubHacks '26 (Visa title track). A group types a prompt ("living room for 4 roommates, cozy, under $1,200") or pastes a list. Setly generates a base **map**: zones (living room, kitchen) containing slots (sofa, rug, lamp), each slot filled with a real product from a real store, plus links between slots and rules the plan must meet. Members sign in, then join by link and edit the map together. Each slot is paid as shared, per person, or already owned. The group locks the map, each member pays their share in Stripe test mode, and when the plan is fully funded a virtual card is issued that only works at the plan's stores, up to each store's subtotal. Returning an item refunds each payer automatically.
 
 Pitch line: "Claude can tell you what to buy. Setly is how four people actually buy it."
 
@@ -99,6 +99,13 @@ Shared, read by everyone, edited only by Backend 1 through a reviewed PR: `lib/t
 - Use idempotency keys on payment and refund creation.
 - All card logic goes through the `Issuer` interface in `lib/payments/issuer.ts`. `ISSUER=mock` and `ISSUER=stripe` must behave identically from the caller's view.
 
+### Auth
+
+- Firebase Authentication only. Do not add Firestore, Realtime Database, Storage, or Hosting.
+- Postgres remains the source of truth for users, groups, members, and money.
+- `lib/auth` client code signs people in. Server code verifies Firebase ID tokens with `firebase-admin`. Never import `firebase-admin` from a client component.
+- `app/api/webhooks/stripe` and `app/api/issuing/authorize` stay on Stripe signature checks. Do not run Firebase verification on those routes.
+
 ## Mock switches
 
 - `MOCK_AI=1`: map routes and search return fixtures. No Gemini or SerpApi calls.
@@ -120,7 +127,7 @@ Frontend work should run with both mocks on. Never remove a mock path; it's the 
 ## Secrets and environment
 
 - Real values live in `.env.local` (gitignored) and Vercel. Only `.env.example` is committed.
-- Variables: `GEMINI_API_KEY`, `SERPAPI_KEY`, `DATABASE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`, `ISSUER`, `MOCK_AI`.
+- Variables: `GEMINI_API_KEY`, `SERPAPI_KEY`, `DATABASE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`, `ISSUER`, `MOCK_AI`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
 - Never print, log, or hard-code a key. Read env only through `lib/env.ts`.
 
 ## Database
@@ -136,7 +143,7 @@ Frontend work should run with both mocks on. Never remove a mock path; it's the 
 
 ## Out of scope (do not build)
 
-Live voting, user accounts or login, room photos, resale, creator sets, campus profiles, substitution rules, real-money payments, extra databases or real-time services. If a task seems to need one of these, stop and ask.
+Live voting, room photos, resale, creator sets, campus profiles, substitution rules, real-money payments, extra databases or real-time services. If a task seems to need one of these, stop and ask.
 
 ## When you're unsure
 

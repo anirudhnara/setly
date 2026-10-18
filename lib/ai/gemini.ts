@@ -1,36 +1,26 @@
-import { z } from "zod";
-import { getEnv, mockAiEnabled } from "@/lib/env";
+import { mockAiEnabled } from "@/lib/env";
 import type { MapData } from "@/lib/types";
 import { buildMap } from "@/lib/ai/build-map";
 import starterStructuresJson from "@/fixtures/starter-structures.json";
 import { fixtureMapForPrompt, isCampingPrompt } from "@/lib/ai/fixture-map";
+import { askGeminiJson, describe, parseJsonAs } from "@/lib/ai/llm";
 import { applyQuestionnaire, parseBudgetCents, parseDoorWidthIn, parseMemberCount, parsePastedList, parseQuestionnaireItems, type QuestionnaireItems } from "@/lib/ai/parse";
 import { MAP_SYSTEM_PROMPT, buildMapPrompt, buildPastePrompt } from "@/lib/ai/prompts";
+import { rankWithGemini } from "@/lib/ai/rank";
 import { generatedMapSchema, type GeneratedMap } from "@/lib/ai/schemas";
+import { starterStructure } from "@/lib/ai/structure";
 import { searchCatalog, searchProducts } from "@/lib/search/serpapi";
 
 /**
  * Prompt or pasted list → MapData, within the 15 second target:
- * Gemini returns structure only (about 10 s max), then every slot is searched in parallel (6 s max each).
+ * Gemini returns structure only (about 8 s max), every slot is searched in parallel (6 s max each),
+ * then Gemini ranks the real results for fit (4.5 s max, skipped on failure).
  * Validation failure: retry once, then fall back. Network failure or timeout: fall back right away.
- * The fallback is the starter fixture for prompts and the line parser for pasted lists.
+ * Fallbacks, in order: the starter structure searched in real stores, then the starter fixture (MOCK_AI=1 goes
+ * straight to the fixture). Pasted lists fall back to the line parser.
  */
-const GEMINI_MODEL = "gemini-flash-latest";
-const GEMINI_TIMEOUT_MS = 8_500;
+const GEMINI_TIMEOUT_MS = 14_000;
 const DEFAULT_MEMBER_COUNT = 4;
-
-/** zod's JSON Schema minus keywords Gemini's structured output may reject. zod still validates the full schema. */
-const SCHEMA_KEYS = new Set(["type", "properties", "required", "items", "enum", "description", "minItems", "maxItems", "minimum", "maximum", "anyOf"]);
-function sanitizeSchema(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizeSchema);
-  if (typeof value !== "object" || value === null) return value;
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => SCHEMA_KEYS.has(key))
-      .map(([key, child]) => [key, key === "properties" ? Object.fromEntries(Object.entries(child as object).map(([name, inner]) => [name, sanitizeSchema(inner)])) : sanitizeSchema(child)]),
-  );
-}
-const responseJsonSchema = sanitizeSchema(z.toJSONSchema(generatedMapSchema));
 
 export async function generateMapFromPrompt(prompt: string, budgetCents?: number, groupId = ""): Promise<MapData> {
   // 0 means the budget wasn't set; a 0 cent budget would mark every map over budget.
@@ -41,10 +31,20 @@ export async function generateMapFromPrompt(prompt: string, budgetCents?: number
   const fallback = () => starterMapForPrompt(prompt, { budgetCents: budget, memberCount, doorWidthIn, groupId, items });
   if (mockAiEnabled()) return fallback();
 
+  let generated: GeneratedMap;
+  let planned = true;
   try {
-    const generated = applyQuestionnaire(await askGemini(buildMapPrompt(prompt, budget, { memberCount, doorWidthIn, ...items })), items);
+    generated = applyQuestionnaire(await askGemini(buildMapPrompt(prompt, budget, { memberCount, doorWidthIn, ...items })), items);
+  } catch (error) {
+    console.warn(`Gemini planning fell back to the starter structure: ${describe(error)}`);
+    generated = applyQuestionnaire(starterStructure(prompt), items);
+    planned = false;
+  }
+  try {
     const people = memberCount ?? generated.groupSize ?? DEFAULT_MEMBER_COUNT;
-    return await buildMap({ generated, budgetCents: budget, memberCount: people, groupId, doorWidthIn, search: searchProducts });
+    // Ranking only helps when Gemini is reachable; after a planning failure it would fail the same way.
+    const rank = planned ? (slots: Parameters<typeof rankWithGemini>[1]) => rankWithGemini(prompt, slots) : undefined;
+    return await buildMap({ generated, budgetCents: budget, memberCount: people, groupId, doorWidthIn, search: searchProducts, rank });
   } catch (error) {
     console.warn(`Map generation fell back to the starter map: ${describe(error)}`);
     return fallback();
@@ -80,63 +80,11 @@ async function starterMapForPrompt(
   return buildMap({ ...options, generated, memberCount: options.memberCount ?? 1, search: async (query) => searchCatalog(query) });
 }
 
-class ValidationError extends Error {}
-
-async function askGemini(prompt: string): Promise<GeneratedMap> {
-  const apiKey = getEnv().GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
-  const { GoogleGenAI } = await import("@google/genai");
-  const ai = new GoogleGenAI({ apiKey });
-  const started = Date.now();
-  let useSchema = true;
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const remaining = GEMINI_TIMEOUT_MS - (Date.now() - started);
-    if (remaining < 2500) break;
-    let text: string;
-    try {
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: prompt,
-        config: {
-          systemInstruction: MAP_SYSTEM_PROMPT,
-          responseMimeType: "application/json",
-          ...(useSchema ? { responseJsonSchema } : {}),
-          temperature: 0.4,
-          abortSignal: AbortSignal.timeout(remaining),
-        },
-      });
-      text = response.text ?? "";
-    } catch (error) {
-      // A rejected schema is a 400. Ask again with JSON mode only; zod still checks the result.
-      if (attempt === 0 && useSchema && /\b400\b|INVALID_ARGUMENT|schema/i.test(describe(error))) {
-        useSchema = false;
-        continue;
-      }
-      throw error;
-    }
-    try {
-      return parseGenerated(text);
-    } catch (error) {
-      if (!(error instanceof ValidationError) || attempt === 1) throw error;
-    }
-  }
-  throw new Error("Gemini ran out of time");
+function askGemini(prompt: string): Promise<GeneratedMap> {
+  return askGeminiJson({ prompt, system: MAP_SYSTEM_PROMPT, schema: generatedMapSchema, timeoutMs: GEMINI_TIMEOUT_MS });
 }
 
 /** Parses and validates model output. Exported for tests. */
 export function parseGenerated(text: string): GeneratedMap {
-  let json: unknown;
-  try {
-    json = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ""));
-  } catch {
-    throw new ValidationError("Gemini returned text that isn't JSON");
-  }
-  const parsed = generatedMapSchema.safeParse(json);
-  if (!parsed.success) throw new ValidationError(`Gemini output failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`);
-  return parsed.data;
-}
-
-function describe(error: unknown) {
-  return error instanceof Error ? error.message : "unknown error";
+  return parseJsonAs(text, generatedMapSchema);
 }

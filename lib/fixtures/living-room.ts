@@ -10,10 +10,10 @@ export const livingRoomFixture = {
     organizerMemberId: "member-ani",
   },
   members: [
-    { id: "member-ani", groupId: "demo-living-room", name: "Ani", isOrganizer: true, joinedAt: "2026-10-17T18:00:00.000Z" },
-    { id: "member-jules", groupId: "demo-living-room", name: "Jules", isOrganizer: false, joinedAt: "2026-10-17T18:02:00.000Z" },
-    { id: "member-sam", groupId: "demo-living-room", name: "Sam", isOrganizer: false, joinedAt: "2026-10-17T18:03:00.000Z" },
-    { id: "member-riley", groupId: "demo-living-room", name: "Riley", isOrganizer: false, joinedAt: "2026-10-17T18:04:00.000Z" },
+    { id: "member-ani", groupId: "demo-living-room", userId: "usr_ani", name: "Ani", isOrganizer: true, joinedAt: "2026-10-17T18:00:00.000Z" },
+    { id: "member-jules", groupId: "demo-living-room", userId: "usr_jules", name: "Jules", isOrganizer: false, joinedAt: "2026-10-17T18:02:00.000Z" },
+    { id: "member-sam", groupId: "demo-living-room", userId: "usr_sam", name: "Sam", isOrganizer: false, joinedAt: "2026-10-17T18:03:00.000Z" },
+    { id: "member-riley", groupId: "demo-living-room", userId: "usr_riley", name: "Riley", isOrganizer: false, joinedAt: "2026-10-17T18:04:00.000Z" },
   ],
   zones: [
     {

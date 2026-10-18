@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth/session";
 import { createSlotRequestSchema, readRequest, type ApiErrorBody, type CreateSlotResponse } from "@/lib/contracts";
 import { jsonError } from "@/lib/db/http";
-import { createSlot } from "@/lib/db/queries";
+import { createSlot, requireZoneMember } from "@/lib/db/queries";
 
 export async function POST(request: Request) {
-  const parsed = await readRequest(request, createSlotRequestSchema);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
-  }
   try {
+    const user = await requireUser(request);
+    const parsed = await readRequest(request, createSlotRequestSchema);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
+    }
+    await requireZoneMember(parsed.data.zoneId, user.id);
     const slot = await createSlot(parsed.data);
     const body: CreateSlotResponse = { slot };
     return NextResponse.json(body);

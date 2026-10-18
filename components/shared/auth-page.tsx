@@ -2,101 +2,111 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { ArrowRight, MessagesSquare, Shuffle, Wallet } from "lucide-react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
-import { stageYou } from "@/components/shared/session";
+import { readLastGroup } from "@/components/shared/session";
+import { signInWithGoogle, watchAuth } from "@/lib/auth/client";
 
-type Mode = "signup" | "login";
+const STEPS = [
+  { icon: MessagesSquare, title: "Answer a few questions", text: "Setly asks only what changes what you buy." },
+  { icon: Shuffle, title: "Shape the set together", text: "Love, swap, or regrow any piece with real store picks." },
+  { icon: Wallet, title: "Split and pay once", text: "Everyone pays their share; one card buys the plan." },
+];
 
 export function AuthPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("signup");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState<string | null>(null);
+  const [lastGroup, setLastGroup] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  useEffect(() => {
+    try {
+      return watchAuth((user) => {
+        setLastGroup(readLastGroup());
+        setName(user ? user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "there" : null);
+      });
+    } catch {
+      // Firebase isn't configured here; the sign-in buttons stay, and /sign-in explains what's missing.
+    }
+  }, []);
+
+  async function google() {
     setError("");
-    const cleanEmail = email.trim().toLowerCase();
-    const displayName = mode === "signup"
-      ? name.trim()
-      : cleanEmail.split("@")[0]?.replace(/[._-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) || "Friend";
-
-    if (mode === "signup" && displayName.length < 2) {
-      setError("Please enter your name.");
-      return;
+    setPending(true);
+    try {
+      await signInWithGoogle();
+      router.push("/home");
+    } catch {
+      setError("Google sign-in didn’t finish. Try again, or use email.");
+    } finally {
+      setPending(false);
     }
-    if (password.length < 8) {
-      setError("Use at least 8 characters for your password.");
-      return;
-    }
-
-    // Prototype only: the backend will own credentials and session creation.
-    stageYou(displayName);
-    router.push("/home");
   }
 
   return (
     <main className="orbit auth-page">
       <div className="auth-topbar">
-        <Link className="auth-brand" href="/" aria-label="Setly home">
-          <JarvisMark size={33} />
+        <Link className="orbit-brand" href="/" aria-label="Setly home">
+          <JarvisMark size={32} />
           <span>setly</span>
         </Link>
-        <span className="auth-topline">MAKE A PLAN. MAKE IT HAPPEN.</span>
+        <span className="auth-topline">Group shopping, grown by AI</span>
       </div>
       <div className="auth-layout">
         <section className="auth-intro">
-          <span className="auth-overline">SHOP BETTER, TOGETHER</span>
-          <h1>Good plans<br /><em>start together.</em></h1>
-          <p>Bring your ideas, people, and budget into one shared plan. Setly keeps the details in one place so getting started feels easy.</p>
+          <span className="orbit-label">Shop as a set</span>
+          <h1>Tell us the room.<br /><em className="serif">We’ll grow the set.</em></h1>
+          <p>Setly asks a few smart questions, finds a complete set from real stores, and lets everyone in your group love, swap, and split it — then pays with one card that only works for the plan.</p>
           <div className="auth-preview" aria-hidden="true">
-            <div className="auth-preview-line" />
-            <span className="auth-preview-node auth-node-one">Sofa</span>
-            <span className="auth-preview-node auth-node-two">Lighting</span>
-            <span className="auth-preview-node auth-node-three">Rug</span>
-            <span className="auth-preview-center"><JarvisMark size={47} /></span>
+            <svg viewBox="0 0 440 220">
+              <path className="ap-link trunk" pathLength={1} d="M120 110 C 160 110, 160 60, 200 60" />
+              <path className="ap-link trunk t2" pathLength={1} d="M120 110 C 160 110, 160 160, 200 160" />
+              <path className="ap-link l1" pathLength={1} d="M262 60 C 285 60, 285 34, 306 34" />
+              <path className="ap-link l2" pathLength={1} d="M262 60 C 285 60, 285 86, 306 86" />
+              <path className="ap-link l3" pathLength={1} d="M262 160 C 285 160, 285 136, 306 136" />
+              <path className="ap-link l4" pathLength={1} d="M262 160 C 285 160, 285 186, 306 186" />
+            </svg>
+            <span className="ap-root">The set<b>$1,184</b></span>
+            <span className="ap-zone z1">Living</span>
+            <span className="ap-zone z2">Kitchen</span>
+            <span className="ap-leaf f1">Sofa · <b>$549</b></span>
+            <span className="ap-leaf f2">Rug · <b>$129</b></span>
+            <span className="ap-leaf f3">Kettle · <b>$39</b></span>
+            <span className="ap-leaf f4">Mugs ×4 · <b>$32</b></span>
           </div>
-          <div className="auth-trust"><span>✦</span> Plans everyone can feel good about.</div>
         </section>
 
-        <section id="auth-panel" className="auth-card" role="tabpanel" aria-labelledby={mode === "signup" ? "signup-tab" : "login-tab"}>
-          <div className="auth-tabs" role="tablist" aria-label="Account access">
-            <button id="signup-tab" type="button" role="tab" aria-controls="auth-panel" aria-selected={mode === "signup"} onClick={() => { setMode("signup"); setError(""); }}>Sign up</button>
-            <button id="login-tab" type="button" role="tab" aria-controls="auth-panel" aria-selected={mode === "login"} onClick={() => { setMode("login"); setError(""); }}>Log in</button>
-          </div>
-          <span className="auth-overline">{mode === "signup" ? "A LITTLE SPACE TO PLAN" : "GOOD TO SEE YOU AGAIN"}</span>
-          <h2 id="auth-title">{mode === "signup" ? "Create your account" : "Welcome back"}</h2>
-          <p className="auth-card-sub">{mode === "signup" ? "Start a shared plan in just a few steps." : "Pick up where your group left off."}</p>
-          <form onSubmit={submit}>
-            {mode === "signup" ? (
-              <label className="auth-field">
-                <span>Your name</span>
-                <input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Alex Morgan" required minLength={2} />
-              </label>
-            ) : null}
-            <label className="auth-field">
-              <span>Email address</span>
-              <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" required />
-            </label>
-            <label className="auth-field">
-              <span>Password</span>
-              <span className="auth-password-wrap">
-                <input type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" required minLength={8} />
-                <button type="button" onClick={() => setShowPassword((show) => !show)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "Hide" : "Show"}</button>
-              </span>
-            </label>
-            {error ? <p className="auth-error" role="alert">{error}</p> : null}
-            <button className="auth-submit" type="submit">{mode === "signup" ? "Create account" : "Log in"}<span aria-hidden="true">→</span></button>
-          </form>
-          <p className="auth-prototype">Preview mode · Account access will connect to Setly soon.</p>
-          <p className="auth-swap">{mode === "signup" ? "Already have an account?" : "New to Setly?"} <button type="button" onClick={() => { setMode(mode === "signup" ? "login" : "signup"); setError(""); }}>{mode === "signup" ? "Log in" : "Sign up"}</button></p>
+        <section className="auth-card" aria-labelledby="auth-title">
+          <span className="orbit-label">{name ? "Welcome back" : "Start a set"}</span>
+          <h2 id="auth-title">{name ? `Hi, ${name}.` : "Your first set takes a minute."}</h2>
+          <ol className="auth-steps">
+            {STEPS.map(({ icon: Icon, title, text }, index) => (
+              <li key={title} style={{ animationDelay: `${0.25 + index * 0.08}s` }}>
+                <span aria-hidden="true"><Icon /></span>
+                <div><strong>{title}</strong><p>{text}</p></div>
+              </li>
+            ))}
+          </ol>
+          {name ? (
+            <>
+              <Link className="btn btn-accent auth-submit" href="/home">Start a new set <ArrowRight aria-hidden="true" /></Link>
+              {lastGroup ? <Link className="btn btn-ghost auth-secondary" href={`/g/${lastGroup}`}>Open my last set</Link> : null}
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn btn-accent auth-submit" disabled={pending} onClick={() => void google()}>
+                Continue with Google <ArrowRight aria-hidden="true" />
+              </button>
+              <Link className="btn btn-ghost auth-secondary" href={`/sign-in?next=${encodeURIComponent("/home")}`}>Use email instead</Link>
+            </>
+          )}
+          {error ? <p className="auth-error" role="alert">{error}</p> : null}
+          <p className="auth-prototype">Test mode · payments use Stripe test cards, nothing is charged.</p>
         </section>
       </div>
-      <footer className="auth-footer"><span>© Setly</span><span>Group plans, made real.</span></footer>
+      <footer className="auth-footer"><span>© Setly</span><span>Claude can tell you what to buy. Setly is how four people actually buy it.</span></footer>
     </main>
   );
 }

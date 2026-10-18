@@ -1,288 +1,649 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { formatCents } from "@/components/shared/format";
-import { readMember, stageMap } from "@/components/shared/session";
+import Link from "next/link";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  AlertTriangle, ArrowRight, ArrowUp, Check, CircleCheck, ExternalLink, Heart, Shuffle, ThumbsDown, Trash2, UserPlus, X,
+} from "lucide-react";
+import { formatBudget, formatCents } from "@/components/shared/format";
+import { JarvisMark } from "@/components/shared/jarvis-mark";
+import { ProductImage } from "@/components/shared/product-image";
+import { readTaste, stageMap, stageTaste, type Taste } from "@/components/shared/session";
 import { usePlan } from "@/components/shared/use-plan";
-import { generateMap, getSlotOptions, lockGroup, payShare } from "@/lib/client";
-import type { MapData, Product, Slot } from "@/lib/types";
+import { parseMemberCount } from "@/lib/ai/parse";
+import { chooseProduct, deleteSlot, generateMap, getSlotOptions, growMap, refineMap } from "@/lib/client";
+import { chargedCentsForSlot, planTotalCents } from "@/lib/rules/check";
+import type { MapData, Product, Rule, Slot, Zone } from "@/lib/types";
 
-type PositionedPick = { slot: Slot; product: Product; x: number; y: number };
+interface Leaf {
+  slot: Slot;
+  product: Product | null;
+  issues: Rule[];
+  index: number;
+}
+interface Branch {
+  zone: Zone;
+  leaves: Leaf[];
+  index: number;
+}
+interface Edge {
+  id: string;
+  from: string;
+  to: string;
+  delay: number;
+  kind: "trunk" | "branch" | "alt";
+}
+interface DrawnEdge extends Edge {
+  d: string;
+}
+
+const STYLE_HINT = /\b(cozy|minimal(?:ist)?|modern|mid-century|scandinavian|boho|industrial|rustic|warm|calm|bright|outdoorsy|rugged|premium|neutral|colorful|vintage|japandi|coastal|farmhouse|practical)\b/i;
+
+/** Seconds. Trunks reach each zone, then branches reach each leaf, so the set visibly grows outward. */
+const zoneDelay = (index: number) => 0.15 + index * 0.12;
+const leafDelay = (zoneIndex: number, leafIndex: number) => zoneDelay(zoneIndex) + 0.45 + leafIndex * 0.07;
 
 export function PlanView({ groupId }: { groupId: string }) {
   const plan = usePlan(groupId);
   const [local, setLocal] = useState<MapData | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [replaceId, setReplaceId] = useState<string | null>(null);
-  const [options, setOptions] = useState<Product[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(false);
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [paid, setPaid] = useState(false);
+  const [altFor, setAltFor] = useState<string | null>(null);
+  const [options, setOptions] = useState<Record<string, Product[]>>({});
+  const [loadingAlt, setLoadingAlt] = useState<string | null>(null);
+  const [busySlot, setBusySlot] = useState<string | null>(null);
+  // Read once on the client; the tree only renders after mount, so server HTML never depends on it.
+  const [taste, setTaste] = useState<Taste>(() => readTaste(groupId));
+  const [draft, setDraft] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [reply, setReply] = useState("");
+  const [fresh, setFresh] = useState<string[]>([]);
+  const [generation, setGeneration] = useState(0);
   const [fault, setFault] = useState("");
-  const [liked, setLiked] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
   const started = useRef(false);
 
-  const map = local ?? (plan.mounted ? plan.map : null);
+  const map = plan.live ? plan.map : (local ?? plan.map);
 
+  // A group without a saved set grows one on the server (shared with every member). If that fails, a preview
+  // is generated in the browser so the page still shows something; that preview can't be refined or saved.
   useEffect(() => {
     if (!plan.hydrated || !plan.data || plan.live || (plan.map?.slots.length ?? 0) > 0 || started.current) return;
     started.current = true;
-    void generateMap({ prompt: plan.data.group.prompt, budgetCents: plan.data.group.budgetCents || undefined }).then((next) => {
-      stageMap(groupId, next);
-      setLocal(next);
-    });
-  }, [plan.hydrated, plan.data, plan.live, plan.map, groupId]);
+    const { prompt: groupPrompt, budgetCents: groupBudget } = plan.data.group;
+    void growMap(groupId)
+      .then(() => plan.mutate())
+      .catch(() =>
+        generateMap({ prompt: groupPrompt, budgetCents: groupBudget || undefined }).then((next) => {
+          stageMap(groupId, next);
+          setLocal(next);
+        }),
+      )
+      .catch(() => setFault("Couldn't grow this set. Start a new one from the chat."));
+  }, [plan, groupId]);
 
-  useEffect(() => {
-    if (!replaceId) return;
-    let cancel = false;
-    setLoadingOptions(true);
-    setOptions([]);
-    getSlotOptions(replaceId)
-      .then((body) => {
-        if (!cancel) setOptions(body.products);
-      })
-      .catch(() => {
-        if (!cancel) setOptions([]);
-      })
-      .finally(() => {
-        if (!cancel) setLoadingOptions(false);
-      });
-    return () => {
-      cancel = true;
-    };
-  }, [replaceId]);
+  const saveTaste = useCallback(
+    (next: Taste) => {
+      setTaste(next);
+      stageTaste(groupId, next);
+    },
+    [groupId],
+  );
 
-  if (!plan.mounted || (plan.isLoading && !plan.data)) return <div className="orbit frame map-loading" />;
-  if (plan.error || !plan.data) {
+  const data = plan.data;
+  const prompt = data?.group.prompt ?? "";
+  const people = Math.max(data?.members.length ?? 0, parseMemberCount(prompt) ?? 1, 1);
+  const budgetRule = map?.rules.find((rule) => rule.type === "budget");
+  const budgetCents = typeof budgetRule?.params.maxCents === "number" ? budgetRule.params.maxCents : data?.group.budgetCents || 0;
+
+  const branches = useMemo<Branch[]>(() => {
+    if (!map) return [];
+    let count = 0;
+    return [...map.zones]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((zone) => ({
+        zone,
+        leaves: map.slots
+          .filter((slot) => slot.zoneId === zone.id)
+          .map((slot) => ({
+            slot,
+            product: map.products.find((item) => item.id === slot.chosenProductId) ?? map.products.find((item) => item.slotId === slot.id) ?? null,
+            issues: map.rules.filter((rule) => rule.slotIds.includes(slot.id) && (rule.status === "broken" || rule.status === "warning")),
+            index: count++,
+          })),
+      }))
+      .filter((branch) => branch.leaves.length > 0)
+      .map((branch, index) => ({ ...branch, index }));
+  }, [map]);
+
+  if (!plan.mounted || (plan.isLoading && !data)) return <SkeletonTree label="Finding your set…" />;
+  if (plan.error || !data) {
     return (
-      <div className="orbit frame map-loading">
-        <a className="send" href="/home">Start again</a>
+      <div className="set-missing">
+        <JarvisMark size={48} />
+        <h1>This set isn’t here anymore.</h1>
+        <p>Links to demo groups reset when the server restarts. Start a new set — it takes a minute.</p>
+        <Link className="btn btn-accent" href="/home">Start a new set <ArrowRight aria-hidden="true" /></Link>
       </div>
     );
   }
-  if (!map) return <div className="orbit frame map-loading" />;
+  if (!map || map.slots.length === 0) return <SkeletonTree label={fault || "Growing your set from real stores…"} title={data.group.name} />;
+
   const activeMap = map;
-  const data = plan.data;
+  const total = planTotalCents(activeMap, people);
+  const stores = new Set(activeMap.products.map((product) => product.store)).size;
+  const editable = data.group.status === "editing";
+  const brokenRules = activeMap.rules.filter((rule) => rule.status === "broken");
+  const style = prompt.match(STYLE_HINT)?.[1];
+  const loved = branches.flatMap((branch) => branch.leaves).filter((leaf) => taste.loved.includes(key(leaf.slot.need)));
 
-  const picks = positionPicks(activeMap.slots
-    .map((slot) => ({ slot, product: productFor(activeMap, slot) }))
-    .filter((item): item is { slot: Slot; product: Product } => Boolean(item.product) && item.slot.payType !== "already_owned"));
-  const total = picks.reduce((sum, item) => sum + item.product.priceCents * item.slot.quantity, 0);
-  const selected = picks.find((item) => item.slot.id === selectedId) ?? null;
-  const replacing = picks.find((item) => item.slot.id === replaceId) ?? null;
-
-  function update(next: MapData) {
+  function applyLocal(next: MapData) {
     stageMap(groupId, next);
     setLocal(next);
   }
 
-  function swap(slot: Slot, product: Product) {
-    update({
-      ...activeMap,
-      slots: activeMap.slots.map((item) => (item.id === slot.id ? { ...item, chosenProductId: product.id } : item)),
-      products: activeMap.products.some((item) => item.id === product.id) ? activeMap.products : [...activeMap.products, product],
-    });
-    setReplaceId(null);
+  async function openAlternatives(slot: Slot) {
     setSelectedId(slot.id);
-  }
-
-  function remove(slot: Slot) {
-    const next: MapData = {
-      ...activeMap,
-      slots: activeMap.slots.filter((item) => item.id !== slot.id),
-      products: activeMap.products.filter((product) => product.slotId !== slot.id),
-      links: activeMap.links.filter((link) => link.fromSlotId !== slot.id && link.toSlotId !== slot.id),
-      rules: activeMap.rules
-        .map((rule) => ({ ...rule, slotIds: rule.slotIds.filter((id) => id !== slot.id) }))
-        .filter((rule) => rule.slotIds.length > 0),
-    };
-    update(next);
-    setSelectedId(null);
-    setReplaceId(null);
-  }
-
-  async function checkout() {
-    const memberId = readMember(groupId)?.memberId;
-    if (!memberId) {
-      setFault("Start again from the chat.");
+    if (altFor === slot.id) {
+      setAltFor(null);
       return;
     }
-    setFault("");
+    setAltFor(slot.id);
+    if (options[slot.id]) return;
+    setLoadingAlt(slot.id);
     try {
-      let amount = data.shares.find((item) => item.memberId === memberId)?.totalCents ?? 0;
-      if (data.group.status === "editing") {
-        const locked = await lockGroup(groupId, { memberId });
-        amount = locked.shares.find((item) => item.memberId === memberId)?.totalCents ?? amount;
-      }
-      if (amount > 0) await payShare({ groupId, memberId, amountCents: amount });
-      setPaid(true);
+      const body = await getSlotOptions(slot.id);
+      setOptions((current) => ({ ...current, [slot.id]: body.products }));
     } catch {
-      setFault("Try again.");
+      setOptions((current) => ({ ...current, [slot.id]: [] }));
+    } finally {
+      setLoadingAlt(null);
     }
   }
 
-  if (checkingOut) {
-    return (
-      <div className="orbit frame checkout map-checkout">
-        <div className="film">
-          {picks.map(({ product }) => <Shot key={product.id} product={product} />)}
-        </div>
-        <div className="checkout-bar">
-          <strong>{formatCents(plan.live ? data.totalCents || total : total)}</strong>
-          {paid ? <span>Ready</span> : <button type="button" onClick={() => void checkout()}>Pay</button>}
-          {fault ? <span className="fault">{fault}</span> : null}
-          {!paid ? <button type="button" className="back" onClick={() => setCheckingOut(false)}>Back</button> : null}
-        </div>
-      </div>
-    );
+  async function choose(slot: Slot, product: Product) {
+    setFault("");
+    setBusySlot(slot.id);
+    try {
+      if (plan.live) {
+        await chooseProduct({ groupId, slotId: slot.id, productId: product.id });
+        await plan.mutate();
+      } else {
+        applyLocal({
+          ...activeMap,
+          slots: activeMap.slots.map((item) => (item.id === slot.id ? { ...item, chosenProductId: product.id } : item)),
+          products: [...activeMap.products.filter((item) => item.slotId !== slot.id), product],
+        });
+      }
+      setAltFor(null);
+      flash([key(slot.need)]);
+    } catch (error) {
+      setFault(error instanceof Error ? error.message : "Couldn't swap that item.");
+    } finally {
+      setBusySlot(null);
+    }
   }
 
+  async function remove(slot: Slot) {
+    setFault("");
+    setBusySlot(slot.id);
+    try {
+      if (plan.live) {
+        await deleteSlot(slot.id);
+        await plan.mutate();
+      } else {
+        applyLocal({
+          ...activeMap,
+          slots: activeMap.slots.filter((item) => item.id !== slot.id),
+          products: activeMap.products.filter((product) => product.slotId !== slot.id),
+          links: activeMap.links.filter((link) => link.fromSlotId !== slot.id && link.toSlotId !== slot.id),
+        });
+      }
+      setSelectedId(null);
+      setAltFor(null);
+    } catch (error) {
+      setFault(error instanceof Error ? error.message : "Couldn't remove that item.");
+    } finally {
+      setBusySlot(null);
+    }
+  }
+
+  function toggleLove(slot: Slot) {
+    const need = key(slot.need);
+    const lovedNow = taste.loved.includes(need);
+    saveTaste({ ...taste, loved: lovedNow ? taste.loved.filter((item) => item !== need) : [...taste.loved, need], passed: taste.passed.filter((item) => item !== need) });
+  }
+
+  function pass(slot: Slot) {
+    const need = key(slot.need);
+    if (!taste.passed.includes(need)) saveTaste({ ...taste, passed: [...taste.passed, need], loved: taste.loved.filter((item) => item !== need) });
+    if (altFor !== slot.id) void openAlternatives(slot);
+  }
+
+  function flash(needs: string[]) {
+    setFresh(needs);
+    window.setTimeout(() => setFresh([]), 4200);
+  }
+
+  async function refine(message: string) {
+    const clean = message.trim();
+    const passedIds = activeMap.slots.filter((slot) => taste.passed.includes(key(slot.need))).map((slot) => slot.id);
+    if ((!clean && passedIds.length === 0) || refining) return;
+    if (!plan.live) {
+      setFault("This set isn't saved to a group, so it can't regrow. Start a new set from the chat.");
+      return;
+    }
+    setDraft("");
+    setFault("");
+    setRefining(true);
+    setReply("");
+    try {
+      const result = await refineMap({
+        groupId,
+        message: clean,
+        history: taste.history,
+        liked: activeMap.slots.filter((slot) => taste.loved.includes(key(slot.need))).map((slot) => slot.id),
+        disliked: passedIds,
+      });
+      await plan.mutate();
+      saveTaste({ ...taste, passed: [], history: clean ? [...taste.history, clean].slice(-20) : taste.history });
+      setReply(result.reply);
+      setAltFor(null);
+      setSelectedId(null);
+      setOptions({});
+      setGeneration((current) => current + 1);
+      flash([...result.changes.added, ...result.changes.changed].map(key));
+    } catch (error) {
+      setFault(error instanceof Error ? error.message : "Couldn't regrow the set.");
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  const passedCount = activeMap.slots.filter((slot) => taste.passed.includes(key(slot.need))).length;
+  const firstLeaf = branches[0]?.leaves.find((leaf) => leaf.product)?.slot.need;
+  const suggestions = [
+    passedCount > 0 ? `Replace the ${passedCount} I passed on` : "",
+    budgetCents && total > budgetCents ? "Get it under budget" : "Make it cheaper",
+    style && !/minimal/i.test(style) ? "More minimal" : "Warmer and cozier",
+    firstLeaf ? `Different ${firstLeaf.toLowerCase()}` : "",
+    "Add something we’re missing",
+  ].filter(Boolean).slice(0, 4);
+
   return (
-    <div className="orbit frame map-screen">
-      <header className="map-bar">
-        <div className="map-heading">
-          <span className="map-eyebrow">YOUR GROUP PLAN</span>
-          <strong>{formatCents(total)}</strong>
-        </div>
-        <button type="button" onClick={() => setCheckingOut(true)} disabled={picks.length === 0}>Checkout <span aria-hidden="true">→</span></button>
-      </header>
-      <section className="map-map-wrap" aria-label="Interactive plan map">
-        <div className="map-map-canvas">
-          <svg className="map-connections" viewBox="0 0 1000 640" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <linearGradient id="map-link" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="rgba(108, 235, 189, .32)" />
-                <stop offset="1" stopColor="rgba(108, 235, 189, .78)" />
-              </linearGradient>
-            </defs>
-            {picks.map(({ slot, x, y }) => (
-              <line key={slot.id} x1="500" y1="320" x2={x * 10} y2={y * 6.4} className="map-connection" />
-            ))}
-          </svg>
-          <div className="map-hub">
-            <span className="map-hub-flame" aria-hidden="true">✦</span>
-            <strong>Your plan</strong>
-            <span>{picks.length} {picks.length === 1 ? "item" : "items"}</span>
+    <div className="set-page">
+      <header className="set-head">
+        <div className="set-title">
+          <span className="orbit-label">Your set · {branches.reduce((sum, branch) => sum + branch.leaves.length, 0)} items · {stores} {stores === 1 ? "store" : "stores"}</span>
+          <h1>{data.group.name}</h1>
+          <div className="taste-row" aria-label="What Setly is tuned to">
+            <span className="taste-label">Tuned to</span>
+            <span className="taste">{people} {people === 1 ? "person" : "people"}</span>
+            {budgetCents ? <span className="taste">{formatBudget(budgetCents)} budget</span> : null}
+            {style ? <span className="taste">{style.toLowerCase()}</span> : null}
+            {loved.length ? <span className="taste loved"><Heart aria-hidden="true" /> {loved.length} loved</span> : null}
+            {taste.history.slice(-2).map((said) => <span key={said} className="taste said">“{said}”</span>)}
           </div>
-          {picks.map(({ slot, product, x, y }) => (
-            <article
-              key={slot.id}
-              className={`map-node ${selectedId === slot.id ? "map-node-selected" : ""}`}
-              style={{ "--node-x": `${x}%`, "--node-y": `${y}%` } as CSSProperties}
-              onMouseEnter={() => setSelectedId(slot.id)}
-              onMouseLeave={() => setSelectedId((current) => current === slot.id && replaceId !== slot.id ? null : current)}
-            >
-              <button
-                type="button"
-                className="map-node-card"
-                aria-label={`${slot.need}: ${product.title}, ${formatCents(product.priceCents)}. Show actions.`}
-                aria-pressed={selectedId === slot.id}
-                onFocus={() => setSelectedId(slot.id)}
-                onClick={() => {
-                  setSelectedId(slot.id);
-                  setReplaceId(null);
-                }}
+        </div>
+        <div className="set-summary">
+          <div className="set-total">
+            <span>Set total</span>
+            <strong>{formatCents(total)}</strong>
+            {budgetCents ? <BudgetMeter total={total} budget={budgetCents} /> : null}
+          </div>
+          <div className="set-actions">
+            <Link className="btn btn-ghost" href={`/g/${groupId}/join`}><UserPlus aria-hidden="true" /> Invite</Link>
+            <Link className="btn btn-accent" href={`/g/${groupId}/split`}>Split &amp; pay <ArrowRight aria-hidden="true" /></Link>
+          </div>
+        </div>
+      </header>
+
+      {brokenRules.length > 0 ? (
+        <ul className="rule-alerts" aria-label="Checks that need attention">
+          {brokenRules.map((rule) => (
+            <li key={rule.id}><AlertTriangle aria-hidden="true" /> {rule.message || "A rule on this set is broken."}</li>
+          ))}
+        </ul>
+      ) : null}
+
+      <TreeCanvas
+        key={generation}
+        branches={branches}
+        altFor={altFor}
+        altCount={altFor ? (options[altFor]?.length ?? 0) : 0}
+        className={refining ? "is-regrowing" : ""}
+        root={
+          <div className="tree-root" data-node="root">
+            <JarvisMark size={40} live={refining} />
+            <span className="orbit-label">The set</span>
+            <strong>{formatCents(total)}</strong>
+            <small>{people} {people === 1 ? "person" : "people"} · {formatCents(Math.ceil(total / people))} each</small>
+          </div>
+        }
+        renderZone={(branch) => (
+          <div className="zone-node" data-node={`zone:${branch.zone.id}`} style={{ "--d": `${zoneDelay(branch.index) + 0.3}s` } as CSSProperties}>
+            <strong>{branch.zone.name}</strong>
+            <span>{branch.leaves.length} {branch.leaves.length === 1 ? "item" : "items"} · {formatCents(branch.leaves.reduce((sum, leaf) => sum + chargedCentsForSlot(leaf.slot, leaf.product, people), 0))}</span>
+          </div>
+        )}
+        renderLeaf={(branch, leaf, leafIndex) => {
+          const need = key(leaf.slot.need);
+          const owned = leaf.slot.payType === "already_owned";
+          const isLoved = taste.loved.includes(need);
+          const isPassed = taste.passed.includes(need);
+          const selected = selectedId === leaf.slot.id;
+          const alts = (options[leaf.slot.id] ?? []).filter((product) => product.id !== leaf.product?.id);
+          return (
+            <div className="leaf-row" key={leaf.slot.id}>
+              <article
+                key={leaf.product?.id ?? "empty"}
+                data-node={leaf.slot.id}
+                className={`leaf${selected ? " selected" : ""}${owned ? " owned" : ""}${isLoved ? " loved" : ""}${isPassed ? " passed" : ""}${fresh.includes(need) ? " fresh" : ""}${busySlot === leaf.slot.id ? " busy" : ""}`}
+                style={{ "--d": `${leafDelay(branch.index, leafIndex) + 0.3}s` } as CSSProperties}
               >
-                <ProductImage product={product} />
-                <span className="map-node-text">
-                  <span className="map-need">{slot.need}</span>
-                  <strong>{product.title}</strong>
-                  <span className="map-price">{formatCents(product.priceCents)} <small>· {product.store}</small></span>
-                </span>
-              </button>
-              {selectedId === slot.id ? (
-                <div className="map-actions" aria-label={`Actions for ${slot.need}`}>
-                  <button type="button" aria-pressed={liked.includes(slot.id)} onClick={() => setLiked((current) => toggle(current, slot.id))}>
-                    <Heart filled={liked.includes(slot.id)} />{liked.includes(slot.id) ? "Liked" : "Like"}
-                  </button>
-                  <button type="button" onClick={() => { setReplaceId(slot.id); setSelectedId(slot.id); }}><ReplaceIcon />Replace</button>
-                  <button type="button" onClick={() => remove(slot)}><TrashIcon />Delete</button>
-                  <a href={product.url} target="_blank" rel="noreferrer"><ExternalIcon />Visit site</a>
-                  <button type="button" aria-pressed={favorites.includes(slot.id)} onClick={() => setFavorites((current) => toggle(current, slot.id))}>
-                    <Star filled={favorites.includes(slot.id)} />{favorites.includes(slot.id) ? "Saved" : "Favorite"}
-                  </button>
+                <button
+                  type="button"
+                  className="leaf-main"
+                  aria-pressed={selected}
+                  aria-label={`${leaf.slot.need}: ${leaf.product ? `${leaf.product.title}, ${formatCents(leaf.product.priceCents)} at ${leaf.product.store}` : owned ? "already owned" : "no pick yet"}. Show actions.`}
+                  onClick={() => setSelectedId(selected ? null : leaf.slot.id)}
+                >
+                  <ProductImage product={leaf.product} need={leaf.slot.need} className="leaf-image" />
+                  <span className="leaf-text">
+                    <span className="leaf-need">
+                      {leaf.slot.need}
+                      {leaf.slot.payType === "per_person" ? ` · ${people}×` : leaf.slot.quantity > 1 ? ` · ${leaf.slot.quantity}×` : ""}
+                    </span>
+                    <strong>{owned ? "You already own this" : (leaf.product?.title ?? "No match yet")}</strong>
+                    {owned ? (
+                      <span className="leaf-meta"><CircleCheck aria-hidden="true" /> Free · not bought</span>
+                    ) : leaf.product ? (
+                      <span className="leaf-meta"><b>{formatCents(leaf.product.priceCents)}</b> {leaf.product.store}</span>
+                    ) : (
+                      <span className="leaf-meta">Open alternatives to pick one</span>
+                    )}
+                  </span>
+                  {isLoved ? <Heart className="leaf-badge" aria-label="Loved" fill="currentColor" /> : null}
+                </button>
+                {leaf.issues.length ? (
+                  <p className={`leaf-issue ${leaf.issues.some((rule) => rule.status === "broken") ? "broken" : "warning"}`}>
+                    <AlertTriangle aria-hidden="true" /> {leaf.issues[0].message || "Check this item"}
+                  </p>
+                ) : null}
+                {!owned ? (
+                  <div className="leaf-actions" role="group" aria-label={`Actions for ${leaf.slot.need}`}>
+                    <IconAction label={isLoved ? "Loved — keeps it when the set regrows" : "Love it"} pressed={isLoved} onClick={() => toggleLove(leaf.slot)}>
+                      <Heart fill={isLoved ? "currentColor" : "none"} />
+                    </IconAction>
+                    <IconAction label="Not for me" pressed={isPassed} disabled={!editable} onClick={() => pass(leaf.slot)}><ThumbsDown /></IconAction>
+                    <IconAction label="See alternatives" pressed={altFor === leaf.slot.id} disabled={!editable} onClick={() => void openAlternatives(leaf.slot)}><Shuffle /></IconAction>
+                    {leaf.product ? (
+                      <a className="icon-action" href={leaf.product.url} target="_blank" rel="noreferrer" aria-label={`View at ${leaf.product.store}`} title={`View at ${leaf.product.store}`}>
+                        <ExternalLink aria-hidden="true" />
+                      </a>
+                    ) : null}
+                    <IconAction label="Remove from set" disabled={!editable} onClick={() => void remove(leaf.slot)}><Trash2 /></IconAction>
+                  </div>
+                ) : null}
+              </article>
+
+              {altFor === leaf.slot.id ? (
+                <div className="alts" aria-label={`Alternatives for ${leaf.slot.need}`}>
+                  <div className="alts-head">
+                    <span className="orbit-label">Other {leaf.slot.need.toLowerCase()} picks</span>
+                    <button type="button" className="icon-action" aria-label="Close alternatives" onClick={() => setAltFor(null)}><X aria-hidden="true" /></button>
+                  </div>
+                  {loadingAlt === leaf.slot.id ? [0, 1, 2].map((item) => <div key={item} className="alt skeleton" data-node={`alt:${leaf.slot.id}:${item}`} />) : null}
+                  {loadingAlt !== leaf.slot.id && alts.length === 0 ? <p className="alts-empty">No other matches from the stores right now.</p> : null}
+                  {alts.slice(0, 5).map((product, altIndex) => {
+                    const delta = leaf.product ? product.priceCents - leaf.product.priceCents : 0;
+                    return (
+                      <div key={product.id} className="alt" data-node={`alt:${leaf.slot.id}:${altIndex}`} style={{ "--d": `${0.22 + altIndex * 0.07}s` } as CSSProperties}>
+                        <ProductImage product={product} need={leaf.slot.need} className="alt-image" />
+                        <span className="alt-text">
+                          <strong>{product.title}</strong>
+                          <span>
+                            <b>{formatCents(product.priceCents)}</b> {product.store}
+                            {delta !== 0 ? <em className={delta < 0 ? "cheaper" : ""}>{delta < 0 ? "−" : "+"}{formatCents(Math.abs(delta))}</em> : null}
+                          </span>
+                        </span>
+                        <button type="button" className="alt-use" disabled={busySlot === leaf.slot.id} onClick={() => void choose(leaf.slot, product)} aria-label={`Use ${product.title}`}>
+                          <Check aria-hidden="true" /> Use
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
-            </article>
-          ))}
-          {picks.length === 0 ? <p className="map-empty">Your plan is empty. Go back to the chat to add a few things.</p> : null}
-          <div className="map-map-hint">SELECT A NODE TO LIKE, REPLACE, OR SAVE AN ITEM</div>
-        </div>
-      </section>
-      {replacing ? (
-        <section className="map-replace-panel" aria-label={`Other ${replacing.slot.need} options`}>
-          <div className="map-replace-heading">
-            <div><span className="map-eyebrow">MORE OPTIONS</span><h2>Replace {replacing.slot.need}</h2></div>
-            <button type="button" onClick={() => setReplaceId(null)} aria-label="Close replacement options">×</button>
+            </div>
+          );
+        }}
+      />
+
+      <section className={`refine-dock${refining ? " is-busy" : ""}`} aria-label="Refine the set">
+        {reply || refining || fault ? (
+          <div className={`refine-reply${fault ? " is-fault" : ""}`} role={fault ? "alert" : "status"}>
+            <JarvisMark size={26} live={refining} />
+            <p>{fault || (refining ? "Regrowing your set with that in mind…" : reply)}</p>
+            {!refining ? <button type="button" className="icon-action" aria-label="Dismiss" onClick={() => { setReply(""); setFault(""); }}><X aria-hidden="true" /></button> : null}
           </div>
-          {loadingOptions ? <p className="map-option-status">Finding alternatives…</p> : null}
-          {!loadingOptions && options.length === 0 ? <p className="map-option-status">No alternatives found yet.</p> : null}
-          <div className="map-option-list">
-            {options.filter((product) => product.id !== replacing.product.id).map((product) => (
-              <button key={product.id} type="button" className="map-option" onClick={() => swap(replacing.slot, product)}>
-                <ProductImage product={product} />
-                <span><strong>{product.title}</strong><small>{product.store} · {formatCents(product.priceCents)}</small></span>
-                <span className="map-option-arrow" aria-hidden="true">→</span>
+        ) : null}
+        {editable ? (
+          <>
+            <div className="refine-chips" role="group" aria-label="Suggestions">
+              {suggestions.map((suggestion) => (
+                <button key={suggestion} type="button" className="chip" disabled={refining} onClick={() => (suggestion.startsWith("Add something") ? setDraft("Add ") : void refine(suggestion.startsWith("Replace the") ? "" : suggestion))}>
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+            <form className="refine-bar" onSubmit={(event) => { event.preventDefault(); void refine(draft); }}>
+              <label className="sr-only" htmlFor="refine-input">Tell Setly what to change</label>
+              <input id="refine-input" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Tell Setly what to change — “add a TV”, “no rug”, “under $900”…" disabled={refining} autoComplete="off" />
+              <button type="submit" className="icon-btn send-btn" aria-label="Regrow the set" disabled={refining || (!draft.trim() && passedCount === 0)}>
+                <ArrowUp aria-hidden="true" />
               </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      {fault ? <p className="map-fault" role="alert">{fault}</p> : null}
+            </form>
+          </>
+        ) : (
+          <p className="refine-locked">The set is locked while the group pays. <Link href={`/g/${groupId}/checkout`}>Go to checkout →</Link></p>
+        )}
+      </section>
     </div>
   );
 }
 
-function productFor(map: MapData, slot: Slot) {
-  return map.products.find((product) => product.id === slot.chosenProductId) ?? map.products.find((product) => product.slotId === slot.id);
-}
+/** Lays out root → zones → leaves (→ alternatives) and draws measured, animated branches between them. */
+function TreeCanvas({
+  branches,
+  altFor,
+  altCount,
+  root,
+  renderZone,
+  renderLeaf,
+  className,
+}: {
+  branches: Branch[];
+  altFor: string | null;
+  altCount: number;
+  root: ReactNode;
+  renderZone: (branch: Branch) => ReactNode;
+  renderLeaf: (branch: Branch, leaf: Leaf, leafIndex: number) => ReactNode;
+  className: string;
+}) {
+  const canvas = useRef<HTMLDivElement>(null);
+  const [paths, setPaths] = useState<DrawnEdge[]>([]);
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
-function positionPicks(items: Array<{ slot: Slot; product: Product }>): PositionedPick[] {
-  return items.map((item, index) => {
-    const angle = -Math.PI / 2 + (2 * Math.PI * index) / Math.max(items.length, 1);
-    return { ...item, x: 50 + Math.cos(angle) * 34, y: 50 + Math.sin(angle) * 34 };
-  });
-}
+  const edges = useMemo<Edge[]>(() => {
+    const list: Edge[] = [];
+    for (const branch of branches) {
+      list.push({ id: `t:${branch.zone.id}`, from: "root", to: `zone:${branch.zone.id}`, delay: zoneDelay(branch.index), kind: "trunk" });
+      branch.leaves.forEach((leaf, leafIndex) => {
+        list.push({ id: `b:${leaf.slot.id}`, from: `zone:${branch.zone.id}`, to: leaf.slot.id, delay: leafDelay(branch.index, leafIndex), kind: "branch" });
+      });
+    }
+    if (altFor) {
+      for (let index = 0; index < Math.max(altCount, 3); index += 1) {
+        list.push({ id: `a:${altFor}:${index}`, from: altFor, to: `alt:${altFor}:${index}`, delay: index * 0.07, kind: "alt" });
+      }
+    }
+    return list;
+  }, [branches, altFor, altCount]);
 
-function toggle(values: string[], id: string) {
-  return values.includes(id) ? values.filter((value) => value !== id) : [...values, id];
-}
+  const measure = useCallback(() => {
+    const host = canvas.current;
+    if (!host) return;
+    const box = host.getBoundingClientRect();
+    // Wide screens: zones spread in a row under the root. Narrow screens: everything stacks, indented by level.
+    const stacked = window.matchMedia("(max-width: 900px)").matches;
+    const rect = (id: string) => {
+      const node = host.querySelector<HTMLElement>(`[data-node="${CSS.escape(id)}"]`);
+      if (!node) return null;
+      const r = node.getBoundingClientRect();
+      const left = r.left - box.left + host.scrollLeft;
+      const top = r.top - box.top + host.scrollTop;
+      return { left, top, bottom: top + r.height, cx: left + r.width / 2, cy: top + r.height / 2 };
+    };
+    const drawn: DrawnEdge[] = [];
+    for (const edge of edges) {
+      const a = rect(edge.from);
+      const b = rect(edge.to);
+      if (!a || !b) continue;
+      let d: string;
+      if (edge.kind === "trunk" && !stacked) {
+        // Root to zone: a smooth S-curve down from the root's base to the top of each zone.
+        const dy = Math.max(18, (b.top - a.bottom) / 2);
+        d = `M${a.cx} ${a.bottom} C${a.cx} ${a.bottom + dy} ${b.cx} ${b.top - dy} ${b.cx} ${b.top}`;
+      } else {
+        // Parent to child: down the parent's left spine, then a rounded elbow into the child.
+        const x1 = a.left + 22;
+        const y1 = a.bottom;
+        const x2 = b.left;
+        const y2 = b.cy;
+        const r = Math.max(0, Math.min(14, x2 - x1, y2 - y1));
+        d = `M${x1} ${y1} V${y2 - r} Q${x1} ${y2} ${x1 + r} ${y2} H${x2}`;
+      }
+      drawn.push({ ...edge, d });
+    }
+    setPaths(drawn);
+    setSize({ width: host.scrollWidth, height: host.scrollHeight });
+  }, [edges]);
 
-function ProductImage({ product }: { product: Product }) {
-  const [broken, setBroken] = useState(false);
-  const src = typeof product.imageUrl === "string" && product.imageUrl.startsWith("http") ? product.imageUrl : "";
-  return src && !broken
-    ? <img className="map-image" src={src} alt="" onError={() => setBroken(true)} />
-    : <span className="map-image-fallback" aria-hidden="true">{product.title.slice(0, 1)}</span>;
-}
+  useLayoutEffect(() => {
+    measure();
+    const host = canvas.current;
+    if (!host) return;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(host);
+    host.querySelectorAll("[data-node]").forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [measure]);
 
-function Heart({ filled }: { filled: boolean }) {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17s-6.5-3.9-6.5-8.2A3.7 3.7 0 0 1 10 6.7a3.7 3.7 0 0 1 6.5 2.1C16.5 13.1 10 17 10 17Z" fill={filled ? "currentColor" : "none"} /></svg>;
-}
+  useEffect(() => {
+    if (!altFor) return;
+    const node = canvas.current?.querySelector<HTMLElement>(`[data-node="${CSS.escape(`alt:${altFor}:0`)}"]`);
+    node?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [altFor, altCount]);
 
-function Star({ filled }: { filled: boolean }) {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 2 2.4 5 5.5.8-4 3.9.9 5.5-4.8-2.6-4.8 2.6.9-5.5-4-3.9 5.5-.8L10 2Z" fill={filled ? "currentColor" : "none"} /></svg>;
-}
-
-function ReplaceIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12l-2.5-2.5M16 14H4l2.5 2.5" /></svg>;
-}
-
-function TrashIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 6V4h4v2m3 0-.7 10H5.7L5 6m3 3v4m4-4v4" /></svg>;
-}
-
-function ExternalIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11 4h5v5m0-5-7 7" /><path d="M14 11v4H5V6h4" /></svg>;
-}
-
-function Shot({ product }: { product: Product }) {
   return (
-    <div className="shot">
-      <ProductImage product={product} />
-      <span className="shot-meta"><strong>{product.title}</strong><em>{formatCents(product.priceCents)}</em></span>
+    <section className={`tree-wrap ${className}`} aria-label="Your set as a tree">
+      <div className="tree" ref={canvas}>
+        <svg className="tree-links" width={size.width} height={size.height} aria-hidden="true">
+          {paths.map((edge) => (
+            <path key={edge.id} d={edge.d} pathLength={1} className={`link ${edge.kind}`} style={{ "--d": `${edge.delay}s` } as CSSProperties} />
+          ))}
+        </svg>
+        {root}
+        <div className="tree-branches">
+          {branches.map((branch) => (
+            <div className="branch-row" key={branch.zone.id}>
+              {renderZone(branch)}
+              <div className="leaves">{branch.leaves.map((leaf, leafIndex) => renderLeaf(branch, leaf, leafIndex))}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IconAction({ label, pressed, disabled, onClick, children }: { label: string; pressed?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" className="icon-action" aria-label={label} title={label} aria-pressed={pressed} disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+function BudgetMeter({ total, budget }: { total: number; budget: number }) {
+  const ratio = budget > 0 ? total / budget : 0;
+  const state = ratio > 1 ? "over" : ratio >= 0.95 ? "near" : "ok";
+  const label = state === "over" ? `${formatCents(total - budget)} over budget` : `${formatCents(budget - total)} under budget`;
+  return (
+    <span className={`budget-meter ${state}`}>
+      <span className="budget-track" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.round(ratio * 100))}%` }} /></span>
+      <small>{state === "over" ? <AlertTriangle aria-hidden="true" /> : <CircleCheck aria-hidden="true" />} {label}</small>
+    </span>
+  );
+}
+
+const SKELETON_ZONES = [3, 4, 3];
+
+/** Placeholder tree while the set grows: real branch animation, shimmering rooms and leaves. */
+function SkeletonTree({ label, title }: { label: string; title?: string }) {
+  const now = new Date(0).toISOString();
+  let count = 0;
+  const branches: Branch[] = SKELETON_ZONES.map((leaves, zoneIndex) => ({
+    index: zoneIndex,
+    zone: { id: `sk${zoneIndex}`, groupId: "", name: "", sortOrder: zoneIndex },
+    leaves: Array.from({ length: leaves }, (_, leafIndex) => ({
+      index: count++,
+      product: null,
+      issues: [],
+      slot: { id: `sk${zoneIndex}-${leafIndex}`, zoneId: `sk${zoneIndex}`, need: "", quantityRule: "per_group", quantity: 1, budgetCents: 0, payType: "shared", ownerMemberId: null, chosenProductId: null, updatedBy: null, updatedAt: now },
+    })),
+  }));
+  return (
+    <div className="set-page skeleton-set" role="status" aria-live="polite">
+      <header className="set-head">
+        <div className="set-title">
+          <span className="orbit-label">Your set</span>
+          <h1>{title ?? <span className="sk-line wide" />}</h1>
+          <p className="skeleton-label">{label}</p>
+        </div>
+      </header>
+      <TreeCanvas
+        branches={branches}
+        altFor={null}
+        altCount={0}
+        className=""
+        root={
+          <div className="tree-root" data-node="root">
+            <JarvisMark size={40} live />
+            <span className="orbit-label">Growing</span>
+            <strong><span className="sk-line dark" /></strong>
+            <small>Searching real stores</small>
+          </div>
+        }
+        renderZone={(branch) => (
+          <div className="zone-node sk" data-node={`zone:${branch.zone.id}`} style={{ "--d": `${zoneDelay(branch.index) + 0.3}s` } as CSSProperties}>
+            <span className="sk-line" /><span className="sk-line short" />
+          </div>
+        )}
+        renderLeaf={(branch, leaf, leafIndex) => (
+          <div className="leaf-row" key={leaf.slot.id}>
+            <article data-node={leaf.slot.id} className="leaf sk" style={{ "--d": `${leafDelay(branch.index, leafIndex) + 0.3}s` } as CSSProperties}>
+              <div className="leaf-main">
+                <span className="product-image leaf-image sk-block" />
+                <span className="leaf-text"><span className="sk-line short" /><span className="sk-line" /><span className="sk-line short" /></span>
+              </div>
+            </article>
+          </div>
+        )}
+      />
     </div>
   );
+}
+
+function key(need: string) {
+  return need.trim().toLowerCase().replace(/\s+/g, " ");
 }

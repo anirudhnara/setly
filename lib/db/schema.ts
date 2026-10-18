@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, unique } from "drizzle-orm/pg-core";
 import type { GroupStatus, MemberShare, PayType, QuantityRule, RuleStatus, RuleType } from "@/lib/types";
 
 export const groups = pgTable("groups", {
@@ -12,13 +12,30 @@ export const groups = pgTable("groups", {
   sharesJson: jsonb("shares_json").$type<MemberShare[]>().notNull().default(sql`'[]'::jsonb`),
 });
 
-export const members = pgTable("members", {
-  id: text("id").primaryKey(),
-  groupId: text("group_id").notNull().references(() => groups.id),
-  name: text("name").notNull(),
-  isOrganizer: boolean("is_organizer").notNull(),
-  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
+    firebaseUid: text("firebase_uid").notNull(),
+    email: text("email").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [unique("users_firebase_uid").on(table.firebaseUid)],
+);
+
+export const members = pgTable(
+  "members",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id").notNull().references(() => groups.id),
+    userId: text("user_id").notNull().references(() => users.id),
+    name: text("name").notNull(),
+    isOrganizer: boolean("is_organizer").notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [unique("members_group_user").on(table.groupId, table.userId)],
+);
 
 export const zones = pgTable("zones", {
   id: text("id").primaryKey(),

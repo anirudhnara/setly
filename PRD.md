@@ -148,7 +148,7 @@ The map is the centerpiece. It should feel physical and fast.
 - Spring physics polish beyond the basics.
 
 ### Cut
-Voice input, room photo uploads, AI room renders, creator sets, resale, item-level enforcement at the card network, real merchant checkout, accounts and login.
+Voice input, room photo uploads, AI room renders, creator sets, resale, item-level enforcement at the card network, real merchant checkout.
 
 ---
 

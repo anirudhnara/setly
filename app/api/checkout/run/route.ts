@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth/session";
 import { demoCheckoutRequestSchema, readRequest, type ApiErrorBody, type DemoCheckoutResponse } from "@/lib/contracts";
 import { jsonError } from "@/lib/db/http";
-import { getGroupState } from "@/lib/db/queries";
+import { getGroupState, requireMember } from "@/lib/db/queries";
 import { getIssuer } from "@/lib/payments";
 
 export async function POST(request: Request) {
-  const parsed = await readRequest(request, demoCheckoutRequestSchema);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
-  }
   try {
+    const user = await requireUser(request);
+    const parsed = await readRequest(request, demoCheckoutRequestSchema);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() } satisfies ApiErrorBody, { status: 400 });
+    }
+    await requireMember(parsed.data.groupId, user.id);
     const result = await getIssuer().runDemoCheckout(parsed.data.groupId);
     const state = await getGroupState(parsed.data.groupId);
     const body: DemoCheckoutResponse = {

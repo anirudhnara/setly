@@ -55,6 +55,32 @@ export function readYou() {
   return read("setly.you");
 }
 
+/** What this viewer has taught Setly about the set: loved and passed-on needs, and feedback said so far. */
+export interface Taste {
+  loved: string[];
+  passed: string[];
+  history: string[];
+}
+
+export function readTaste(groupId: string): Taste {
+  const empty: Taste = { loved: [], passed: [], history: [] };
+  const raw = read(`setly.taste.${groupId}`);
+  if (!raw) return empty;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (typeof value !== "object" || value === null) return empty;
+    const taste = value as Partial<Record<keyof Taste, unknown>>;
+    const strings = (list: unknown) => (Array.isArray(list) ? list.filter((item): item is string => typeof item === "string") : []);
+    return { loved: strings(taste.loved), passed: strings(taste.passed), history: strings(taste.history).slice(-20) };
+  } catch {
+    return empty;
+  }
+}
+
+export function stageTaste(groupId: string, taste: Taste) {
+  write(`setly.taste.${groupId}`, JSON.stringify(taste));
+}
+
 function isMap(value: unknown): value is MapData {
   if (typeof value !== "object" || value === null) return false;
   const map = value as Partial<MapData>;

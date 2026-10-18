@@ -27,22 +27,28 @@ describe("ledger", () => {
   });
 
   it("funds a plan, checks the card, and refunds to the cent", async () => {
-    const created = await createGroup({ name: "Room", prompt: "lamp", budgetCents: 1000 });
-    const first = await joinGroup(created.group.id, "A");
-    const second = await joinGroup(created.group.id, "B");
-    const third = await joinGroup(created.group.id, "C");
-    const members = [first.member, second.member, third.member];
+    const userA = { id: "usr_a", name: "A" };
+    const created = await createGroup({ name: "Room", prompt: "lamp", budgetCents: 1000 }, userA);
+    const organizer = created.members[0];
+    if (!organizer) throw new Error("Organizer missing");
+    const second = await joinGroup(created.group.id, { id: "usr_b", name: "B" });
+    const third = await joinGroup(created.group.id, { id: "usr_c", name: "C" });
+    const rejoined = await joinGroup(created.group.id, { id: "usr_b", name: "B" });
+    expect(rejoined.member.id).toBe(second.member.id);
+    expect(second.member.isOrganizer).toBe(false);
+    const members = [organizer, second.member, third.member];
     await saveMap(created.group.id, lampMap(created.group.id));
-    const locked = await lockGroup(created.group.id, first.member.id);
+    await expect(lockGroup(created.group.id, "usr_b")).rejects.toMatchObject({ status: 403 });
+    const locked = await lockGroup(created.group.id, userA.id);
     expect(locked.group.status).toBe("funding");
     expect(locked.shares.reduce((sum, share) => sum + share.totalCents, 0)).toBe(100);
     expect(locked.card).toBeNull();
 
-    const firstShare = locked.shares.find((share) => share.memberId === first.member.id);
+    const firstShare = locked.shares.find((share) => share.memberId === organizer.id);
     await expect(updateSlot("lamp", { need: "Lamp shade" })).rejects.toBeInstanceOf(LedgerError);
     await expect(recordContribution({
       groupId: created.group.id,
-      memberId: first.member.id,
+      memberId: organizer.id,
       amountCents: (firstShare?.totalCents ?? 0) + 1,
       status: "paid",
       stripePaymentIntentId: null,
@@ -65,14 +71,14 @@ describe("ledger", () => {
 
     const again = await recordContribution({
       groupId: created.group.id,
-      memberId: first.member.id,
+      memberId: organizer.id,
       amountCents: firstShare?.totalCents ?? 0,
       status: "paid",
       stripePaymentIntentId: null,
     });
     expect(again.created).toBe(false);
     const afterAgain = await getGroupState(created.group.id);
-    expect(afterAgain?.contributions.filter((contribution) => contribution.memberId === first.member.id)).toHaveLength(1);
+    expect(afterAgain?.contributions.filter((contribution) => contribution.memberId === organizer.id)).toHaveLength(1);
 
     const checkout = await runCheckout(created.group.id);
     expect(checkout.authorizations.map((authorization) => authorization.approved)).toEqual([true, false]);

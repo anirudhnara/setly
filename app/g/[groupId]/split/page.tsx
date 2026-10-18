@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Split — Setly" };
 
 export default function SplitPage({ params }: { params: Promise<{ groupId: string }> }) {
   return (
-    <Shell>
+    <Shell wide>
       <GroupSlot params={params}>{(groupId) => <SplitView groupId={groupId} />}</GroupSlot>
     </Shell>
   );

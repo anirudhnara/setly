@@ -1,13 +1,16 @@
 import { nanoid } from "nanoid";
 import { getLedgerStore, memoryLedger, useMemoryLedgerForTests } from "@/lib/db/memory-store";
 import { LedgerError } from "@/lib/db/store";
+import { resetUsersForTests } from "@/lib/db/users";
 import { loadGroupState } from "@/lib/fixtures/sample";
 import { computeRefunds } from "@/lib/money/refunds";
 import { computeShares } from "@/lib/money/shares";
 import { decideAuthorization } from "@/lib/payments/decide";
 import type { DemoCheckoutResult, StoreLimitInput } from "@/lib/payments/issuer";
 import { storeLimitInputs } from "@/lib/payments/limits";
-import type { Authorization, Contribution, GroupState, MapData, Member, Refund, Slot } from "@/lib/types";
+import type { Authorization, Contribution, GroupState, MapData, Member, Refund, Slot, User } from "@/lib/types";
+
+type Actor = Pick<User, "id" | "name">;
 
 export { LedgerError, useMemoryLedgerForTests };
 
@@ -27,18 +30,28 @@ export async function saveMap(groupId: string, map: MapData) {
   return state;
 }
 
-export async function createGroup(input: { name: string; prompt: string; budgetCents: number }) {
+export async function createGroup(input: { name: string; prompt: string; budgetCents: number }, user: Actor) {
   const now = new Date().toISOString();
+  const groupId = `grp_${nanoid(8)}`;
   const state: GroupState = {
     group: {
-      id: `grp_${nanoid(8)}`,
+      id: groupId,
       name: input.name,
       prompt: input.prompt,
       budgetCents: input.budgetCents,
       status: "editing",
       createdAt: now,
     },
-    members: [],
+    members: [
+      {
+        id: `mem_${nanoid(8)}`,
+        groupId,
+        userId: user.id,
+        name: user.name,
+        isOrganizer: true,
+        joinedAt: now,
+      },
+    ],
     map: { zones: [], slots: [], products: [], links: [], rules: [] },
     shares: [],
     contributions: [],
@@ -53,13 +66,23 @@ export async function createGroup(input: { name: string; prompt: string; budgetC
   return state;
 }
 
-export async function joinGroup(groupId: string, name: string) {
+export async function joinGroup(groupId: string, user: Actor, displayName?: string) {
   const state = await requireGroup(groupId);
+  const trimmed = displayName?.trim();
+  const existing = state.members.find((member) => member.userId === user.id);
+  if (existing) {
+    if (trimmed && existing.name !== trimmed) {
+      existing.name = trimmed;
+      await save(state);
+    }
+    return { member: existing, state };
+  }
   requireEditing(state);
   const member: Member = {
     id: `mem_${nanoid(8)}`,
     groupId,
-    name,
+    userId: user.id,
+    name: trimmed ? trimmed : user.name,
     isOrganizer: state.members.length === 0,
     joinedAt: new Date().toISOString(),
   };
@@ -69,10 +92,12 @@ export async function joinGroup(groupId: string, name: string) {
   return { member, state };
 }
 
-export async function lockGroup(groupId: string, memberId: string) {
+export async function lockGroup(groupId: string, userId: string) {
   const state = await requireGroup(groupId);
   if (state.group.status !== "editing") throw new LedgerError("Map is already locked", 409);
-  if (!state.members.some((member) => member.id === memberId)) throw new LedgerError("Member not found", 404);
+  const member = state.members.find((item) => item.userId === userId);
+  if (!member) throw new LedgerError("You are not in this group", 403);
+  if (!member.isOrganizer) throw new LedgerError("Only the organizer can lock the map", 403);
   state.shares = computeShares(state.map, state.members);
   state.group.status = "funding";
   refreshTotals(state);
@@ -325,7 +350,35 @@ async function save(state: GroupState) {
   await (await getLedgerStore()).put(state);
 }
 
+export async function listGroupsForUser(userId: string) {
+  return (await getLedgerStore()).listForUser(userId);
+}
+
+export async function requireMember(groupId: string, userId: string) {
+  const state = await requireGroup(groupId);
+  const member = state.members.find((item) => item.userId === userId);
+  if (!member) throw new LedgerError("You are not in this group", 403);
+  return { state, member };
+}
+
+export async function requireZoneMember(zoneId: string, userId: string) {
+  const state = await (await getLedgerStore()).findByZoneId(zoneId);
+  if (!state) throw new LedgerError("Zone not found", 404);
+  const member = state.members.find((item) => item.userId === userId);
+  if (!member) throw new LedgerError("You are not in this group", 403);
+  return { state, member };
+}
+
+export async function requireSlotMember(slotId: string, userId: string) {
+  const state = await (await getLedgerStore()).findBySlotId(slotId);
+  if (!state) throw new LedgerError("Slot not found", 404);
+  const member = state.members.find((item) => item.userId === userId);
+  if (!member) throw new LedgerError("You are not in this group", 403);
+  return { state, member };
+}
+
 export function resetLedgerForTests() {
   useMemoryLedgerForTests();
   memoryLedger.reset(true);
+  resetUsersForTests();
 }

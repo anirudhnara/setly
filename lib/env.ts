@@ -53,3 +53,41 @@ export function getEnv(): Env {
 export function mockAiEnabled() {
   return (process.env.MOCK_AI ?? "1") !== "0";
 }
+
+const firebaseWebConfigSchema = z.object({
+  apiKey: z.string().min(1),
+  authDomain: z.string().min(1),
+  projectId: z.string().min(1),
+  appId: z.string().min(1),
+});
+
+export type FirebaseWebConfig = z.infer<typeof firebaseWebConfigSchema>;
+
+/** Public web config for Firebase Auth. Required when the sign-in screen initializes. */
+export function getFirebaseWebConfig(): FirebaseWebConfig {
+  return firebaseWebConfigSchema.parse({
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  });
+}
+
+const firebaseAdminCredentialsSchema = z.object({
+  projectId: z.string().min(1),
+  clientEmail: z.string().min(1),
+  privateKey: z.string().min(1),
+});
+
+export type FirebaseAdminCredentials = z.infer<typeof firebaseAdminCredentialsSchema>;
+
+/** Service account fields for verifying ID tokens. Null when any field is missing so callers can fail closed. */
+export function getFirebaseAdminCredentials(): FirebaseAdminCredentials | null {
+  const privateKey = present(process.env.FIREBASE_PRIVATE_KEY)?.replace(/\\n/g, "\n");
+  const parsed = firebaseAdminCredentialsSchema.safeParse({
+    projectId: present(process.env.FIREBASE_PROJECT_ID),
+    clientEmail: present(process.env.FIREBASE_CLIENT_EMAIL),
+    privateKey,
+  });
+  return parsed.success ? parsed.data : null;
+}

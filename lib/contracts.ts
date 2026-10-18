@@ -3,6 +3,7 @@ import type {
   Authorization,
   Card,
   Contribution,
+  Group,
   GroupState,
   MapData,
   Member,
@@ -11,6 +12,7 @@ import type {
   Refund,
   Slot,
   StoreLimit,
+  User,
 } from "@/lib/types";
 
 export const quantityRuleSchema = z.enum(["per_group", "per_person", "fixed"]);
@@ -26,15 +28,16 @@ export type CreateGroupResponse = GroupState;
 
 export type GetGroupResponse = GroupState;
 
+export type CurrentUserResponse = { user: User };
+export type MyGroupsResponse = { groups: Group[] };
+
 export const joinGroupRequestSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).optional(),
 });
 export type JoinGroupRequest = z.infer<typeof joinGroupRequestSchema>;
 export type JoinGroupResponse = { member: Member; state: GroupState };
 
-export const lockGroupRequestSchema = z.object({
-  memberId: z.string().min(1),
-});
+export const lockGroupRequestSchema = z.object({});
 export type LockGroupRequest = z.infer<typeof lockGroupRequestSchema>;
 export type LockGroupResponse = { shares: MemberShare[]; state: GroupState };
 
@@ -72,7 +75,6 @@ export const updateSlotRequestSchema = z.object({
   payType: payTypeSchema.optional(),
   ownerMemberId: z.string().min(1).nullable().optional(),
   chosenProductId: z.string().min(1).nullable().optional(),
-  updatedBy: z.string().min(1).nullable().optional(),
 });
 export type UpdateSlotRequest = z.infer<typeof updateSlotRequestSchema>;
 export type UpdateSlotResponse = { slot: Slot };
@@ -82,7 +84,6 @@ export type SlotOptionsResponse = { products: Product[] };
 
 export const payRequestSchema = z.object({
   groupId: z.string().min(1),
-  memberId: z.string().min(1),
   amountCents: z.number().int().positive(),
 });
 export type PayRequest = z.infer<typeof payRequestSchema>;

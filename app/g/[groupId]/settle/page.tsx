@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Settle — Setly" };
 
 export default function SettlePage({ params }: { params: Promise<{ groupId: string }> }) {
   return (
-    <Shell>
+    <Shell wide>
       <GroupSlot params={params}>{(groupId) => <SettleView groupId={groupId} />}</GroupSlot>
     </Shell>
   );

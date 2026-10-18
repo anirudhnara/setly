@@ -141,9 +141,10 @@ export function noteBrief(brief: Brief, text: string): Brief {
 export function absorbFreeform(brief: Brief, text: string): Brief {
   const next: Brief = { ...brief, asked: [...brief.asked] };
   if (!next.scene && sceneOk(text)) next.scene = text.trim();
-  const people = parseLooseCount(text);
+  // Free text only counts numbers that say what they are ("4 roommates", "$1,200"); a bare "4" is answered by step.
+  const people = parseMemberCount(text);
   if (people && !next.people) next.people = people;
-  const budget = parseLooseBudget(text);
+  const budget = parseBudgetCents(text);
   if (budget && !next.budgetCents) next.budgetCents = budget;
   const door = parseLooseDoor(text);
   if (door && next.doorIn == null) {
@@ -169,7 +170,7 @@ export function absorbFreeform(brief: Brief, text: string): Brief {
 export function composePrompt(brief: Brief): string {
   const lines = [
     brief.scene.replace(/\s+/g, " ").trim(),
-    `${brief.people} roommates.`,
+    `${brief.people} ${/\b(trip|camp|hike|travel|vacation|festival|party|wedding|team|office)\b/i.test(brief.scene) ? "people" : "roommates"}.`,
     `Budget $${Math.round((brief.budgetCents ?? 0) / 100)}.`,
     `Style: ${brief.vibe}.`,
   ];
@@ -221,11 +222,9 @@ export function parseLooseCount(text: string): number | null {
 export function parseLooseBudget(text: string): number | null {
   const direct = parseBudgetCents(text);
   if (direct) return direct;
-  if (!text.includes("$")) {
-    const withDollar = parseBudgetCents(`$${text}`);
-    if (withDollar) return withDollar;
-  }
-  return parseBudgetCents(`budget ${text}`);
+  // "1200", "1.5k", "around 900": a number on its own is dollars when the question was the budget.
+  const bare = text.trim().match(/^(?:about|around|under|max|maybe|roughly|~)?\s*(\d[\d,]*(?:\.\d{1,2})?\s*k?)\s*(?:total|all in|tops)?[.!]?$/i);
+  return bare ? parseBudgetCents(`$${bare[1].replace(/\s+/g, "")}`) : null;
 }
 
 export function parseLooseDoor(text: string): number | null {
@@ -238,4 +237,90 @@ export function parseLooseDoor(text: string): number | null {
 
 function withStep(asked: Step[], step: Step): Step[] {
   return asked.includes(step) ? asked : [...asked, step];
+}
+
+/** The three things a set can't be built without. */
+export function essentials(brief: Brief) {
+  return { scene: sceneOk(brief.scene), people: Boolean(brief.people), budget: Boolean(brief.budgetCents) };
+}
+
+export function canBuild(brief: Brief) {
+  const known = essentials(brief);
+  return known.scene && known.people && known.budget;
+}
+
+/** Which essential to ask about next, scripted wording included, or null when all three are known. */
+export function missingEssential(brief: Brief): "scene" | "people" | "budget" | null {
+  const known = essentials(brief);
+  if (!known.scene) return "scene";
+  if (!known.people) return "people";
+  if (!known.budget) return "budget";
+  return null;
+}
+
+/**
+ * Reads one chat answer. A bare number is matched to the question it answers ("How many?" → people,
+ * "Budget?" → dollars); anything else goes through the free-text reader.
+ */
+export function absorbAnswer(brief: Brief, text: string, lastQuestion: string): Brief {
+  const clean = text.trim();
+  const next = absorbFreeform(brief, clean);
+  if (!next.scene && !brief.scene && sceneOk(clean) && !/^\$?\d/.test(clean)) next.scene = clean;
+  const bare = /^(?:about|around|under|maybe|~)?\s*\$?\s*\d[\d,.]*\s*k?\s*(?:people|of us|total)?[.!]?$/i.test(clean) || /^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)$/i.test(clean);
+  if (!bare) return next;
+  const asksBudget = /budget|spend|cost|\$|afford|ceiling|money/i.test(lastQuestion);
+  const asksPeople = /how many|people|who|group|headcount|size/i.test(lastQuestion);
+  if (asksBudget || clean.includes("$") || /k$/i.test(clean)) {
+    const budget = parseLooseBudget(clean);
+    if (budget) next.budgetCents = budget;
+  } else if (asksPeople || !next.people) {
+    const people = parseLooseCount(clean);
+    if (people) next.people = people;
+  }
+  return next;
+}
+
+/** Facts from the model fill gaps only; numbers code already parsed are never overwritten. Budget never comes from here. */
+export interface ModelFacts {
+  scene?: string;
+  people?: number;
+  style?: string;
+  mustHaves?: string[];
+  owned?: string[];
+  doorWidthIn?: number;
+  timing?: string;
+  notes?: string;
+}
+
+export function mergeFacts(brief: Brief, facts: ModelFacts): Brief {
+  const next: Brief = { ...brief, asked: [...brief.asked] };
+  if (facts.scene && !sceneOk(next.scene)) next.scene = facts.scene;
+  if (facts.people && !next.people) next.people = facts.people;
+  if (facts.style && !next.vibe) next.vibe = facts.style;
+  if (facts.mustHaves?.length) {
+    next.mustHaves = facts.mustHaves.join(", ");
+    next.asked = withStep(next.asked, "must");
+  }
+  if (facts.owned?.length) {
+    next.owned = facts.owned.join(", ");
+    next.asked = withStep(next.asked, "owned");
+  }
+  if (facts.doorWidthIn && next.doorIn == null && facts.doorWidthIn >= 20 && facts.doorWidthIn <= 60) next.doorIn = facts.doorWidthIn;
+  if (facts.timing && !next.when) next.when = facts.timing;
+  if (facts.notes && !next.notes.includes(facts.notes)) next.notes = facts.notes;
+  return next;
+}
+
+/** What code already knows, sent with each chat turn so the model doesn't ask again. */
+export function knownFacts(brief: Brief): Record<string, string> {
+  const known: Record<string, string> = {};
+  if (sceneOk(brief.scene)) known.scene = brief.scene;
+  if (brief.people) known.people = String(brief.people);
+  if (brief.budgetCents) known.budget = `$${Math.round(brief.budgetCents / 100).toLocaleString("en-US")} total`;
+  if (brief.vibe) known.style = brief.vibe;
+  if (brief.mustHaves) known.mustHaves = brief.mustHaves;
+  if (brief.owned) known.alreadyOwned = brief.owned;
+  if (brief.doorIn) known.doorWidth = `${brief.doorIn} in`;
+  if (brief.when) known.timing = brief.when;
+  return known;
 }

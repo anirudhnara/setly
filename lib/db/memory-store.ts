@@ -1,5 +1,5 @@
 import { loadGroupState } from "@/lib/fixtures/sample";
-import type { GroupState } from "@/lib/types";
+import type { Group, GroupState } from "@/lib/types";
 import type { LedgerStore } from "@/lib/db/store";
 
 class MemoryLedger implements LedgerStore {
@@ -42,6 +42,16 @@ class MemoryLedger implements LedgerStore {
     return this.find((state) => state.map.products.some((product) => product.id === productId));
   }
 
+  async listForUser(userId: string) {
+    this.ensureSeed();
+    const matches: Group[] = [];
+    for (const state of this.groups.values()) {
+      if (state.members.some((member) => member.userId === userId)) matches.push(structuredClone(state.group));
+    }
+    matches.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    return matches;
+  }
+
   private find(predicate: (state: GroupState) => boolean) {
     this.ensureSeed();
     for (const state of this.groups.values()) {
@@ -75,8 +85,12 @@ export function useMemoryLedgerForTests() {
   memoryLedger.reset(true);
 }
 
+export function ledgerUsesMemory() {
+  return forceMemory || !process.env.DATABASE_URL;
+}
+
 export async function getLedgerStore(): Promise<LedgerStore> {
-  if (forceMemory || !process.env.DATABASE_URL) return memoryLedger;
+  if (ledgerUsesMemory()) return memoryLedger;
   const { drizzleLedger } = await import("@/lib/db/drizzle-store");
   return drizzleLedger;
 }

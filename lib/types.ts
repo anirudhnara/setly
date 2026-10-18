@@ -11,9 +11,18 @@ export interface Group {
   createdAt: string;
 }
 
+export interface User {
+  id: string;
+  firebaseUid: string;
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Member {
   id: string;
   groupId: string;
+  userId: string;
   name: string;
   isOrganizer: boolean;
   joinedAt: string;

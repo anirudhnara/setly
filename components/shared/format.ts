@@ -17,3 +17,10 @@ export function statusLabel(status: string) {
   if (status === "not_checked") return "Unchecked";
   return status;
 }
+
+/** Display-only. Whole-dollar amounts drop the cents ("$1,200"), anything else keeps them. */
+export function formatBudget(cents: number) {
+  return cents % 100 === 0
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100)
+    : formatCents(cents);
+}

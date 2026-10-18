@@ -16,7 +16,19 @@ export interface BuildMapInput {
   groupId: string;
   doorWidthIn?: number | null;
   search: (query: string) => Promise<Product[]>;
+  /** Optional re-ranking of each slot's search results (Gemini taste ranking). Unknown ids are ignored. */
+  rank?: (slots: RankSlot[]) => Promise<Map<string, string[]>>;
+  /** Products to keep, by need key: a loved item stays put through a refine. No search is spent on it. */
+  keep?: Map<string, Product>;
+  /** Products to avoid, by need key, as "store|title" keys: an item someone passed on isn't picked again. */
+  avoid?: Map<string, string[]>;
   now?: Date;
+}
+
+export interface RankSlot {
+  slotId: string;
+  need: string;
+  options: Product[];
 }
 
 const makeSuffix = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 8);
@@ -71,15 +83,26 @@ export async function buildMap(input: BuildMapInput): Promise<MapData> {
   });
 
   // Search every slot in parallel. A failed search leaves that slot empty instead of failing the map.
+  const kept = (draft: Draft) => (draft.slot.payType === "already_owned" ? undefined : input.keep?.get(needKey(draft.slot.need)));
   const results = await Promise.allSettled(
-    drafts.map((draft) => (draft.slot.payType === "already_owned" ? Promise.resolve([]) : input.search(draft.generated.searchQuery))),
+    drafts.map((draft) => (draft.slot.payType === "already_owned" || kept(draft) ? Promise.resolve([]) : input.search(draft.generated.searchQuery))),
   );
   results.forEach((result, index) => {
     const draft = drafts[index];
+    const keep = kept(draft);
+    if (keep) {
+      draft.options = [reattach(keep, draft.slot.id)];
+      return;
+    }
     const found = result.status === "fulfilled" ? attachToSlot(result.value, draft.slot.id) : [];
     // The query rides along on the product so the options route can repeat the same cached search after a restart.
-    draft.options = found.map((product) => ({ ...product, attributes: { ...product.attributes, searchQuery: draft.generated.searchQuery } }));
+    const options = found.map((product) => ({ ...product, attributes: { ...product.attributes, searchQuery: draft.generated.searchQuery } }));
+    const avoid = new Set(input.avoid?.get(needKey(draft.slot.need)) ?? []);
+    const allowed = avoid.size ? options.filter((product) => !avoid.has(productKey(product))) : options;
+    draft.options = allowed.length > 0 ? allowed : options;
   });
+
+  if (input.rank) await applyRanking(drafts.filter((draft) => draft.options.length > 1 && !kept(draft)), input.rank);
 
   allocateBudgets(drafts, budgetCents);
   const chosen = new Map<string, Product>();
@@ -202,11 +225,41 @@ function buildRules(
   return rules;
 }
 
+/** Ranked ids first, in the model's order, then everything it left out. Ranking never adds a product. */
+async function applyRanking(drafts: Draft[], rank: NonNullable<BuildMapInput["rank"]>) {
+  if (drafts.length === 0) return;
+  let order: Map<string, string[]>;
+  try {
+    order = await rank(drafts.map((draft) => ({ slotId: draft.slot.id, need: draft.slot.need, options: draft.options })));
+  } catch {
+    return;
+  }
+  for (const draft of drafts) {
+    const ids = order.get(draft.slot.id);
+    if (!ids?.length) continue;
+    const byId = new Map(draft.options.map((product) => [product.id, product]));
+    const ranked = [...new Set(ids)].map((id) => byId.get(id)).filter((product): product is Product => product !== undefined);
+    const rest = draft.options.filter((product) => !ranked.includes(product));
+    draft.options = [...ranked, ...rest];
+  }
+}
+
+/** A product moved to a new slot keeps its source id, so the options route builds the same id for it. */
+function reattach(product: Product, slotId: string): Product {
+  const sourceId = product.slotId && product.id.startsWith(`${product.slotId}_`) ? product.id.slice(product.slotId.length + 1) : product.id;
+  return { ...product, id: `${slotId}_${sourceId}`, slotId };
+}
+
+/** "store|title", the key used to recognise the same product across searches. */
+export function productKey(product: Pick<Product, "store" | "title">) {
+  return `${product.store.toLowerCase()}|${product.title.toLowerCase()}`;
+}
+
 function cheapest(products: Product[]) {
   return products.reduce((best, product) => (product.priceCents < best.priceCents ? product : best));
 }
 
-function needKey(need: string) {
+export function needKey(need: string) {
   return need.trim().toLowerCase().replace(/\s+/g, " ");
 }
 

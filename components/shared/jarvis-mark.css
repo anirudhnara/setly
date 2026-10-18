@@ -1,23 +1,22 @@
-.setly-flame {
-  position: relative;
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  filter: drop-shadow(0 8px 15px rgba(81, 226, 163, .16));
-  animation: hover 3.8s ease-in-out infinite;
-}
+.setly-mark { position: relative; display: inline-grid; flex: 0 0 auto; place-items: center; }
+.setly-mark svg { width: 100%; height: 100%; overflow: visible; }
+.setly-mark .mark-bg { fill: #1c1a17; }
+.setly-mark .mark-stem, .setly-mark .mark-branch { fill: none; stroke: #f6f3ee; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.setly-mark .mark-node { fill: #f6f3ee; transform-box: fill-box; transform-origin: center; }
+.setly-mark .mark-node.n3 { fill: #e2552d; }
 
-.setly-flame svg { position: relative; z-index: 1; width: 83%; height: 83%; overflow: visible; }
-.setly-glow { position: absolute; width: 55%; height: 62%; border-radius: 50%; background: rgba(88, 241, 169, .18); filter: blur(15px); animation: breathe 2.8s ease-in-out infinite; }
-.setly-outer { transform-origin: 50% 70%; animation: flicker 2.4s ease-in-out infinite; }
-.setly-inner { transform-origin: 50% 82%; animation: flicker 1.6s ease-in-out infinite reverse; }
-.setly-sparkle { position: absolute; top: 14%; right: 18%; width: 5px; height: 5px; border-radius: 50%; background: #fff4c5; box-shadow: 0 0 12px #fff0ad; animation: sparkle 2.1s ease-in-out infinite; }
+.setly-mark.live .mark-stem { animation: mark-draw 1.6s cubic-bezier(.2, .8, .2, 1) infinite; }
+.setly-mark.live .mark-branch { animation: mark-draw 1.6s cubic-bezier(.2, .8, .2, 1) infinite; }
+.setly-mark.live .b1 { animation-delay: .15s; }
+.setly-mark.live .b2 { animation-delay: .3s; }
+.setly-mark.live .mark-node { animation: mark-pop 1.6s cubic-bezier(.34, 1.56, .64, 1) infinite; }
+.setly-mark.live .n1 { animation-delay: .35s; }
+.setly-mark.live .n2 { animation-delay: .5s; }
+.setly-mark.live .n3 { animation-delay: .2s; }
 
-@keyframes hover { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
-@keyframes breathe { 0%, 100% { opacity: .45; transform: scale(.86); } 50% { opacity: .9; transform: scale(1.08); } }
-@keyframes flicker { 0%, 100% { transform: skewX(-1deg) scaleY(1); } 45% { transform: skewX(1.5deg) scaleY(1.035); } 70% { transform: skewX(-.5deg) scaleY(.985); } }
-@keyframes sparkle { 0%, 100% { opacity: .3; transform: translate(0, 3px) scale(.6); } 50% { opacity: 1; transform: translate(2px, -3px) scale(1); } }
+@keyframes mark-draw { 0% { stroke-dashoffset: 1; } 45%, 85% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; opacity: .9; } }
+@keyframes mark-pop { 0%, 20% { transform: scale(0); } 45%, 85% { transform: scale(1); } 100% { transform: scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .setly-flame, .setly-glow, .setly-outer, .setly-inner, .setly-sparkle { animation: none; }
+  .setly-mark.live .mark-stem, .setly-mark.live .mark-branch, .setly-mark.live .mark-node { animation: none; }
 }

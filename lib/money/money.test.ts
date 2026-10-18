@@ -5,7 +5,7 @@ import { computeShares } from "@/lib/money/shares";
 import type { Contribution, MapData, Member, MemberShare, Product, Slot } from "@/lib/types";
 
 function member(id: string, joinedAt: string): Member {
-  return { id, groupId: "grp", name: id, isOrganizer: id === "a", joinedAt };
+  return { id, groupId: "grp", userId: id, name: id, isOrganizer: id === "a", joinedAt };
 }
 
 function slot(id: string, payType: Slot["payType"], chosenProductId: string | null, quantity = 1): Slot {

@@ -8,6 +8,7 @@ import {
   links,
   members,
   pricePoints,
+  users,
   products,
   refunds,
   rules,
@@ -81,6 +82,17 @@ export const drizzleLedger: LedgerStore = {
     const [product] = await db.select({ slotId: products.slotId }).from(products).where(eq(products.id, productId)).limit(1);
     if (!product) return null;
     return drizzleLedger.findBySlotId(product.slotId);
+  },
+  async listForUser(userId) {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(groups)
+      .innerJoin(members, eq(members.groupId, groups.id))
+      .where(eq(members.userId, userId));
+    return rows
+      .map((row) => toGroup(row.groups))
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   },
 };
 
@@ -177,10 +189,23 @@ async function writeGroup(tx: Transaction, state: GroupState) {
   await tx.delete(members).where(eq(members.groupId, groupId));
 
   if (state.members.length > 0) {
+    await tx
+      .insert(users)
+      .values(
+        state.members.map((member) => ({
+          id: member.userId,
+          firebaseUid: `demo:${member.userId}`,
+          email: `${member.userId}@demo.setly.local`,
+          name: member.name,
+          createdAt: new Date(member.joinedAt),
+        })),
+      )
+      .onConflictDoNothing();
     await tx.insert(members).values(
       state.members.map((member) => ({
         id: member.id,
         groupId: member.groupId,
+        userId: member.userId,
         name: member.name,
         isOrganizer: member.isOrganizer,
         joinedAt: new Date(member.joinedAt),
@@ -287,7 +312,14 @@ function toGroup(row: typeof groups.$inferSelect): Group {
 }
 
 function toMember(row: typeof members.$inferSelect): Member {
-  return { id: row.id, groupId: row.groupId, name: row.name, isOrganizer: row.isOrganizer, joinedAt: iso(row.joinedAt) };
+  return {
+    id: row.id,
+    groupId: row.groupId,
+    userId: row.userId,
+    name: row.name,
+    isOrganizer: row.isOrganizer,
+    joinedAt: iso(row.joinedAt),
+  };
 }
 
 function toZone(row: typeof zones.$inferSelect): Zone {

@@ -8,7 +8,7 @@ import { dollarsToCents, normalizePriceToCents, normalizeQuery, normalizeStore, 
  * Search results are slot-free: `slotId` is "" and `id` is a stable source id.
  * `lib/search/options.ts` attaches them to a slot and gives them slot-scoped ids.
  */
-const SEARCH_TIMEOUT_MS = 6000;
+const SEARCH_TIMEOUT_MS = 8000;
 const MAX_RESULTS = 8;
 
 interface CatalogEntry {
@@ -58,9 +58,9 @@ export function searchCatalog(query: string): Product[] {
 export async function searchProducts(query: string): Promise<Product[]> {
   if (mockAiEnabled()) return searchCatalog(query);
   const cached = await getCachedSearch(query);
-  if (cached) return cached.failure ? searchCatalog(query) : cached.results;
+  if (cached) return cached.failure ? searchCatalog(query) : withoutJunk(cached.results, query);
   try {
-    const results = await searchSerpApi(query);
+    const results = withoutJunk(await searchSerpApi(query), query);
     if (results.length > 0) {
       await setCachedSearch(query, results);
       return results;
@@ -72,6 +72,24 @@ export async function searchProducts(query: string): Promise<Product[]> {
     await setCachedSearch(query, [], failureKind(error));
   }
   return searchCatalog(query);
+}
+
+/** Digital files and stand-in listings Shopping sometimes ranks for physical things ("mug mockup", "sofa SVG"). */
+const JUNK_TITLE = /\b(mock-?ups?|templates?|svg|png|jpe?g|clip ?art|digital (?:download|file|art)|instant download|printable|sublimation|psd|3d model|gift card|for parts|parts only|cover only|rental|for rent|plans|blueprints?|pdf|ebook|(?:sewing|crochet|knitting) pattern|instructions only)\b/i;
+
+/**
+ * Drops junk listings unless the query asks for that kind of thing, then drops price outliers: with four or more
+ * results, anything under a fifth of the median is nearly always an accessory, a cover, or a digital file.
+ * Exported for tests.
+ */
+export function withoutJunk(products: Product[], query: string): Product[] {
+  const clean = JUNK_TITLE.test(query) ? products : products.filter((product) => !JUNK_TITLE.test(product.title));
+  const kept = clean.length > 0 ? clean : products;
+  if (kept.length < 4) return kept;
+  const prices = kept.map((product) => product.priceCents).sort((a, b) => a - b);
+  const median = prices[Math.floor(prices.length / 2)];
+  const sane = kept.filter((product) => product.priceCents * 5 >= median);
+  return sane.length > 0 ? sane : kept;
 }
 
 /** Out of searches or a bad key won't fix itself in minutes; a timeout might. */

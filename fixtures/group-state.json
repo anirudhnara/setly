@@ -12,6 +12,7 @@
     {
       "id": "mem_ani",
       "groupId": "grp_apartment",
+      "userId": "usr_ani",
       "name": "Ani",
       "isOrganizer": true,
       "joinedAt": "2026-10-17T18:00:00.000Z"
@@ -19,6 +20,7 @@
     {
       "id": "mem_jules",
       "groupId": "grp_apartment",
+      "userId": "usr_jules",
       "name": "Jules",
       "isOrganizer": false,
       "joinedAt": "2026-10-17T18:02:00.000Z"
@@ -26,6 +28,7 @@
     {
       "id": "mem_sam",
       "groupId": "grp_apartment",
+      "userId": "usr_sam",
       "name": "Sam",
       "isOrganizer": false,
       "joinedAt": "2026-10-17T18:05:00.000Z"
@@ -33,6 +36,7 @@
     {
       "id": "mem_riley",
       "groupId": "grp_apartment",
+      "userId": "usr_riley",
       "name": "Riley",
       "isOrganizer": false,
       "joinedAt": "2026-10-17T18:08:00.000Z"

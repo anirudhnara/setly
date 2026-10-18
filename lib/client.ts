@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import { currentIdToken } from "@/lib/auth/client";
 import type {
   AuthorizeRequest,
   AuthorizeResponse,
@@ -6,6 +7,7 @@ import type {
   CreateGroupResponse,
   CreateSlotRequest,
   CreateSlotResponse,
+  CurrentUserResponse,
   DeleteSlotResponse,
   DemoCheckoutRequest,
   DemoCheckoutResponse,
@@ -14,8 +16,8 @@ import type {
   GetGroupResponse,
   JoinGroupRequest,
   JoinGroupResponse,
-  LockGroupRequest,
   LockGroupResponse,
+  MyGroupsResponse,
   PasteMapRequest,
   PasteMapResponse,
   PayRequest,
@@ -28,13 +30,17 @@ import type {
   UpdateSlotRequest,
   UpdateSlotResponse,
 } from "@/lib/contracts";
+import type { InterviewRequest, InterviewResponse } from "@/lib/ai/interview";
+import type { ChooseRequest, ChooseResponse, RefineRequest, RefineResponse } from "@/lib/ai/refine";
 import type { GroupState } from "@/lib/types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = typeof window === "undefined" ? null : await currentIdToken();
   const response = await fetch(path, {
     ...init,
     headers: {
       ...(init?.body ? { "content-type": "application/json" } : {}),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });
@@ -57,6 +63,14 @@ function post<T>(path: string, body: unknown) {
   return request<T>(path, { method: "POST", body: JSON.stringify(body) });
 }
 
+export function getCurrentUser() {
+  return request<CurrentUserResponse>("/api/me");
+}
+
+export function listMyGroups() {
+  return request<MyGroupsResponse>("/api/groups");
+}
+
 export function createGroup(body: CreateGroupRequest) {
   return post<CreateGroupResponse>("/api/groups", body);
 }
@@ -69,12 +83,37 @@ export function joinGroup(groupId: string, body: JoinGroupRequest) {
   return post<JoinGroupResponse>(`/api/groups/${encodeURIComponent(groupId)}/join`, body);
 }
 
-export function lockGroup(groupId: string, body: LockGroupRequest) {
-  return post<LockGroupResponse>(`/api/groups/${encodeURIComponent(groupId)}/lock`, body);
+export function lockGroup(groupId: string) {
+  return post<LockGroupResponse>(`/api/groups/${encodeURIComponent(groupId)}/lock`, {});
 }
 
 export function generateMap(body: GenerateMapRequest) {
   return post<GenerateMapResponse>("/api/maps/generate", body);
+}
+
+/** Grows and saves the group's first set from its prompt. Returns the group with its set. */
+export function growMap(groupId: string) {
+  return post<GetGroupResponse>("/api/maps/grow", { groupId });
+}
+
+/** Warms the AI connection when the chat opens. Best effort. */
+export function warmInterview() {
+  return request<{ ok: boolean }>("/api/maps/interview").catch(() => null);
+}
+
+/** Next question while building the brief. `turn` is null when the scripted questions should run. */
+export function interviewTurn(body: InterviewRequest) {
+  return post<InterviewResponse>("/api/maps/interview", body);
+}
+
+/** Regrows the group's saved set from feedback and loved or passed-on items. */
+export function refineMap(body: RefineRequest) {
+  return post<RefineResponse>("/api/maps/refine", body);
+}
+
+/** Saves one of a slot's options as its pick. The server re-reads the product from search. */
+export function chooseProduct(body: ChooseRequest) {
+  return post<ChooseResponse>("/api/maps/choose", body);
 }
 
 export function pasteMap(body: PasteMapRequest) {

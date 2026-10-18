@@ -1,4 +1,4 @@
-import type { GroupState } from "@/lib/types";
+import type { Group, GroupState } from "@/lib/types";
 
 export interface LedgerStore {
   get(groupId: string): Promise<GroupState | null>;
@@ -8,6 +8,7 @@ export interface LedgerStore {
   findBySlotId(slotId: string): Promise<GroupState | null>;
   findByZoneId(zoneId: string): Promise<GroupState | null>;
   findByProductId(productId: string): Promise<GroupState | null>;
+  listForUser(userId: string): Promise<Group[]>;
 }
 
 export class LedgerError extends Error {

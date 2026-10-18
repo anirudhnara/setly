@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Join — Setly" };
 
 export default function JoinPage({ params }: { params: Promise<{ groupId: string }> }) {
   return (
-    <Shell>
+    <Shell wide>
       <GroupSlot params={params}>{(groupId) => <JoinView groupId={groupId} />}</GroupSlot>
     </Shell>
   );

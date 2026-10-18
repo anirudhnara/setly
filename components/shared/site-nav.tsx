@@ -6,11 +6,7 @@ import { useEffect, useState } from "react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { SAMPLE_GROUP_ID, readLastGroup, readYou } from "@/components/shared/session";
 
-const LINKS = [
-  { href: "/", label: "Welcome" },
-  { href: "/home", label: "New plan" },
-  { href: "/checkout", label: "Checkout" },
-];
+const LINKS = [{ href: "/home", label: "New set" }];
 
 export function SiteNav() {
   const pathname = usePathname();
@@ -44,18 +40,18 @@ export function SiteNav() {
             </Link>
           ))}
           <Link href={`/g/${planId}`} aria-current={pathname.startsWith("/g/") ? "page" : undefined}>
-            My plan
+            My set
           </Link>
         </nav>
-        <span className="orbit-kicker">{you ? `Welcome, ${you}` : "Visa · DubHacks ’26"}</span>
+        <span className="orbit-kicker">{you ? <><span className="avatar" aria-hidden="true">{you.slice(0, 1).toUpperCase()}</span> {you}</> : "Shop together"}</span>
       </div>
-      {groupId ? (
+      {groupId && pathname === `/g/${groupId}` ? (
         <nav className="orbit-subnav" aria-label="Group">
-          <Link href={`/g/${groupId}`} aria-current={pathname === `/g/${groupId}` ? "page" : undefined}>Map</Link>
+          <Link href={`/g/${groupId}`} aria-current={pathname === `/g/${groupId}` ? "page" : undefined}>Set</Link>
           <Link href={`/g/${groupId}/join`} aria-current={pathname.endsWith("/join") ? "page" : undefined}>Invite</Link>
-          <Link href={`/g/${groupId}/split`} aria-current={pathname.endsWith("/split") ? "page" : undefined}>Contributions</Link>
+          <Link href={`/g/${groupId}/split`} aria-current={pathname.endsWith("/split") ? "page" : undefined}>Split</Link>
           <Link href={`/g/${groupId}/checkout`} aria-current={pathname.endsWith("/checkout") ? "page" : undefined}>Checkout</Link>
-          <Link href={`/g/${groupId}/settle`} aria-current={pathname.endsWith("/settle") ? "page" : undefined}>Summary</Link>
+          <Link href={`/g/${groupId}/settle`} aria-current={pathname.endsWith("/settle") ? "page" : undefined}>Returns</Link>
         </nav>
       ) : null}
     </header>

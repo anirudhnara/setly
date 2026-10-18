@@ -8,7 +8,7 @@ import type { MapData, Member, Product, Rule, Slot } from "@/lib/types";
 const now = new Date("2026-10-17T18:00:00Z");
 
 function member(id: string): Member {
-  return { id, groupId: "g", name: id, isOrganizer: false, joinedAt: now.toISOString() };
+  return { id, groupId: "g", userId: id, name: id, isOrganizer: false, joinedAt: now.toISOString() };
 }
 const members = ["a", "b", "c", "d"].map(member);
 
