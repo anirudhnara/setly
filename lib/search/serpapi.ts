@@ -83,7 +83,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
 }
 
 /** Digital files and stand-in listings Shopping sometimes ranks for physical things ("mug mockup", "sofa SVG"). */
-const JUNK_TITLE = /\b(mock-?ups?|templates?|svg|png|jpe?g|clip ?art|digital (?:download|file|art)|instant download|printable|sublimation|psd|3d model|gift card|for parts|parts only|cover only|rental|for rent|plans|blueprints?|pdf|ebook|(?:sewing|crochet|knitting) pattern|instructions only)\b/i;
+export const JUNK_TITLE = /\b(mock-?ups?|templates?|svg|png|jpe?g|clip ?art|digital (?:download|file|art)|instant download|printable|sublimation|psd|3d model|gift card|for parts|parts only|cover only|rental|for rent|plans|blueprints?|pdf|ebook|(?:sewing|crochet|knitting) pattern|instructions only)\b/i;
 
 /**
  * Drops junk listings unless the query asks for that kind of thing, then drops price outliers: with four or more

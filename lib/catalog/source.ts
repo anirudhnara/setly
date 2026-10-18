@@ -1,10 +1,10 @@
 import catalogJson from "@/fixtures/space-catalog.json";
 
 /**
- * The item catalog behind the 3D space. Today it's a placeholder built from real cached searches
- * (scripts/build-space-catalog.ts). When the pre-loaded store database is ready, replace `loadCatalog` with a read
- * from it and map each row with `toCatalogItem`. Everything else (space building, Gemini tuning, building a set)
- * only depends on this shape. Prices are integer cents and come from the data, never from the model.
+ * Placeholder catalog built from real cached searches (scripts/build-space-catalog.ts). The store catalog database
+ * (catalog_items, read in lib/search/find.ts) is the real source; this file stands in when there's no database
+ * (tests, MOCK_AI=1) and for the landing page if the database is unreachable. Prices are integer cents and come
+ * from the data, never from the model.
  */
 export interface CatalogItem {
   id: string;

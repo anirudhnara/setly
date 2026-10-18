@@ -3,7 +3,8 @@ import { cleanSeed, rulesSeed } from "@/lib/ai/vibes";
 import { fallbackIdeas } from "@/lib/ai/suggest";
 import { INNER, OUTER, weightForDistance } from "@/lib/catalog/space";
 import { parseVibeLine, sortByVibe, vibeLine, vibeScore } from "@/lib/catalog/vibes";
-import { catalogProducts, findProducts } from "@/lib/search/find";
+import { catalogProducts, findProducts, pickStoredProducts, rankStoredItems, tagWords } from "@/lib/search/find";
+import type { CatalogItem as StoredItem } from "@/lib/search/catalog";
 
 describe("vibe space", () => {
   it("maps distance from you to priority", () => {
@@ -76,3 +77,40 @@ describe("vibe labels from the model", () => {
     expect(vibeFor("Cyberpunk")).toBeNull();
   });
 });
+
+describe("store catalog ranking", () => {
+  const item = (id: string, title: string, priceCents: number, qualityScore: number, tags: Partial<StoredItem["tags"]> = {}): StoredItem => ({
+    id, title, priceCents, qualityScore, category: "seating", store: "Target", url: `https://example.com/${id}`, imageUrl: "", condition: "new", source: "search",
+    rating: 4.5, reviewCount: 100, delivery: null, shippingDaysMax: null, variantGroup: id, role: "neutral",
+    tags: { colors: [], themes: [], sizes: [], ...tags }, scores: { usability: 4, practicality: 4, health: 3, popularity: 0.5 }, attributes: {}, searchQuery: null, addedBy: null, fetchedAt: new Date(0),
+  });
+
+  it("keeps the thing asked for, skips add-ons named after it, and leaves room for cheaper picks", () => {
+    const items = [
+      item("cover", "KARLSTAD Sofa Cover Natural Linen", 9000, 4.9),
+      item("legs", "Velvet Sofa with Oak Legs", 60000, 4.4),
+      item("chair", "Accent Chair", 15000, 4.8),
+      ...Array.from({ length: 8 }, (_, index) => item(`sofa${index}`, `Linen Sofa ${index}`, 90000 - index * 10000, 4.6 - index * 0.01)),
+    ];
+    const ranked = pickStoredProducts("warm linen sofa", [...items, item("plans", "DIY Modern Sofa Plans", 380, 4.9), item("mini", "Linen Sofa Miniature", 586, 4.9)]).map((entry) => entry.id);
+    expect(ranked).not.toContain("cover");
+    expect(ranked).not.toContain("chair");
+    expect(ranked).not.toContain("plans");
+    expect(ranked).not.toContain("mini");
+    expect(ranked).toHaveLength(8);
+    // "with oak legs" is a sofa, not an add-on.
+    expect(rankStoredItems("sofa", items.slice(0, 2)).map((entry) => entry.id)).toEqual(["legs"]);
+    // The cheapest matching sofa makes the list even though five pricier ones rank above it.
+    expect(ranked).toContain("sofa7");
+    expect(rankStoredItems("sofa cover", items).map((entry) => entry.id)).toContain("cover");
+  });
+
+  it("turns Gemini color and style tags into words the vibe matchers know", () => {
+    const words = tagWords({ colors: [], themes: [], sizes: [], styles: ["mid_century", "minimalist"], color: { value: "medium", accent: "none", family: "wood", palette: "earth_tones", confidence: "stated", saturation: "muted", temperature: "warm" } } as StoredItem["tags"]);
+    expect(words).toMatch(/mid-century/);
+    expect(words).toMatch(/minimal/);
+    expect(words).toMatch(/earthy/);
+    expect(sortByVibe([{ title: "Plain sofa", priceCents: 1, themes: "" }, { title: "Plain sofa", priceCents: 1, themes: words }], { Earthy: 1, Vintage: 0.9 }, (entry) => entry.themes)[0].themes).toBe(words);
+  });
+});
+
