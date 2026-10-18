@@ -41,6 +41,7 @@ import type {
 import type { InterviewRequest, InterviewResponse } from "@/lib/ai/interview";
 import type { ChooseRequest, ChooseResponse, RefineRequest, RefineResponse } from "@/lib/ai/refine";
 import type { AddRequest, SuggestRequest, SuggestResponse } from "@/lib/ai/suggest";
+import type { RecolorRequest, RecolorResponse } from "@/lib/ai/recolor";
 import type { VibeSeedRequest, VibeSeedResponse } from "@/lib/ai/vibes";
 import type { GroupState } from "@/lib/types";
 
@@ -139,6 +140,11 @@ export function refineMap(body: RefineRequest) {
 /** Saves one of a slot's options as its pick. The server re-reads the product from search. */
 export function chooseProduct(body: ChooseRequest) {
   return post<ChooseResponse>("/api/maps/choose", body);
+}
+
+/** Moves every item (or one branch's) to a different color at a similar price, in one save. */
+export function recolorSet(body: RecolorRequest) {
+  return post<RecolorResponse>("/api/maps/recolor", body);
 }
 
 export function pasteMap(body: PasteMapRequest) {
