@@ -39,13 +39,22 @@ function laneOrder(state: GroupState, order: StoreOrder, now: Date): LaneOrder {
   };
 }
 
-/** Writes a lane result, unless the order changed status or attempt since it was read. */
-async function writeOrder(groupId: string, read: StoreOrder, update: Partial<StoreOrder>, now: Date) {
+type OrderWrite = { read: StoreOrder; patch: Partial<StoreOrder> };
+
+/**
+ * Writes lane results for several orders in one locked write (a remote database costs seconds per write),
+ * skipping any order whose status or attempt changed since it was read. Returns the updated state.
+ */
+async function writeOrders(groupId: string, writes: OrderWrite[], now: Date) {
   return editGroup(groupId, (state) => {
-    const order = state.storeOrders.find((item) => item.id === read.id);
-    if (!order || order.status !== read.status || order.attempt !== read.attempt) return null;
-    Object.assign(order, update, { updatedAt: now.toISOString() });
-    return { ...order };
+    let applied = 0;
+    for (const { read, patch } of writes) {
+      const order = state.storeOrders.find((item) => item.id === read.id);
+      if (!order || order.status !== read.status || order.attempt !== read.attempt) continue;
+      Object.assign(order, patch, { updatedAt: now.toISOString() });
+      applied += 1;
+    }
+    return { state: structuredClone(state), applied };
   });
 }
 
@@ -61,42 +70,46 @@ function fromLane(update: LaneUpdate): Partial<StoreOrder> {
 
 const message = (error: unknown) => (error instanceof Error ? error.message : "Checkout failed");
 
-/** Quotes and places one order as far as it can go now. */
-async function runOrder(groupId: string, orderId: string, now: Date) {
-  let state = await getGroupState(groupId);
-  let order = state?.storeOrders.find((item) => item.id === orderId);
-  if (!state || !order) return;
-  const lane = getLane(order.lane);
+/** Runs a lane call for each order in parallel; a throw becomes a failed order. */
+async function laneWrites(orders: StoreOrder[], call: (order: StoreOrder) => Promise<Partial<StoreOrder>>): Promise<OrderWrite[]> {
+  return Promise.all(
+    orders.map(async (read) => {
+      try {
+        return { read, patch: await call(read) };
+      } catch (error) {
+        return { read, patch: { status: "failed" as const, error: message(error) } };
+      }
+    }),
+  );
+}
 
-  if (order.status === "quoting") {
-    let patch: Partial<StoreOrder>;
-    try {
-      const quote = await lane.quote(laneOrder(state, order, now));
+/** Quotes, then places, the given orders as far as they can go now: one write per phase, not per store. */
+async function runOrders(groupId: string, orderIds: string[], now: Date) {
+  const wanted = new Set(orderIds);
+  let state = await getGroupState(groupId);
+  if (!state) return;
+
+  const quoting = state.storeOrders.filter((order) => wanted.has(order.id) && order.status === "quoting");
+  if (quoting.length > 0) {
+    const current = state;
+    const writes = await laneWrites(quoting, async (order) => {
+      const quote = await getLane(order.lane).quote(laneOrder(current, order, now));
       const over = quote.quotedCents > order.capCents;
-      patch = {
+      return {
         quotedCents: quote.quotedCents,
         externalId: quote.externalId,
         status: over ? "needs_approval" : "pending",
         error: over ? `${order.store} quoted ${dollars(quote.quotedCents)}, ${dollars(quote.quotedCents - order.capCents)} over the ${dollars(order.capCents)} cap` : null,
       };
-    } catch (error) {
-      patch = { status: "failed", error: message(error) };
-    }
-    const written = await writeOrder(groupId, order, patch, now);
-    if (!written || written.status !== "pending") return;
-    state = await getGroupState(groupId);
-    order = state?.storeOrders.find((item) => item.id === orderId);
-    if (!state || !order) return;
+    });
+    state = (await writeOrders(groupId, writes, now)).state;
   }
 
-  if (order.status === "pending") {
-    let patch: Partial<StoreOrder>;
-    try {
-      patch = fromLane(await lane.place(laneOrder(state, order, now)));
-    } catch (error) {
-      patch = { status: "failed", error: message(error) };
-    }
-    await writeOrder(groupId, order, patch, now);
+  const pending = state.storeOrders.filter((order) => wanted.has(order.id) && order.status === "pending");
+  if (pending.length > 0) {
+    const current = state;
+    const writes = await laneWrites(pending, async (order) => fromLane(await getLane(order.lane).place(laneOrder(current, order, now))));
+    await writeOrders(groupId, writes, now);
   }
 }
 
@@ -127,7 +140,7 @@ export async function startCheckout(groupId: string, userId: string, address: Sh
     }));
     return state.storeOrders.map((order) => order.id);
   });
-  await Promise.allSettled(created.map((orderId) => runOrder(groupId, orderId, now)));
+  if (created.length > 0) await runOrders(groupId, created, now);
   return requireState(groupId);
 }
 
@@ -146,26 +159,26 @@ export async function advanceCheckout(state: GroupState, now = new Date()): Prom
   if (now.getTime() - (lastPoll.get(groupId) ?? 0) < POLL_MS) return state;
   lastPoll.set(groupId, now.getTime());
 
+  const placing = due.filter((order) => order.status === "placing");
+  const stalled = due.filter((order) => order.status !== "placing");
+
   let changed = false;
-  await Promise.allSettled(
-    due.map(async (order) => {
-      if (order.status !== "placing") {
-        // Touch it first so another poll doesn't run it twice, then run it.
-        const touched = await writeOrder(groupId, order, {}, now);
-        if (touched) await runOrder(groupId, order.id, now);
-        changed = true;
-        return;
-      }
-      const update = await getLane(order.lane).status(laneOrder(state, order, now));
-      const patch = fromLane(update);
-      const same =
-        patch.status === order.status &&
-        (patch.finalTotalCents ?? order.finalTotalCents) === order.finalTotalCents &&
-        (patch.tracking?.length ?? order.tracking.length) === order.tracking.length;
-      // An unchanged order still gets its time bumped, so the next poll waits a second.
-      if (await writeOrder(groupId, order, same ? {} : patch, now)) changed = changed || !same;
-    }),
-  );
+  if (placing.length > 0) {
+    // Polling is read-only, so two servers polling at once is harmless; only an order that moved is written.
+    const writes = await laneWrites(placing, async (order) => fromLane(await getLane(order.lane).status(laneOrder(state, order, now))));
+    const moved = writes.filter(({ read, patch }) => {
+      if (patch.status !== read.status) return true;
+      if (patch.finalTotalCents !== undefined && patch.finalTotalCents !== read.finalTotalCents) return true;
+      return patch.tracking !== undefined && patch.tracking.length !== read.tracking.length;
+    });
+    if (moved.length > 0) changed = (await writeOrders(groupId, moved, now)).applied > 0;
+  }
+  if (stalled.length > 0) {
+    // Touch them first so another poll doesn't run them twice.
+    const touched = await writeOrders(groupId, stalled.map((read) => ({ read, patch: {} })), now);
+    if (touched.applied > 0) await runOrders(groupId, stalled.map((order) => order.id), now);
+    changed = true;
+  }
   return changed ? requireState(groupId) : state;
 }
 
@@ -218,7 +231,7 @@ export async function approveCheckout(groupId: string, userId: string, storeOrde
     }
     return true;
   });
-  if (ready) await runOrder(groupId, storeOrderId, now);
+  if (ready) await runOrders(groupId, [storeOrderId], now);
   return requireState(groupId);
 }
 

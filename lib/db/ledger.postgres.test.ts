@@ -8,7 +8,8 @@ import type { MapData } from "@/lib/types";
 
 const databaseUrl = process.env.DATABASE_URL;
 
-describe.skipIf(!databaseUrl)("ledger against postgres", () => {
+// A remote database takes seconds per locked write, so these get more than the 5s default.
+describe.skipIf(!databaseUrl)("ledger against postgres", { timeout: 120_000 }, () => {
   it("serializes joins and keeps price history across map saves", async () => {
     useDatabaseLedgerForTests();
     process.env.ISSUER = "mock";
