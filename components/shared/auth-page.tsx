@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MessagesSquare, Shuffle, Wallet } from "lucide-react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { readLastGroup } from "@/components/shared/session";
@@ -22,6 +22,20 @@ export function AuthPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [setup, setSetup] = useState<string | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const observer = new MutationObserver(() => {
+      if (node.style.display === "none") {
+        setError("");
+        setPending(false);
+      }
+    });
+    observer.observe(node, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!firebaseConfigured()) {
@@ -40,15 +54,22 @@ export function AuthPage() {
     try {
       await signInWithGoogle();
       router.push("/home");
-    } catch {
-      setError("Google sign-in didn’t finish. Try again, or use email.");
+    } catch (caught) {
+      const code = typeof caught === "object" && caught && "code" in caught ? String(caught.code) : "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setError("Google sign-in was closed before it finished.");
+      } else if (code === "auth/popup-blocked") {
+        setError("The browser blocked the Google window. Allow popups, then try again.");
+      } else {
+        setError("Google sign-in didn’t finish. Try again, or use email.");
+      }
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <main className="orbit auth-page">
+    <main className="orbit auth-page" ref={rootRef}>
       <div className="auth-topbar">
         <Link className="orbit-brand" href="/" aria-label="Setly home">
           <JarvisMark size={32} />

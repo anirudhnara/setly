@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import {
   browserLocalPersistence,
+  browserPopupRedirectResolver,
   createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
@@ -26,7 +27,12 @@ function browserAuth() {
   const config = getFirebaseWebConfig();
   const app = getApps()[0] ?? initializeApp(config);
   try {
-    return initializeAuth(app, { persistence: browserLocalPersistence });
+    // initializeAuth does not include the popup resolver unless it is passed here.
+    // Without it, signInWithPopup fails with auth/argument-error.
+    return initializeAuth(app, {
+      persistence: browserLocalPersistence,
+      popupRedirectResolver: browserPopupRedirectResolver,
+    });
   } catch {
     return getAuth(app);
   }

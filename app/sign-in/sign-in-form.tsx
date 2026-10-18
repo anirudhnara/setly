@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { firebaseConfigured, signInWithEmail, signInWithGoogle, signUpWithEmail, watchAuth } from "@/lib/auth/client";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
@@ -18,7 +18,8 @@ function signInMessage(error: unknown) {
     }
     if (code === "auth/email-already-in-use") return "An account already exists for that email.";
     if (code === "auth/weak-password") return "Use a password of at least 6 characters.";
-    if (code === "auth/popup-closed-by-user") return "Google sign-in was closed before it finished.";
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "Google sign-in was closed before it finished.";
+    if (code === "auth/popup-blocked") return "The browser blocked the Google window. Allow popups, then try again.";
   }
   return "Sign-in failed. Try again.";
 }
@@ -31,6 +32,20 @@ export function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [setup, setSetup] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const rootRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const observer = new MutationObserver(() => {
+      if (node.style.display === "none") {
+        setError(null);
+        setPending(false);
+      }
+    });
+    observer.observe(node, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+  }, []);
 
   function finish() {
     router.push(nextPath(searchParams.get("next")));
@@ -60,7 +75,7 @@ export function SignInForm() {
   }
 
   return (
-    <main className="sign-in-shell">
+    <main className="sign-in-shell" ref={rootRef}>
       <section className="dialog">
         <p className="dialog-kicker">SETLY</p>
         <h1>Sign in</h1>
