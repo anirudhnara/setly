@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmail, signInWithGoogle, signUpWithEmail, watchAuth } from "@/lib/auth/client";
+import { firebaseConfigured, signInWithEmail, signInWithGoogle, signUpWithEmail, watchAuth } from "@/lib/auth/client";
+import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
 function nextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
@@ -28,6 +29,7 @@ export function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [setup, setSetup] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   function finish() {
@@ -35,6 +37,10 @@ export function SignInForm() {
   }
 
   useEffect(() => {
+    if (!firebaseConfigured()) {
+      setSetup(FIREBASE_SETUP_MESSAGE);
+      return;
+    }
     return watchAuth((user) => {
       if (user) finish();
     });
@@ -59,8 +65,9 @@ export function SignInForm() {
         <p className="dialog-kicker">SETLY</p>
         <h1>Sign in</h1>
         <p>Google or email. Your groups stay in Postgres.</p>
+        {setup ? <p className="sign-in-error" role="alert">{setup}</p> : null}
         {error ? <p className="sign-in-error" role="alert">{error}</p> : null}
-        <button type="button" className="dialog-primary" disabled={pending} onClick={() => void run(() => signInWithGoogle())}>
+        <button type="button" className="dialog-primary" disabled={pending || Boolean(setup)} onClick={() => void run(() => signInWithGoogle())}>
           Continue with Google
         </button>
         <form
@@ -73,8 +80,8 @@ export function SignInForm() {
           <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
           <label htmlFor="password">Password</label>
           <input id="password" name="password" type="password" autoComplete="current-password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} />
-          <button type="submit" className="dialog-primary" disabled={pending}>Sign in</button>
-          <button type="button" className="sign-in-secondary" disabled={pending} onClick={() => void run(() => signUpWithEmail(email, password))}>
+          <button type="submit" className="dialog-primary" disabled={pending || Boolean(setup)}>Sign in</button>
+          <button type="button" className="sign-in-secondary" disabled={pending || Boolean(setup)} onClick={() => void run(() => signUpWithEmail(email, password))}>
             Create account
           </button>
         </form>

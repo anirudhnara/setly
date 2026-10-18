@@ -2,7 +2,8 @@
 
 import { useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { watchAuth, type FirebaseAuthUser } from "@/lib/auth/client";
+import { firebaseConfigured, watchAuth, type FirebaseAuthUser } from "@/lib/auth/client";
+import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
 let current: FirebaseAuthUser | null | undefined = undefined;
 let startError: string | null = null;
@@ -17,6 +18,12 @@ function publish() {
 function start() {
   if (started || typeof window === "undefined") return;
   started = true;
+  if (!firebaseConfigured()) {
+    startError = FIREBASE_SETUP_MESSAGE;
+    current = null;
+    publish();
+    return;
+  }
   try {
     watchAuth((user) => {
       current = user;
@@ -55,7 +62,7 @@ export function GroupAuthGate({ children }: { children: ReactNode }) {
     return children;
   }
 
-  if (user === null && typeof window !== "undefined" && !redirected) {
+  if (user === null && !startError && typeof window !== "undefined" && !redirected) {
     redirected = true;
     const next = `/sign-in?next=${encodeURIComponent(pathname)}`;
     if (!window.location.pathname.startsWith("/sign-in")) router.replace(next);

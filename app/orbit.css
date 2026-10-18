@@ -145,6 +145,8 @@
 .product-image.is-icon { background: linear-gradient(160deg, var(--paper), var(--paper-2)); color: var(--ink-2); }
 .product-image.is-icon svg { width: 42%; height: 42%; }
 .orbit-kicker { display: inline-flex; align-items: center; gap: 8px; }
+.nav-sign-out { margin: 0; padding: 0; border: 0; background: transparent; color: var(--ink-2); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.nav-sign-out:hover { color: var(--ink); }
 .orbit-nav .avatar { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 600; }
 
 /* Sign-in page (app/sign-in) and the group auth gate share the same look. */

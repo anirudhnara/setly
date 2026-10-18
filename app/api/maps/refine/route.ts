@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { readRequest, type ApiErrorBody } from "@/lib/contracts";
 import { parseBudgetCents, parseMemberCount } from "@/lib/ai/parse";
 import { refineMap, refineRequestSchema, type RefineResponse } from "@/lib/ai/refine";
+import { stampChangedSlots } from "@/lib/ai/stamp";
 import { jsonError } from "@/lib/db/http";
 import { requireMember, saveMap } from "@/lib/db/queries";
 import { checkRules } from "@/lib/rules/check";
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     if (!message.trim() && liked.length === 0 && disliked.length === 0) {
       return NextResponse.json({ error: "Tell Setly what to change first." } satisfies ApiErrorBody, { status: 400 });
     }
-    const { state } = await requireMember(groupId, user.id);
+    const { state, member } = await requireMember(groupId, user.id);
     if (state.group.status !== "editing") {
       return NextResponse.json({ error: "This set is locked for payment, so it can't change now." } satisfies ApiErrorBody, { status: 409 });
     }
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
       groupId,
     });
     if (state.members.length > 0) result.map.rules = checkRules(result.map, state.members);
+    result.map = stampChangedSlots(state.map, result.map, member.id);
     await saveMap(groupId, result.map);
     const body: RefineResponse = result;
     return NextResponse.json(body);

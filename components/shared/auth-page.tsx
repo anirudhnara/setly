@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { ArrowRight, MessagesSquare, Shuffle, Wallet } from "lucide-react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
 import { readLastGroup } from "@/components/shared/session";
-import { signInWithGoogle, watchAuth } from "@/lib/auth/client";
+import { firebaseConfigured, signInWithGoogle, watchAuth } from "@/lib/auth/client";
+import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
 
 const STEPS = [
   { icon: MessagesSquare, title: "Answer a few questions", text: "Setly asks only what changes what you buy." },
@@ -20,16 +21,17 @@ export function AuthPage() {
   const [lastGroup, setLastGroup] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [setup, setSetup] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      return watchAuth((user) => {
-        setLastGroup(readLastGroup());
-        setName(user ? user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "there" : null);
-      });
-    } catch {
-      // Firebase isn't configured here; the sign-in buttons stay, and /sign-in explains what's missing.
+    if (!firebaseConfigured()) {
+      setSetup(FIREBASE_SETUP_MESSAGE);
+      return;
     }
+    return watchAuth((user) => {
+      setLastGroup(readLastGroup());
+      setName(user ? user.displayName?.split(" ")[0] || user.email?.split("@")[0] || "there" : null);
+    });
   }, []);
 
   async function google() {
@@ -89,7 +91,9 @@ export function AuthPage() {
               </li>
             ))}
           </ol>
-          {name ? (
+          {setup ? (
+            <p className="auth-error" role="alert">{setup}</p>
+          ) : name ? (
             <>
               <Link className="btn btn-accent auth-submit" href="/home">Start a new set <ArrowRight aria-hidden="true" /></Link>
               {lastGroup ? <Link className="btn btn-ghost auth-secondary" href={`/g/${lastGroup}`}>Open my last set</Link> : null}
