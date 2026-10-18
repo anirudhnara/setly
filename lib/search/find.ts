@@ -1,6 +1,7 @@
 import { categorize } from "@/lib/catalog/taxonomy";
 import { loadCatalog, type CatalogItem } from "@/lib/catalog/source";
 import { sortByVibe, type VibeWeights } from "@/lib/catalog/vibes";
+import { mockAiEnabled } from "@/lib/env";
 import { databaseConfigured } from "@/lib/search/cache";
 import { catalogItemToProduct, categorize as storedCategory, type CatalogItem as StoredItem } from "@/lib/search/catalog";
 import { JUNK_TITLE, searchProducts } from "@/lib/search/serpapi";
@@ -23,8 +24,7 @@ const CATEGORY_TTL_MS = 5 * 60_000;
 const categoryCache = new Map<string, { at: number; rows: Promise<StoredItem[]> }>();
 
 export async function findProducts(query: string, vibes: VibeWeights = {}): Promise<Product[]> {
-  // The Tiger catalog is a database read, not an AI or SerpApi call, so MOCK_AI doesn't turn it off.
-  const useStore = databaseConfigured();
+  const useStore = !mockAiEnabled() && databaseConfigured();
   // The demo stores lead either source, so a generated plan has protocol-lane stores to check out from.
   const fromCatalog = useStore ? withDemoStores(query, await storedProducts(query)) : await catalogProducts(query);
   const live = fromCatalog.length >= MIN_CATALOG ? [] : await searchProducts(query);
