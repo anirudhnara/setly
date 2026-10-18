@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { withCheckoutBadge } from "@/lib/checkout/badges";
 import { demoStoreSlug, laneForStore } from "@/lib/checkout/registry";
 
 describe("laneForStore", () => {
@@ -21,5 +22,14 @@ describe("laneForStore", () => {
     expect(laneForStore("west elm")).toBe("guided");
     expect(laneForStore("Wayfair")).toBe("guided");
     expect(demoStoreSlug("Target")).toBeNull();
+  });
+});
+
+describe("withCheckoutBadge", () => {
+  it("marks protocol and Zinc stores 1-click and the rest Guided", () => {
+    const product = { id: "p", slotId: "s", title: "Lamp", store: "Quillby Lighting", priceCents: 100, url: "", imageUrl: "", attributes: { source: "demo_store" } };
+    expect(withCheckoutBadge(product).attributes).toMatchObject({ source: "demo_store", lane: "protocol", checkout: "1-click" });
+    expect(withCheckoutBadge({ ...product, store: "Target" }).attributes).toMatchObject({ lane: "zinc", checkout: "1-click" });
+    expect(withCheckoutBadge({ ...product, store: "IKEA" }).attributes).toMatchObject({ lane: "guided", checkout: "Guided" });
   });
 });
