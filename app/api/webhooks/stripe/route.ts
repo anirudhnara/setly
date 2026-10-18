@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripeWebhookRequestSchema, type ApiErrorBody, type StripeWebhookResponse } from "@/lib/contracts";
 import { jsonError } from "@/lib/db/http";
-import { markPaidByPaymentIntent } from "@/lib/db/queries";
+import { markPaidByCheckoutSession, markPaidByPaymentIntent } from "@/lib/db/queries";
 import { getEnv } from "@/lib/env";
 import { getStripe } from "@/lib/payments/stripe-client";
 
@@ -30,6 +30,27 @@ export async function POST(request: Request) {
     if (event.type === "payment_intent.succeeded") {
       const paymentIntentId = paymentIntentIdFrom(event.data.object);
       if (paymentIntentId) await markPaidByPaymentIntent(paymentIntentId);
+    }
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as {
+        id: string;
+        amount_total: number | null;
+        payment_intent: string | { id: string } | null;
+        payment_status: string;
+        metadata: Record<string, string> | null;
+      };
+      const groupId = session.metadata?.groupId;
+      const memberId = session.metadata?.memberId;
+      const paymentIntentId = paymentIntentIdFrom(session.payment_intent);
+      if (session.payment_status === "paid" && session.amount_total !== null && groupId && memberId && paymentIntentId) {
+        await markPaidByCheckoutSession({
+          sessionId: session.id,
+          paymentIntentId,
+          groupId,
+          memberId,
+          amountCents: session.amount_total,
+        });
+      }
     }
     const body: StripeWebhookResponse = { received: true };
     return NextResponse.json(body);

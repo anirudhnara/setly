@@ -87,7 +87,7 @@ export const payRequestSchema = z.object({
   amountCents: z.number().int().positive(),
 });
 export type PayRequest = z.infer<typeof payRequestSchema>;
-export type PayResponse = { contribution: Contribution; clientSecret: string | null };
+export type PayResponse = { contribution: Contribution; checkoutUrl: string | null };
 
 export const stripeWebhookRequestSchema = z.object({
   id: z.string().min(1),
