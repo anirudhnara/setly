@@ -5,7 +5,9 @@ import {
   getGroupState,
   joinGroup,
   lockGroup,
+  markPaidByCheckoutSession,
   recordContribution,
+  replacePendingCheckoutSession,
   resetLedgerForTests,
   returnItem,
   runCheckout,
@@ -99,6 +101,50 @@ describe("ledger", () => {
     expect(settled?.group.status).toBe("settled");
     expect(settled?.fundedCents).toBe(100);
     expect(settled?.storeLimits[0]?.spentCents).toBe(100);
+  });
+
+  it("marks a hosted Checkout payment paid only for its matching member and amount", async () => {
+    const created = await createGroup({ name: "Room", prompt: "lamp", budgetCents: 1000 }, { id: "usr_pay", name: "Pay" });
+    const member = created.members[0];
+    if (!member) throw new Error("Organizer missing");
+    await saveMap(created.group.id, lampMap(created.group.id));
+    const locked = await lockGroup(created.group.id, "usr_pay");
+    const amountCents = locked.shares[0]?.totalCents ?? 0;
+    await recordContribution({
+      groupId: created.group.id,
+      memberId: member.id,
+      amountCents,
+      status: "pending",
+      stripePaymentIntentId: "cs_test_session",
+    });
+
+    await expect(markPaidByCheckoutSession({
+      sessionId: "cs_test_session",
+      paymentIntentId: "pi_test_payment",
+      groupId: created.group.id,
+      memberId: member.id,
+      amountCents: amountCents + 1,
+    })).resolves.toBeNull();
+
+    const replaced = await replacePendingCheckoutSession({
+      groupId: created.group.id,
+      memberId: member.id,
+      amountCents,
+      previousReference: "cs_test_session",
+      sessionId: "cs_test_retry",
+    });
+    expect(replaced.contribution.stripePaymentIntentId).toBe("cs_test_retry");
+
+    const paid = await markPaidByCheckoutSession({
+      sessionId: "cs_test_retry",
+      paymentIntentId: "pi_test_payment",
+      groupId: created.group.id,
+      memberId: member.id,
+      amountCents,
+    });
+    expect(paid?.contributions[0]).toMatchObject({ status: "paid", stripePaymentIntentId: "pi_test_payment" });
+    expect(paid?.card?.status).toBe("active");
+
   });
 
   it("serializes parallel joins and slot edits", async () => {

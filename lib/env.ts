@@ -10,6 +10,9 @@ const envSchema = z
     NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
     ISSUER: z.enum(["mock", "stripe"]).default("mock"),
     MOCK_AI: z.enum(["0", "1"]).default("1"),
+    BESTBUY_API_KEY: z.string().min(1).optional(),
+    EBAY_CLIENT_ID: z.string().min(1).optional(),
+    EBAY_CLIENT_SECRET: z.string().min(1).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.MOCK_AI !== "1") {
@@ -47,6 +50,9 @@ export function getEnv(): Env {
     NEXT_PUBLIC_APP_URL: present(process.env.NEXT_PUBLIC_APP_URL),
     ISSUER: present(process.env.ISSUER),
     MOCK_AI: present(process.env.MOCK_AI),
+    BESTBUY_API_KEY: present(process.env.BESTBUY_API_KEY),
+    EBAY_CLIENT_ID: present(process.env.EBAY_CLIENT_ID),
+    EBAY_CLIENT_SECRET: present(process.env.EBAY_CLIENT_SECRET),
   });
 }
 

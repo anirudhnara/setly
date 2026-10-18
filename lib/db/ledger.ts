@@ -240,6 +240,50 @@ export async function markPaidByPaymentIntent(paymentIntentId: string) {
   });
 }
 
+/** Marks a contribution paid when its Stripe Checkout Session completes, replacing the temporary session reference with the PaymentIntent used for refunds. */
+export async function markPaidByCheckoutSession(input: {
+  sessionId: string;
+  paymentIntentId: string;
+  groupId: string;
+  memberId: string;
+  amountCents: number;
+}) {
+  const located = await (await getLedgerStore()).findByPaymentIntentId(input.sessionId);
+  if (!located || located.group.id !== input.groupId) return null;
+  return editGroup(input.groupId, async (state) => {
+    const contribution = state.contributions.find((item) => item.stripePaymentIntentId === input.sessionId);
+    if (!contribution || contribution.memberId !== input.memberId || contribution.amountCents !== input.amountCents) return null;
+    if (contribution.status === "pending") {
+      contribution.status = "paid";
+      contribution.stripePaymentIntentId = input.paymentIntentId;
+    }
+    refreshTotals(state);
+    await issueCardIfFunded(state);
+    return refreshTotals(state);
+  });
+}
+
+/** Replaces an expired Checkout Session reference while preserving the member's existing pending contribution. */
+export async function replacePendingCheckoutSession(input: {
+  groupId: string;
+  memberId: string;
+  amountCents: number;
+  previousReference: string;
+  sessionId: string;
+}) {
+  return editGroup(input.groupId, (state) => {
+    const contribution = state.contributions.find((item) => item.memberId === input.memberId);
+    if (!contribution || contribution.status !== "pending" || contribution.amountCents !== input.amountCents) {
+      throw new LedgerError("This contribution is no longer awaiting payment", 409);
+    }
+    if (contribution.stripePaymentIntentId !== input.previousReference && contribution.stripePaymentIntentId !== input.sessionId) {
+      throw new LedgerError("A newer checkout is already open", 409);
+    }
+    contribution.stripePaymentIntentId = input.sessionId;
+    return { contribution, state: refreshTotals(state), created: true };
+  });
+}
+
 export async function authorizeCharge(cardId: string, merchant: string, amountCents: number): Promise<Authorization> {
   const open = openMutation.getStore();
   if (open?.draft.state?.card?.id === cardId) return applyAuthorization(open.draft.state, cardId, merchant, amountCents);
@@ -417,6 +461,8 @@ export async function requireSlotMember(slotId: string, userId: string) {
 }
 
 export function resetLedgerForTests() {
+  // A test helper that happens to start with "use", not a React hook.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useMemoryLedgerForTests();
   memoryLedger.reset(true);
   resetUsersForTests();

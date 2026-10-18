@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Check, Clock, CreditCard, Lock, ShieldCheck, X } from "lucide-react";
 import { formatCents } from "@/components/shared/format";
 import { Avatar, GroupHeader } from "@/components/shared/group-header";
@@ -16,6 +16,31 @@ export function CheckoutView({ groupId }: { groupId: string }) {
   const [pending, setPending] = useState<"pay" | "run" | null>(null);
   const [note, setNote] = useState("");
   const [fault, setFault] = useState("");
+  const confirmedSession = useRef<string | null>(null);
+  const data = plan.data;
+  const myShare = me.member && data ? data.shares.find((share) => share.memberId === me.member?.id) : undefined;
+  const myShareCents = myShare?.totalCents;
+  const myContribution = me.member && data ? data.contributions.find((item) => item.memberId === me.member?.id) : undefined;
+  const refreshPlan = plan.mutate;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const sessionId = params.get("session_id");
+    if (payment !== "success" || !sessionId) return;
+    if (myContribution?.status === "paid" || myContribution?.status === "refunded_partial") return;
+    if (!myShareCents || myContribution?.status !== "pending" || confirmedSession.current === sessionId) return;
+
+    confirmedSession.current = sessionId;
+    void payShare({ groupId, amountCents: myShareCents })
+      .then(async (result) => {
+        await refreshPlan();
+        if (result.contribution.status === "paid") setNote("Your Stripe test payment is confirmed.");
+      })
+      .catch((error: unknown) => {
+        setFault(error instanceof Error ? error.message : "Setly couldn’t confirm the Stripe payment yet.");
+      });
+  }, [groupId, myContribution?.status, myShareCents, refreshPlan]);
 
   async function pay(amountCents: number) {
     setPending("pay");
@@ -23,8 +48,12 @@ export function CheckoutView({ groupId }: { groupId: string }) {
     setNote("");
     try {
       const result = await payShare({ groupId, amountCents });
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
       await plan.mutate();
-      setNote(result.contribution.status === "paid" ? `Paid ${formatCents(amountCents)} with a Stripe test card.` : "Stripe is still confirming the payment. It updates here on its own.");
+      setNote(result.contribution.status === "paid" ? `Paid ${formatCents(amountCents)} in demo mode.` : "Stripe is still confirming the payment. It updates here on its own.");
     } catch (error) {
       setFault(error instanceof Error ? error.message : "Payment didn’t go through.");
     } finally {
@@ -49,13 +78,10 @@ export function CheckoutView({ groupId }: { groupId: string }) {
   }
 
   if (!plan.mounted || (plan.isLoading && !plan.data)) return <GroupLoading />;
-  const data = plan.data;
   if (!data) return <GroupMissing />;
 
   const editing = data.group.status === "editing";
   const funded = data.totalCents > 0 ? Math.min(100, Math.round((data.fundedCents / data.totalCents) * 100)) : 0;
-  const myShare = me.member ? data.shares.find((share) => share.memberId === me.member?.id) : undefined;
-  const myContribution = me.member ? data.contributions.find((item) => item.memberId === me.member?.id) : undefined;
   const iPaid = myContribution?.status === "paid" || myContribution?.status === "refunded_partial";
   const card = data.card;
   const purchased = data.authorizations.length > 0;
@@ -120,7 +146,7 @@ export function CheckoutView({ groupId }: { groupId: string }) {
             <>
               <span className="orbit-label">Your share</span>
               <strong className="big-number">{myShare ? formatCents(myShare.totalCents) : "—"}</strong>
-              <p className="muted">Test mode: Stripe charges a test Visa, no real money moves.</p>
+              <p className="muted">Stripe test mode, so no real money moves. Use 4242 4242 4242 4242, any future expiry, and any CVC.</p>
               <button type="button" className="btn btn-accent wide-btn" disabled={editing || pending !== null || !myShare || myShare.totalCents <= 0 || iPaid} onClick={() => myShare && void pay(myShare.totalCents)}>
                 <CreditCard aria-hidden="true" /> {iPaid ? "You’ve paid" : pending === "pay" ? "Paying…" : "Pay my share"}
               </button>

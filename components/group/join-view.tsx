@@ -23,6 +23,7 @@ export function JoinView({ groupId }: { groupId: string }) {
   const [copied, setCopied] = useState(false);
   // Client-only value; the page renders a loading state until mounted, so server HTML never includes it.
   const [link] = useState(() => (typeof window === "undefined" ? "" : `${window.location.origin}/g/${groupId}/join`));
+  const [localOnly] = useState(() => typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.endsWith(".localhost")));
 
   async function join() {
     setPending(true);
@@ -87,12 +88,13 @@ export function JoinView({ groupId }: { groupId: string }) {
         <section className="g-card">
           {member ? (
             <>
-              <span className="orbit-label">Invite link</span>
+              <span className="orbit-label">{localOnly ? "Local preview link" : "Invite link"}</span>
+              {localOnly ? <p className="muted" role="status">This set was created in your local app. The link only opens on this computer, and the hosted app has a separate set of groups. To share with others, create the set on your deployed Setly site.</p> : null}
               <div className="invite-row">
-                <input readOnly value={link} aria-label="Invite link" onFocus={(event) => event.currentTarget.select()} />
-                <button type="button" className="btn" onClick={() => void copy()}>{copied ? <><Check aria-hidden="true" /> Copied</> : <><Copy aria-hidden="true" /> Copy</>}</button>
+                <input readOnly value={link} aria-label={localOnly ? "Local preview link" : "Invite link"} onFocus={(event) => event.currentTarget.select()} />
+                <button type="button" className="btn" onClick={() => void copy()} disabled={localOnly || !link}>{copied ? <><Check aria-hidden="true" /> Copied</> : <><Copy aria-hidden="true" /> Copy</>}</button>
               </div>
-              {link ? (
+              {link && !localOnly ? (
                 <div className="qr">
                   <QRCodeSVG value={link} size={148} bgColor="#ffffff" fgColor="#1c1a17" level="M" />
                   <p className="muted">Scan to join from a phone.</p>
