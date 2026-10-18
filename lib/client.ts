@@ -32,6 +32,8 @@ import type {
 } from "@/lib/contracts";
 import type { InterviewRequest, InterviewResponse } from "@/lib/ai/interview";
 import type { ChooseRequest, ChooseResponse, RefineRequest, RefineResponse } from "@/lib/ai/refine";
+import type { AddRequest, SuggestRequest, SuggestResponse } from "@/lib/ai/suggest";
+import type { VibeSeedRequest, VibeSeedResponse } from "@/lib/ai/vibes";
 import type { GroupState } from "@/lib/types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -94,6 +96,21 @@ export function generateMap(body: GenerateMapRequest) {
 /** Grows and saves the group's first set from its prompt. Returns the group with its set. */
 export function growMap(groupId: string) {
   return post<GetGroupResponse>("/api/maps/grow", { groupId });
+}
+
+/** Step 2: the vibes to show for a brief, with starting weights. */
+export function seedVibes(body: VibeSeedRequest) {
+  return post<VibeSeedResponse>("/api/vibes/seed", body);
+}
+
+/** Ideas to grow one branch of a saved set. */
+export function suggestIdeas(body: SuggestRequest) {
+  return post<SuggestResponse>("/api/maps/suggest", body);
+}
+
+/** Adds one idea to a branch and returns the updated group. */
+export function addIdea(body: AddRequest) {
+  return post<GetGroupResponse>("/api/maps/add", body);
 }
 
 /** Warms the AI connection when the chat opens. Best effort. */

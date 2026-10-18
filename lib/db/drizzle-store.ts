@@ -106,22 +106,29 @@ export const drizzleLedger: LedgerStore = {
 };
 
 async function readGroup(groupId: string, db: Database | Transaction = getDb()): Promise<GroupState | null> {
-  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+  // Independent reads run together: four round trips instead of thirteen against the remote database.
+  const [[group], memberRows, zoneRows, ruleRows, contributionRows, cardRows, refundRows] = await Promise.all([
+    db.select().from(groups).where(eq(groups.id, groupId)).limit(1),
+    db.select().from(members).where(eq(members.groupId, groupId)),
+    db.select().from(zones).where(eq(zones.groupId, groupId)),
+    db.select().from(rules).where(eq(rules.groupId, groupId)),
+    db.select().from(contributions).where(eq(contributions.groupId, groupId)),
+    db.select().from(cards).where(eq(cards.groupId, groupId)),
+    db.select().from(refunds).where(eq(refunds.groupId, groupId)),
+  ]);
   if (!group) return null;
-  const memberRows = await db.select().from(members).where(eq(members.groupId, groupId));
-  const zoneRows = await db.select().from(zones).where(eq(zones.groupId, groupId));
   const zoneIds = zoneRows.map((zone) => zone.id);
-  const slotRows = zoneIds.length === 0 ? [] : await db.select().from(slots).where(inArray(slots.zoneId, zoneIds));
-  const slotIds = slotRows.map((slot) => slot.id);
-  const productRows = slotIds.length === 0 ? [] : await db.select().from(products).where(inArray(products.slotId, slotIds));
-  const linkRows = slotIds.length === 0 ? [] : await db.select().from(links).where(inArray(links.fromSlotId, slotIds));
-  const ruleRows = await db.select().from(rules).where(eq(rules.groupId, groupId));
-  const contributionRows = await db.select().from(contributions).where(eq(contributions.groupId, groupId));
-  const cardRows = await db.select().from(cards).where(eq(cards.groupId, groupId));
   const card = cardRows[0] ?? null;
-  const limitRows = card ? await db.select().from(storeLimits).where(eq(storeLimits.cardId, card.id)) : [];
-  const authorizationRows = card ? await db.select().from(authorizations).where(eq(authorizations.cardId, card.id)) : [];
-  const refundRows = await db.select().from(refunds).where(eq(refunds.groupId, groupId));
+  const [slotRows, limitRows, authorizationRows] = await Promise.all([
+    zoneIds.length === 0 ? Promise.resolve([]) : db.select().from(slots).where(inArray(slots.zoneId, zoneIds)),
+    card ? db.select().from(storeLimits).where(eq(storeLimits.cardId, card.id)) : Promise.resolve([]),
+    card ? db.select().from(authorizations).where(eq(authorizations.cardId, card.id)) : Promise.resolve([]),
+  ]);
+  const slotIds = slotRows.map((slot) => slot.id);
+  const [productRows, linkRows] = await Promise.all([
+    slotIds.length === 0 ? Promise.resolve([]) : db.select().from(products).where(inArray(products.slotId, slotIds)),
+    slotIds.length === 0 ? Promise.resolve([]) : db.select().from(links).where(inArray(links.fromSlotId, slotIds)),
+  ]);
   const map: MapData = {
     zones: zoneRows.map(toZone).sort((left, right) => left.sortOrder - right.sortOrder),
     slots: slotRows.map(toSlot),

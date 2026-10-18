@@ -2,75 +2,141 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ChevronDown, LogOut, Receipt, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
+import { MODE_INFO } from "@/components/shared/modes";
+import { readLastGroup, readMode, type FundingMode } from "@/components/shared/session";
 import { firebaseConfigured, signOut, watchAuth } from "@/lib/auth/client";
-import { SAMPLE_GROUP_ID, readLastGroup } from "@/components/shared/session";
 
-const LINKS = [{ href: "/home", label: "New set" }];
+const LINKS = [
+  { href: "/home", label: "New set", icon: Sparkles },
+  { href: "/account", label: "My sets", icon: Receipt },
+];
 
-export function SiteNav() {
+/**
+ * The top bar on every app screen: slides in, a pill glides to whichever link you point at, it tightens on scroll,
+ * and the account menu opens with a spring. `tone="dark"` sits over the 3D space.
+ */
+export function SiteNav({ tone = "light" }: { tone?: "light" | "dark" }) {
   const pathname = usePathname();
   const router = useRouter();
   const groupId = pathname.match(/^\/g\/([^/]+)/)?.[1];
-  const [planId, setPlanId] = useState(groupId ?? SAMPLE_GROUP_ID);
-  const [you, setYou] = useState("");
+  const [you, setYou] = useState<{ name: string; email: string } | null>(null);
+  const [mode, setMode] = useState<FundingMode>("group");
+  const [lastGroup, setLastGroup] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [pill, setPill] = useState<{ left: number; width: number; visible: boolean }>({ left: 0, width: 0, visible: false });
+  const [hovered, setHovered] = useState<string | null>(null);
+  const linksRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (groupId) {
-      setPlanId(groupId);
-      return;
-    }
-    setPlanId(readLastGroup() ?? SAMPLE_GROUP_ID);
-  }, [groupId]);
+  const active = pathname === "/vibes" ? "/home" : (LINKS.find((link) => pathname === link.href || pathname.startsWith(`${link.href}/`))?.href ?? null);
 
   useEffect(() => {
     if (!firebaseConfigured()) return;
     return watchAuth((user) => {
-      setYou(user?.displayName?.trim() || user?.email?.split("@")[0] || "");
+      setMode(readMode());
+      setLastGroup(readLastGroup());
+      setYou(user ? { name: user.displayName?.trim() || user.email?.split("@")[0] || "You", email: user.email ?? "" } : null);
     });
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!menu) return;
+    const close = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !menuRef.current?.contains(event.target as Node)) setMenu(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [menu]);
+
+  // The pill follows the hovered link, and rests on the current page's link.
+  useLayoutEffect(() => {
+    const target = hovered ?? active;
+    const element = target ? linksRef.current?.querySelector<HTMLElement>(`[data-href="${target}"]`) : null;
+    if (!element) {
+      setPill((current) => ({ ...current, visible: false }));
+      return;
+    }
+    setPill({ left: element.offsetLeft, width: element.offsetWidth, visible: true });
+  }, [hovered, active, you]);
+
+  async function leave() {
+    setMenu(false);
+    try {
+      await signOut();
+    } finally {
+      router.push("/");
+    }
+  }
+
   return (
-    <header className="orbit-nav">
-      <div className="orbit-nav-row">
-        <Link href="/" className="orbit-brand">
-          <JarvisMark size={28} />
+    <header className={`setly-nav ${tone}${scrolled ? " scrolled" : ""}`}>
+      <div className="setly-nav-row">
+        <Link href="/" className="nav-brand" aria-label="Setly home">
+          <JarvisMark size={30} />
           <span>setly</span>
         </Link>
-        <nav className="orbit-links" aria-label="Primary">
-          {LINKS.map((link) => (
-            <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined}>
-              {link.label}
+
+        <nav className="nav-links" aria-label="Primary" ref={linksRef} onMouseLeave={() => setHovered(null)}>
+          <span className={`nav-pill${pill.visible ? " on" : ""}`} style={{ transform: `translateX(${pill.left}px)`, width: pill.width }} aria-hidden="true" />
+          {LINKS.map(({ href, label, icon: Icon }, index) => (
+            <Link key={href} href={href} data-href={href} className={active === href ? "current" : ""} aria-current={active === href ? "page" : undefined} onMouseEnter={() => setHovered(href)} onFocus={() => setHovered(href)} onBlur={() => setHovered(null)} style={{ animationDelay: `${0.08 + index * 0.06}s` }}>
+              <Icon aria-hidden="true" />
+              <span>{label}</span>
             </Link>
           ))}
-          <Link href={`/g/${planId}`} aria-current={pathname.startsWith("/g/") ? "page" : undefined}>
-            My set
+          {groupId || lastGroup ? (
+            <Link href={`/g/${groupId ?? lastGroup}`} data-href="set" className={groupId ? "current set-link" : "set-link"} onMouseEnter={() => setHovered("set")} onFocus={() => setHovered("set")} onBlur={() => setHovered(null)} style={{ animationDelay: "0.26s" }}>
+              <span className="live-dot" aria-hidden="true" />
+              <span>{groupId ? "This set" : "Last set"}</span>
+            </Link>
+          ) : null}
+        </nav>
+
+        <div className="nav-right">
+          <Link href="/#modes" className="mode-chip" title="Change who’s paying">
+            {mode === "insurance" ? <ShieldCheck aria-hidden="true" /> : null}
+            {MODE_INFO[mode].short}
           </Link>
-        </nav>
-        <span className="orbit-kicker">
           {you ? (
-            <>
-              <span className="avatar" aria-hidden="true">{you.slice(0, 1).toUpperCase()}</span>
-              {you}
-              <button type="button" className="nav-sign-out" onClick={() => void signOut().then(() => router.push("/"))}>
-                Sign out
+            <div className="nav-account" ref={menuRef}>
+              <button type="button" className="account-btn" aria-expanded={menu} aria-haspopup="menu" onClick={() => setMenu((open) => !open)}>
+                <span className="avatar-dot t1" aria-hidden="true">{you.name.slice(0, 1).toUpperCase()}</span>
+                <span className="account-name">{you.name.split(" ")[0]}</span>
+                <ChevronDown aria-hidden="true" />
               </button>
-            </>
+              {menu ? (
+                <div className="account-menu" role="menu">
+                  <div className="menu-head">
+                    <strong>{you.name}</strong>
+                    <span>{you.email}</span>
+                  </div>
+                  <Link role="menuitem" href="/account" onClick={() => setMenu(false)}><UserRound aria-hidden="true" /> Account</Link>
+                  <Link role="menuitem" href="/account#purchases" onClick={() => setMenu(false)}><Receipt aria-hidden="true" /> Purchases</Link>
+                  <Link role="menuitem" href="/account#protection" onClick={() => setMenu(false)}><ShieldCheck aria-hidden="true" /> Protection</Link>
+                  <button type="button" role="menuitem" onClick={() => void leave()}><LogOut aria-hidden="true" /> Sign out</button>
+                </div>
+              ) : null}
+            </div>
           ) : (
-            "Shop together"
+            <Link href={`/sign-in?next=${encodeURIComponent(pathname)}`} className="btn btn-accent nav-signin">Sign in</Link>
           )}
-        </span>
+        </div>
       </div>
-      {groupId && pathname === `/g/${groupId}` ? (
-        <nav className="orbit-subnav" aria-label="Group">
-          <Link href={`/g/${groupId}`} aria-current={pathname === `/g/${groupId}` ? "page" : undefined}>Set</Link>
-          <Link href={`/g/${groupId}/join`} aria-current={pathname.endsWith("/join") ? "page" : undefined}>Invite</Link>
-          <Link href={`/g/${groupId}/split`} aria-current={pathname.endsWith("/split") ? "page" : undefined}>Split</Link>
-          <Link href={`/g/${groupId}/checkout`} aria-current={pathname.endsWith("/checkout") ? "page" : undefined}>Checkout</Link>
-          <Link href={`/g/${groupId}/settle`} aria-current={pathname.endsWith("/settle") ? "page" : undefined}>Returns</Link>
-        </nav>
-      ) : null}
     </header>
   );
 }

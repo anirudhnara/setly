@@ -1,5 +1,7 @@
 import { loadApartmentMap, loadCampingMap, loadGroupState } from "@/lib/fixtures/sample";
 import type { MapData, Product, Slot } from "@/lib/types";
+import { parseVibeLine, type VibeWeights } from "@/lib/catalog/vibes";
+import { findProducts } from "@/lib/search/find";
 import { searchProducts } from "@/lib/search/serpapi";
 
 /**
@@ -20,6 +22,10 @@ export interface SlotInfo {
   need: string;
   searchQuery: string;
   chosen: Product | null;
+  /** The group's vibe, so alternatives are ordered the way the set was. */
+  vibes?: VibeWeights;
+  /** Sample-fixture slots keep sample alternatives: those carry the dimensions the door-fit demo checks. */
+  sample?: boolean;
 }
 
 const store = globalThis as typeof globalThis & { __setlySlotRegistry?: Map<string, SlotInfo> };
@@ -62,7 +68,10 @@ export function mergeOptions(chosen: Product | null, results: Product[]): Produc
 export async function getSlotOptions(slotId: string): Promise<Product[] | null> {
   const info = await resolveSlot(slotId);
   if (!info) return null;
-  const results = attachToSlot(await searchProducts(info.searchQuery), slotId);
+  // Decided by the slot, never by instance memory, so every server instance builds the same stack.
+  const sample = info.sample || slotId.includes("__");
+  const found = sample ? await searchProducts(info.searchQuery) : await findProducts(info.searchQuery, info.vibes ?? {});
+  const results = attachToSlot(found, slotId);
   return mergeOptions(info.chosen, results);
 }
 
@@ -103,7 +112,7 @@ async function slotFromLedger(slotId: string): Promise<SlotInfo | null> {
     const chosen = state.map.products.find((product) => product.id === slot.chosenProductId) ?? null;
     const savedQuery = chosen?.attributes.searchQuery;
     const searchQuery = typeof savedQuery === "string" && savedQuery ? savedQuery : (searchQueryFromSlotId(slotId) ?? slot.need);
-    return { slotId, need: slot.need, searchQuery, chosen };
+    return { slotId, need: slot.need, searchQuery, chosen, vibes: parseVibeLine(state.group.prompt) };
   } catch {
     return null;
   }
@@ -117,7 +126,7 @@ function slotFromFixtures(slotId: string): SlotInfo | null {
     if (!slot) continue;
     const product = map.products.find((item) => item.id === slot.chosenProductId);
     const chosen = product ? { ...product, id: baseId === slotId ? product.id : `${slotId}_${product.id}`, slotId } : null;
-    return { slotId, need: slot.need, searchQuery: slot.need, chosen };
+    return { slotId, need: slot.need, searchQuery: slot.need, chosen, sample: true };
   }
   return null;
 }

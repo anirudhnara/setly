@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { RankSlot } from "@/lib/ai/build-map";
-import { askGeminiJson } from "@/lib/ai/llm";
+import { GEMINI_FAST_MODEL, askGeminiJson } from "@/lib/ai/llm";
 
 /**
  * Gemini orders each slot's real search results by how well they fit what the group asked for.
@@ -25,7 +25,7 @@ export async function rankWithGemini(request: string, slots: RankSlot[]): Promis
       lines.push(`  o${optionIndex}: ${option.title.slice(0, 110)} (${option.store})`);
     });
   });
-  const result = await askGeminiJson({ prompt: lines.join("\n"), system: RANK_SYSTEM, schema: rankSchema, timeoutMs: RANK_TIMEOUT_MS, temperature: 0.2 });
+  const result = await askGeminiJson({ prompt: lines.join("\n"), system: RANK_SYSTEM, schema: rankSchema, timeoutMs: RANK_TIMEOUT_MS, temperature: 0.2, model: GEMINI_FAST_MODEL });
   return labelsToIds(result, slots);
 }
 

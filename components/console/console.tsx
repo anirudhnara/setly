@@ -1,19 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowUp, Check, Mic, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, Mic, RotateCcw } from "lucide-react";
 import { Orb } from "@/components/console/orb";
 import { LiveSetPreview } from "@/components/console/live-set";
 import { JarvisMark } from "@/components/shared/jarvis-mark";
+import { MODE_INFO } from "@/components/shared/modes";
+import { SiteNav } from "@/components/shared/site-nav";
 import { formatBudget } from "@/components/shared/format";
-import { readYou, stageMap, stageMember, stageYou } from "@/components/shared/session";
-import { firebaseConfigured, signOut, watchAuth } from "@/lib/auth/client";
+import { CreationSteps } from "@/components/shared/creation-steps";
+import { readMode, readYou, stageDraft, stageYou, type FundingMode } from "@/components/shared/session";
+import { firebaseConfigured, watchAuth } from "@/lib/auth/client";
 import { FIREBASE_SETUP_MESSAGE } from "@/lib/env";
-import { createGroup, growMap, interviewTurn, warmInterview } from "@/lib/client";
+import { interviewTurn, warmInterview } from "@/lib/client";
 import {
   QUESTIONS,
+  chipsFor,
   RETRY,
   absorbAnswer,
   applyStep,
@@ -45,14 +48,15 @@ interface SpeechRec {
   start: () => void;
 }
 
-const BUILD_STEPS = ["Reading your brief", "Planning the set", "Searching real stores", "Picking the best fit for you", "Growing your map"];
-const BUILD_STEP_AT_MS = [0, 1800, 5500, 11000, 17000];
+const BUILD_STEPS = ["Reading your answers", "Lining up vibes for you"];
+const BUILD_STEP_AT_MS = [0, 700];
 const MAX_MODEL_QUESTIONS = 6;
 
 export function Console() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [blocked, setBlocked] = useState<string | null>(null);
+  // Without Firebase config the chat can’t sign anyone in, so it explains that instead.
+  const [blocked] = useState<string | null>(() => (firebaseConfigured() ? null : FIREBASE_SETUP_MESSAGE));
   const [you, setYou] = useState("");
   const [brief, setBrief] = useState<Brief>(emptyBrief);
   const [lines, setLines] = useState<Line[]>([]);
@@ -64,6 +68,8 @@ export function Console() {
   const [mode, setMode] = useState<"model" | "script">("model");
   const [step, setStep] = useState<Step>("scene");
   const [modelTurns, setModelTurns] = useState(0);
+  const [modelMisses, setModelMisses] = useState(0);
+  const [fundingMode, setFundingMode] = useState<FundingMode>("group");
   const scroller = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const seq = useRef(0);
@@ -75,10 +81,7 @@ export function Console() {
       setBrief((current) => ({ ...current, name }));
       setReady(true);
     }
-    if (!firebaseConfigured()) {
-      setBlocked(FIREBASE_SETUP_MESSAGE);
-      return;
-    }
+    if (!firebaseConfigured()) return;
     return watchAuth((user) => {
       if (!user) {
         router.replace(`/sign-in?next=${encodeURIComponent("/home")}`);
@@ -86,6 +89,7 @@ export function Console() {
       }
       const name = user.displayName?.trim() || prettyName(user.email ?? "") || "Friend";
       stageYou(name);
+      setFundingMode(readMode());
       enter(name);
       void warmInterview();
     });
@@ -106,30 +110,25 @@ export function Console() {
     return { id: `m${seq.current}`, role, text, chips };
   }
 
+  /** Step 1 is done: hand the brief to the vibe step. The set itself is created after the vibe is picked. */
   async function build(next: Brief) {
     setPhase("building");
     setBuildStep(0);
-    try {
-      const person = readYou() || you || next.name || "You";
-      const prompt = composePrompt({ ...next, name: person, vibe: next.vibe || "practical" });
-      const created = await createGroup({ name: groupName(next), prompt, budgetCents: next.budgetCents ?? 0 });
-      const organizer = created.members.find((member) => member.isOrganizer) ?? created.members[0];
-      if (organizer) stageMember(created.group.id, { memberId: organizer.id, name: organizer.name });
-      // The set is grown and saved on the server, so everyone who joins sees the same products.
-      const grown = await growMap(created.group.id).catch(() => null);
-      if (grown) stageMap(created.group.id, grown.map);
-      setBuildStep(BUILD_STEPS.length);
-      window.setTimeout(() => window.location.assign(`/g/${created.group.id}`), 650);
-    } catch {
-      setPhase("failed");
-    }
+    const person = readYou() || you || next.name || "You";
+    stageDraft({
+      name: groupName(next),
+      prompt: `${composePrompt({ ...next, name: person, vibe: next.vibe || "" })} ${MODE_INFO[fundingMode].promptLine}`.replace(/Style: \./, "").replace(/\s+/g, " ").trim(),
+      budgetCents: next.budgetCents ?? 0,
+      people: next.people,
+    });
+    window.setTimeout(() => router.push("/vibes"), 1400);
   }
 
   /** Scripted interview, used when Gemini is off: one question per step from brief.ts. */
   function scriptedTurn(current: Brief, text: string, history: Line[]) {
     const result = applyStep(current, step, text);
     if (!result.accepted) {
-      setLines([...history, line("assistant", RETRY[step], QUESTIONS[step].chips)]);
+      setLines([...history, line("assistant", RETRY[step], chipsFor(step, current))]);
       return;
     }
     setBrief(result.brief);
@@ -140,7 +139,7 @@ export function Console() {
       return;
     }
     setStep(following);
-    setLines([...history, line("assistant", QUESTIONS[following].ask, QUESTIONS[following].chips)]);
+    setLines([...history, line("assistant", QUESTIONS[following].ask, chipsFor(following, result.brief))]);
   }
 
   async function send(raw: string) {
@@ -170,7 +169,7 @@ export function Console() {
     try {
       const { turn } = await interviewTurn({
         messages: history.slice(-24).map((item) => ({ role: item.role, text: item.text.slice(0, 2000) })),
-        known: knownFacts(next),
+        known: { ...knownFacts(next), whoPays: MODE_INFO[fundingMode].promptLine },
       });
       if (!turn) {
         // Gemini is off: continue with the scripted questions from wherever the brief is.
@@ -183,11 +182,12 @@ export function Console() {
           return;
         }
         setStep(following);
-        setLines([...history, line("assistant", QUESTIONS[following].ask, QUESTIONS[following].chips)]);
+        setLines([...history, line("assistant", QUESTIONS[following].ask, chipsFor(following, next))]);
         return;
       }
       next = mergeFacts(next, turn.facts);
       setBrief(next);
+      setModelMisses(0);
       const asked = modelTurns + 1;
       setModelTurns(asked);
       if (canBuild(next) && (turn.ready || asked >= MAX_MODEL_QUESTIONS)) {
@@ -197,16 +197,20 @@ export function Console() {
       }
       const gap = turn.ready ? missingEssential(next) : null;
       if (gap) {
-        setLines([...history, line("assistant", QUESTIONS[gap].ask, QUESTIONS[gap].chips)]);
+        setLines([...history, line("assistant", QUESTIONS[gap].ask, chipsFor(gap, next))]);
         return;
       }
       setLines([...history, line("assistant", turn.reply, turn.chips)]);
     } catch {
-      setMode("script");
+      // A slow or rate-limited turn: ask the next scripted question this once, and try Gemini again next turn.
+      // Two misses in a row means it's down, so the rest of the chat stays scripted.
+      const misses = modelMisses + 1;
+      setModelMisses(misses);
+      if (misses >= 2) setMode("script");
       const following = nextStep(next) ?? "scene";
       setBrief(next);
       setStep(following);
-      setLines([...history, line("assistant", QUESTIONS[following].ask, QUESTIONS[following].chips)]);
+      setLines([...history, line("assistant", QUESTIONS[following].ask, chipsFor(following, next))]);
     } finally {
       setThinking(false);
       queueMicrotask(() => input.current?.focus());
@@ -267,31 +271,9 @@ export function Console() {
 
   return (
     <div className="orbit chat-page">
-      <header className="chat-top">
-        <Link href="/" className="orbit-brand" aria-label="Setly home">
-          <JarvisMark size={30} />
-          <span>setly</span>
-        </Link>
-        <div className="chat-top-actions">
-          {!empty ? (
-            <button type="button" className="btn btn-ghost chat-restart" onClick={restart} disabled={phase === "building"}>
-              <RotateCcw aria-hidden="true" /> New set
-            </button>
-          ) : null}
-          <span className="chat-you" aria-label={`Signed in as ${you}`}>
-            <span className="avatar" aria-hidden="true">{you.slice(0, 1).toUpperCase()}</span>
-            {you}
-          </span>
-          <button
-            type="button"
-            className="btn btn-ghost chat-restart"
-            onClick={() => void signOut().then(() => router.push("/"))}
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <SiteNav />
 
+      <div className="chat-steps"><CreationSteps current={phase === "building" ? 1 : 0} /></div>
       <div className={`chat-layout ${empty ? "is-empty" : ""}`}>
         <main className="chat-main">
           <div className="chat-log" ref={scroller} aria-live="polite">
@@ -349,7 +331,7 @@ export function Console() {
                 <span key={fact}>{fact}</span>
               ))}
               <button type="button" className="chip" disabled={!canBuild(brief) || busy} onClick={growNow}>
-                <Sparkles aria-hidden="true" /> Grow now
+                Next: vibe <ArrowRight aria-hidden="true" />
               </button>
             </div>
           ) : null}
@@ -389,16 +371,17 @@ export function Console() {
         {!empty ? (
           <aside className="brief-card" aria-label="Your set, taking shape">
             <div className="brief-head">
-              <span className="orbit-label">Your set, taking shape</span>
+              <span className="orbit-label">{MODE_INFO[fundingMode].label} · your set</span>
               <span className="brief-progress" aria-label={`${knownCount} of 3 essentials known`}>
                 {[known.scene, known.people, known.budget].map((done, index) => <i key={index} className={done ? "done" : ""} />)}
               </span>
             </div>
             <LiveSetPreview brief={brief} building={phase === "building"} />
             <button type="button" className="btn btn-accent brief-go" disabled={!canBuild(brief) || busy} onClick={growNow}>
-              <Sparkles aria-hidden="true" /> Grow my set now
+              Next: pick your vibe <ArrowRight aria-hidden="true" />
             </button>
             <p className="brief-note">{canBuild(brief) ? "Or keep answering — every detail sharpens the picks." : "I need what it’s for, how many people, and a total budget."}</p>
+            <button type="button" className="btn btn-ghost restart-btn" onClick={restart} disabled={phase === "building"}><RotateCcw aria-hidden="true" /> Start over</button>
           </aside>
         ) : null}
       </div>
@@ -439,6 +422,6 @@ function prettyName(email: string) {
 }
 
 function readyLine(brief: Brief) {
-  const bits = [`${brief.people} ${brief.people === 1 ? "person" : "people"}`, brief.budgetCents ? `${formatBudget(brief.budgetCents)} all in` : "", brief.vibe].filter(Boolean);
-  return `Perfect — ${bits.join(", ")}. Growing your set from real stores now.`;
+  const bits = [`${brief.people} ${brief.people === 1 ? "person" : "people"}`, brief.budgetCents ? `${formatBudget(brief.budgetCents)} all in` : ""].filter(Boolean);
+  return `Perfect — ${bits.join(", ")}. Next, show me your vibe: it takes ten seconds.`;
 }
